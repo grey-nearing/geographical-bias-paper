@@ -9,6 +9,14 @@
     "10.0-year-2.0-window-recall": 0.2828228366654688,
     "20.0-year-2.0-window-recall": 0.25714091598387745
   },
+  "zero_open_gauge_coverage_summary": {
+    "n_basins_zero_cov": 709709,
+    "pct_basins_zero_cov": 73.61485098808818,
+    "exposure_zero_cov": 200294601.95989713,
+    "pct_exposure_zero_cov": 90.39907337510708,
+    "unwarned_zero_cov": 142476947.13471738,
+    "pct_unwarned_zero_cov": 90.44468942734959
+  },
   "baseline_summary": {
     "Global Total (All 964,084 Sub-Basins)": {
       "n_basins": 964084,
@@ -45,51 +53,51 @@
   },
   "interventions": {
     "Factor 2 (M_ungauged Primary): Universal Local & Network Gauge Coverage (100% Coverage)": {
-      "net_delta_global": 5519255.6837010905,
-      "net_delta_with_sys": 4013582.8851368916,
+      "net_delta_global": 5519255.68370109,
+      "net_delta_with_sys": 4013582.8851368898,
       "net_delta_no_sys": 1505672.7985641994,
-      "pos_delta_global": 5527785.040244308,
-      "pos_delta_with_sys": 4021373.288577629,
+      "pos_delta_global": 5527785.040244307,
+      "pos_delta_with_sys": 4021373.288577628,
       "pos_delta_no_sys": 1506411.751666678,
-      "rp_clipped_delta_global": 5535831.125442238,
-      "rp_clipped_delta_with_sys": 4027295.9320985912,
-      "rp_clipped_delta_no_sys": 1508535.1933436443,
+      "rp_clipped_delta_global": 5535831.125442237,
+      "rp_clipped_delta_with_sys": 4027295.9320985903,
+      "rp_clipped_delta_no_sys": 1508535.1933436445,
       "unwarned_remaining_global": 152001582.39615238,
       "unwarned_remaining_with_sys": 109229667.46335353,
       "unwarned_remaining_no_sys": 42771914.93279883,
-      "median_skill_delta_5y": 0.022634681489622388,
-      "mean_skill_delta_5y": 0.0231656929363358
+      "median_skill_delta_5y": 0.022634681489622333,
+      "mean_skill_delta_5y": 0.023165692936335802
     },
     "Factor 2 (M_ungauged Dense Corridor): Multi-Gauge Nested Corridor Coverage (75th pct)": {
       "net_delta_global": 5423593.169384097,
-      "net_delta_with_sys": 4107464.3448839043,
+      "net_delta_with_sys": 4107464.3448839053,
       "net_delta_no_sys": 1316128.82450019,
       "pos_delta_global": 5427403.555566044,
-      "pos_delta_with_sys": 4110596.918250194,
+      "pos_delta_with_sys": 4110596.9182501948,
       "pos_delta_no_sys": 1316806.6373158493,
-      "rp_clipped_delta_global": 5437981.888403814,
+      "rp_clipped_delta_global": 5437981.888403815,
       "rp_clipped_delta_with_sys": 4115832.4175921245,
       "rp_clipped_delta_no_sys": 1322149.4708116895,
       "unwarned_remaining_global": 152101963.88083065,
       "unwarned_remaining_with_sys": 109140443.83368096,
       "unwarned_remaining_no_sys": 42961520.04714967,
       "median_skill_delta_5y": 0.013353113347848722,
-      "mean_skill_delta_5y": 0.01429809211559123
+      "mean_skill_delta_5y": 0.014298092115591231
     },
     "Factor 3 (M_ungauged): Eliminating Out-of-Distribution Representation Bias": {
       "net_delta_global": 16125570.878995262,
       "net_delta_with_sys": 11790928.953284403,
       "net_delta_no_sys": 4334641.925710861,
-      "pos_delta_global": 16225445.525556479,
+      "pos_delta_global": 16225445.52555648,
       "pos_delta_with_sys": 11886296.846679645,
       "pos_delta_no_sys": 4339148.678876836,
       "rp_clipped_delta_global": 16277248.755878825,
       "rp_clipped_delta_with_sys": 11919224.371753313,
-      "rp_clipped_delta_no_sys": 4358024.384125512,
+      "rp_clipped_delta_no_sys": 4358024.384125513,
       "unwarned_remaining_global": 141303921.91084018,
       "unwarned_remaining_with_sys": 101364743.9052515,
       "unwarned_remaining_no_sys": 39939178.00558869,
-      "median_skill_delta_5y": 0.06081285652102311,
+      "median_skill_delta_5y": 0.060812856521023056,
       "mean_skill_delta_5y": 0.061024189059709355
     },
     "Combined Observational Ceiling (Factor 2 + Factor 3 in M_ungauged)": {
@@ -97,133 +105,450 @@
       "net_delta_with_sys": 14768411.956998343,
       "net_delta_no_sys": 5486532.060876823,
       "pos_delta_global": 20331759.55361327,
-      "pos_delta_with_sys": 14842757.81798856,
+      "pos_delta_with_sys": 14842757.817988558,
       "pos_delta_no_sys": 5489001.7356247185,
-      "rp_clipped_delta_global": 20355848.143045824,
-      "rp_clipped_delta_with_sys": 14860964.166644063,
+      "rp_clipped_delta_global": 20355848.14304582,
+      "rp_clipped_delta_with_sys": 14860964.166644061,
       "rp_clipped_delta_no_sys": 5494883.976401767,
       "unwarned_remaining_global": 137197607.88278338,
       "unwarned_remaining_with_sys": 98408282.93394257,
       "unwarned_remaining_no_sys": 38789324.948840804,
-      "median_skill_delta_5y": 0.07964321931784046,
+      "median_skill_delta_5y": 0.07964321931784035,
       "mean_skill_delta_5y": 0.0797610052054435
     },
     "Factor 4 (M_ungauged): Extending Historical Record Length to 50 Years": {
-      "net_delta_global": -2043918.7711687286,
-      "net_delta_with_sys": -1315286.3176796644,
+      "net_delta_global": -2043918.7711687281,
+      "net_delta_with_sys": -1315286.317679664,
       "net_delta_no_sys": -728632.4534890645,
-      "pos_delta_global": 5873.424059285937,
-      "pos_delta_with_sys": 5609.313229441597,
-      "pos_delta_no_sys": 264.11082984433733,
-      "rp_clipped_delta_global": 19225.691104286056,
-      "rp_clipped_delta_with_sys": 15015.353666776264,
-      "rp_clipped_delta_no_sys": 4210.337437509792,
+      "pos_delta_global": 5873.424059285923,
+      "pos_delta_with_sys": 5609.313229441588,
+      "pos_delta_no_sys": 264.1108298443353,
+      "rp_clipped_delta_global": 19225.69110428605,
+      "rp_clipped_delta_with_sys": 15015.353666776244,
+      "rp_clipped_delta_no_sys": 4210.3374375098065,
       "unwarned_remaining_global": 157523494.0123374,
       "unwarned_remaining_with_sys": 113245431.43870172,
       "unwarned_remaining_no_sys": 44278062.573635675,
       "median_skill_delta_5y": -0.0030380788986477114,
-      "mean_skill_delta_5y": -0.0031893990802716646
-    },
-    "Factor 1a (M_ungauged): Climate & Aridity Regime -> Humid Reference": {
-      "net_delta_global": 3027186.5263545266,
-      "net_delta_with_sys": 1297912.100468968,
-      "net_delta_no_sys": 1729274.4258855586,
-      "pos_delta_global": 4422921.98599669,
-      "pos_delta_with_sys": 2578242.934111982,
-      "pos_delta_no_sys": 1844679.051884708,
-      "rp_clipped_delta_global": 4750213.728191268,
-      "rp_clipped_delta_with_sys": 2794232.67482032,
-      "rp_clipped_delta_no_sys": 1955981.0533709463,
-      "unwarned_remaining_global": 153106445.45039997,
-      "unwarned_remaining_with_sys": 110672797.81781916,
-      "unwarned_remaining_no_sys": 42433647.6325808,
-      "median_skill_delta_5y": 0.06948306639193808,
-      "mean_skill_delta_5y": 0.07047616328405566
-    },
-    "Factor 1b (M_ungauged): Removing Anthropogenic Reservoir & Irrigation Regulation": {
-      "net_delta_global": 330914.8802509605,
-      "net_delta_with_sys": 125957.40354825706,
-      "net_delta_no_sys": 204957.47670270342,
-      "pos_delta_global": 943222.4614421312,
-      "pos_delta_with_sys": 660240.778454391,
-      "pos_delta_no_sys": 282981.6829877401,
-      "rp_clipped_delta_global": 1178106.8770591456,
-      "rp_clipped_delta_with_sys": 855671.0386124759,
-      "rp_clipped_delta_no_sys": 322435.8384466699,
-      "unwarned_remaining_global": 156586144.97495452,
-      "unwarned_remaining_with_sys": 112590799.97347675,
-      "unwarned_remaining_no_sys": 43995345.00147778,
-      "median_skill_delta_5y": -5.283768946867662e-05,
-      "mean_skill_delta_5y": 0.0006447107446286723
-    },
-    "Factor 1c (M_ungauged): Land Cover, Floodplains, Wetlands & Lakes -> Reference": {
-      "net_delta_global": -994618.9227653063,
-      "net_delta_with_sys": -1055045.6494116762,
-      "net_delta_no_sys": 60426.726646370094,
-      "pos_delta_global": 2394276.6503305105,
-      "pos_delta_with_sys": 1505550.635266743,
-      "pos_delta_no_sys": 888726.0150637676,
-      "rp_clipped_delta_global": 2883044.2447140897,
-      "rp_clipped_delta_with_sys": 1805328.3749601624,
-      "rp_clipped_delta_no_sys": 1077715.869753927,
-      "unwarned_remaining_global": 155135090.78606617,
-      "unwarned_remaining_with_sys": 111745490.1166644,
-      "unwarned_remaining_no_sys": 43389600.66940176,
-      "median_skill_delta_5y": 0.027195299150583607,
-      "mean_skill_delta_5y": 0.027174420811952624
-    },
-    "Factor 1d (M_ungauged): Topography & Drainage Scale -> Reference": {
-      "net_delta_global": -953569.3528149658,
-      "net_delta_with_sys": -904218.3750055968,
-      "net_delta_no_sys": -49350.97780936872,
-      "pos_delta_global": 680027.8783936803,
-      "pos_delta_with_sys": 443067.2541647937,
-      "pos_delta_no_sys": 236960.62422888668,
-      "rp_clipped_delta_global": 901283.678735289,
-      "rp_clipped_delta_with_sys": 595149.2512564355,
-      "rp_clipped_delta_no_sys": 306134.42747885355,
-      "unwarned_remaining_global": 156849339.558003,
-      "unwarned_remaining_with_sys": 112807973.49776638,
-      "unwarned_remaining_no_sys": 44041366.060236625,
-      "median_skill_delta_5y": 0.004385530023086226,
-      "mean_skill_delta_5y": 0.00709740131829842
-    },
-    "Factor 1e (M_ungauged): Soil & Hydrogeology -> Reference": {
-      "net_delta_global": -878661.9680236147,
-      "net_delta_with_sys": -610665.1220112715,
-      "net_delta_no_sys": -267996.8460123431,
-      "pos_delta_global": 538328.9334155258,
-      "pos_delta_with_sys": 390548.14329031354,
-      "pos_delta_no_sys": 147780.7901252123,
-      "rp_clipped_delta_global": 718511.7923279203,
-      "rp_clipped_delta_with_sys": 498655.8123752439,
-      "rp_clipped_delta_no_sys": 219855.9799526764,
-      "unwarned_remaining_global": 156991038.50298113,
-      "unwarned_remaining_with_sys": 112860492.60864085,
-      "unwarned_remaining_no_sys": 44130545.894340314,
-      "median_skill_delta_5y": 0.006528693785204931,
-      "mean_skill_delta_5y": 0.006305503331615238
-    },
-    "Full Catchment Ceiling (Factors 1+2+3+4 in M_ungauged)": {
-      "net_delta_global": 17264801.958084293,
-      "net_delta_with_sys": 10342067.777832245,
-      "net_delta_no_sys": 6922734.180252046,
-      "pos_delta_global": 17844353.15757603,
-      "pos_delta_with_sys": 10893807.824516661,
-      "pos_delta_no_sys": 6950545.333059368,
-      "rp_clipped_delta_global": 18373273.15231892,
-      "rp_clipped_delta_with_sys": 11307782.83239185,
-      "rp_clipped_delta_no_sys": 7065490.319927072,
-      "unwarned_remaining_global": 139685014.2788206,
-      "unwarned_remaining_with_sys": 102357232.92741449,
-      "unwarned_remaining_no_sys": 37327781.35140614,
-      "median_skill_delta_5y": 0.24007232114663357,
-      "mean_skill_delta_5y": 0.23341543892137606
+      "mean_skill_delta_5y": -0.003189399080271665
     },
     "Confirmation Check ONLY (M_gauged): Independent In-Sample Local Gauging": {
       "rp_clipped_delta_global": 4019704.4756498644,
       "rp_clipped_delta_with_sys": 2872006.0994080333,
       "rp_clipped_delta_no_sys": 1147698.376241831
+    }
+  },
+  "way_b_p_star_common": 0.1,
+  "way_b_sample_size": 12689,
+  "way_b_direct_exposure_coverage_pct": 75.71674005166929,
+  "way_b_in_manifold": {
+    "Factor 3: Out-of-Distribution Representation Bias": {
+      "parity_100pct": {
+        "global": 11848085.556065366,
+        "with_sys": 8351626.694059774,
+        "no_sys": 3496458.8620055923
+      },
+      "penalty_50pct": {
+        "global": 5924042.778032683,
+        "with_sys": 4175813.347029887,
+        "no_sys": 1748229.4310027962
+      },
+      "nonlinear_gamma_10pct": {
+        "global": 8677470.412008945,
+        "with_sys": 6062706.810000302,
+        "no_sys": 2614763.6020086426
+      },
+      "nonlinear_gamma_25pct": {
+        "global": 22431431.303736135,
+        "with_sys": 15691083.118683185,
+        "no_sys": 6740348.185052949
+      },
+      "nonlinear_gamma_50pct": {
+        "global": 48081339.96644676,
+        "with_sys": 33716640.6670468,
+        "no_sys": 14364699.299399965
+      },
+      "pct_exposure_penalized_gt_0p5pp": 96.5144010904407,
+      "q90_penalty_5y": 0.07427211064049544,
+      "feature_sum_shap_deficit": {
+        "global": 11907034.77487446,
+        "with_sys": 8391887.743026912,
+        "no_sys": 3515147.0318475305
+      }
+    },
+    "1f: Sparse Canopy, Agricultural & Biome Land Cover": {
+      "parity_100pct": {
+        "global": 5821935.050053127,
+        "with_sys": 3874226.06402654,
+        "no_sys": 1947708.9860265874
+      },
+      "penalty_50pct": {
+        "global": 2910967.5250265636,
+        "with_sys": 1937113.03201327,
+        "no_sys": 973854.4930132937
+      },
+      "nonlinear_gamma_10pct": {
+        "global": 4427214.302454805,
+        "with_sys": 2912979.619967902,
+        "no_sys": 1514234.6824869034
+      },
+      "nonlinear_gamma_25pct": {
+        "global": 11626911.35404313,
+        "with_sys": 7674064.813467797,
+        "no_sys": 3952846.540575333
+      },
+      "nonlinear_gamma_50pct": {
+        "global": 25772961.702774428,
+        "with_sys": 17120648.861071426,
+        "no_sys": 8652312.841703
+      },
+      "pct_exposure_penalized_gt_0p5pp": 85.50074888981294,
+      "q90_penalty_5y": 0.056064594107249684,
+      "feature_sum_shap_deficit": {
+        "global": 10958964.112015437,
+        "with_sys": 7792628.7876336705,
+        "no_sys": 3166335.324381776
+      }
+    },
+    "Factor 2: River-Network Gauge Coverage": {
+      "parity_100pct": {
+        "global": 1087000.6227962638,
+        "with_sys": 798581.6634395786,
+        "no_sys": 288418.95935668517
+      },
+      "penalty_50pct": {
+        "global": 543500.3113981318,
+        "with_sys": 399290.8317197891,
+        "no_sys": 144209.4796783426
+      },
+      "nonlinear_gamma_10pct": {
+        "global": 813378.6282486537,
+        "with_sys": 593321.929323568,
+        "no_sys": 220056.69892508563
+      },
+      "nonlinear_gamma_25pct": {
+        "global": 2209637.317133175,
+        "with_sys": 1611590.578945809,
+        "no_sys": 598046.7381873659
+      },
+      "nonlinear_gamma_50pct": {
+        "global": 5264336.132677851,
+        "with_sys": 3838275.3776826956,
+        "no_sys": 1426060.7549951551
+      },
+      "pct_exposure_penalized_gt_0p5pp": 22.539535208963574,
+      "q90_penalty_5y": 0.0053749193576412835,
+      "feature_sum_shap_deficit": {
+        "global": 1102255.2566608668,
+        "with_sys": 811943.4376111072,
+        "no_sys": 290311.81904975633
+      }
+    },
+    "1a: Arid & Convective Hydroclimate": {
+      "parity_100pct": {
+        "global": 1463258.82169179,
+        "with_sys": 820369.0630165602,
+        "no_sys": 642889.7586752297
+      },
+      "penalty_50pct": {
+        "global": 731629.4108458951,
+        "with_sys": 410184.53150828014,
+        "no_sys": 321444.87933761487
+      },
+      "nonlinear_gamma_10pct": {
+        "global": 1172298.3463763818,
+        "with_sys": 645270.9421534024,
+        "no_sys": 527027.4042229794
+      },
+      "nonlinear_gamma_25pct": {
+        "global": 3085649.570827503,
+        "with_sys": 1698228.1825655699,
+        "no_sys": 1387421.3882619333
+      },
+      "nonlinear_gamma_50pct": {
+        "global": 6876201.2125223335,
+        "with_sys": 3783789.07832208,
+        "no_sys": 3092412.1342002545
+      },
+      "pct_exposure_penalized_gt_0p5pp": 35.59461501651921,
+      "q90_penalty_5y": 0.05925562497605665,
+      "feature_sum_shap_deficit": {
+        "global": 3275965.473455546,
+        "with_sys": 2057622.0103416387,
+        "no_sys": 1218343.463113907
+      }
+    },
+    "1c: Floodplain, Wetland & Lake Storage": {
+      "parity_100pct": {
+        "global": 922509.2647079255,
+        "with_sys": 591526.7638287749,
+        "no_sys": 330982.5008791505
+      },
+      "penalty_50pct": {
+        "global": 461254.63235396275,
+        "with_sys": 295763.3819143875,
+        "no_sys": 165491.2504395753
+      },
+      "nonlinear_gamma_10pct": {
+        "global": 701899.0490118591,
+        "with_sys": 444995.49428824603,
+        "no_sys": 256903.55472361317
+      },
+      "nonlinear_gamma_25pct": {
+        "global": 1889270.3337498512,
+        "with_sys": 1198773.5356751666,
+        "no_sys": 690496.7980746846
+      },
+      "nonlinear_gamma_50pct": {
+        "global": 4412487.695996303,
+        "with_sys": 2804831.461028855,
+        "no_sys": 1607656.2349674478
+      },
+      "pct_exposure_penalized_gt_0p5pp": 35.52853962609604,
+      "q90_penalty_5y": 0.035523156858432936,
+      "feature_sum_shap_deficit": {
+        "global": 2346451.4249525093,
+        "with_sys": 1704731.7658676347,
+        "no_sys": 641719.6590848735
+      }
+    },
+    "1d: Steep & Small-Scale Channel Routing": {
+      "parity_100pct": {
+        "global": 651450.6755212023,
+        "with_sys": 399191.69008851185,
+        "no_sys": 252258.98543269042
+      },
+      "penalty_50pct": {
+        "global": 325725.3377606012,
+        "with_sys": 199595.84504425596,
+        "no_sys": 126129.49271634522
+      },
+      "nonlinear_gamma_10pct": {
+        "global": 495986.9428570416,
+        "with_sys": 300671.74394079536,
+        "no_sys": 195315.1989162463
+      },
+      "nonlinear_gamma_25pct": {
+        "global": 1340701.6224214686,
+        "with_sys": 813259.2800010215,
+        "no_sys": 527442.3424204474
+      },
+      "nonlinear_gamma_50pct": {
+        "global": 3159805.5559326685,
+        "with_sys": 1919321.2044296048,
+        "no_sys": 1240484.3515030637
+      },
+      "pct_exposure_penalized_gt_0p5pp": 28.13956363355846,
+      "q90_penalty_5y": 0.01998568201561239,
+      "feature_sum_shap_deficit": {
+        "global": 1259602.0883469123,
+        "with_sys": 817598.1847233853,
+        "no_sys": 442003.9036235278
+      }
+    },
+    "1b: Dam, Reservoir & Irrigation Regulation": {
+      "parity_100pct": {
+        "global": 437897.331910834,
+        "with_sys": 279709.35313662316,
+        "no_sys": 158187.97877421085
+      },
+      "penalty_50pct": {
+        "global": 218948.66595541692,
+        "with_sys": 139854.67656831152,
+        "no_sys": 79093.98938710542
+      },
+      "nonlinear_gamma_10pct": {
+        "global": 338461.3031502481,
+        "with_sys": 211781.4562451937,
+        "no_sys": 126679.84690505438
+      },
+      "nonlinear_gamma_25pct": {
+        "global": 916212.2212359839,
+        "with_sys": 572891.8717355581,
+        "no_sys": 343320.34950042557
+      },
+      "nonlinear_gamma_50pct": {
+        "global": 2166109.127770638,
+        "with_sys": 1352400.321976745,
+        "no_sys": 813708.8057938929
+      },
+      "pct_exposure_penalized_gt_0p5pp": 11.192710040589649,
+      "q90_penalty_5y": 0.00810174493455807,
+      "feature_sum_shap_deficit": {
+        "global": 822476.5087625991,
+        "with_sys": 589441.220146239,
+        "no_sys": 233035.28861636217
+      }
+    },
+    "1g: Urban & Human Footprint": {
+      "parity_100pct": {
+        "global": 420326.80553825514,
+        "with_sys": 167461.08182705025,
+        "no_sys": 252865.7237112049
+      },
+      "penalty_50pct": {
+        "global": 210163.4027691275,
+        "with_sys": 83730.5409135251,
+        "no_sys": 126432.86185560242
+      },
+      "nonlinear_gamma_10pct": {
+        "global": 338394.55965031957,
+        "with_sys": 134138.16393620177,
+        "no_sys": 204256.39571411783
+      },
+      "nonlinear_gamma_25pct": {
+        "global": 912146.2746142341,
+        "with_sys": 361852.8158630959,
+        "no_sys": 550293.4587511382
+      },
+      "nonlinear_gamma_50pct": {
+        "global": 2136628.510239822,
+        "with_sys": 849077.2153369174,
+        "no_sys": 1287551.2949029044
+      },
+      "pct_exposure_penalized_gt_0p5pp": 11.789047775225704,
+      "q90_penalty_5y": 0.015224837050171414,
+      "feature_sum_shap_deficit": {
+        "global": 1451216.275693801,
+        "with_sys": 895981.402433807,
+        "no_sys": 555234.8732599939
+      }
+    },
+    "1e: Subsurface Soil & Karst Hydrogeology": {
+      "parity_100pct": {
+        "global": 330203.20583588677,
+        "with_sys": 228079.64092266076,
+        "no_sys": 102123.564913226
+      },
+      "penalty_50pct": {
+        "global": 165101.60291794344,
+        "with_sys": 114039.82046133043,
+        "no_sys": 51061.782456613
+      },
+      "nonlinear_gamma_10pct": {
+        "global": 254158.83774893556,
+        "with_sys": 174654.4939252859,
+        "no_sys": 79504.34382364963
+      },
+      "nonlinear_gamma_25pct": {
+        "global": 688549.7809614018,
+        "with_sys": 473307.72389117733,
+        "no_sys": 215242.05707022437
+      },
+      "nonlinear_gamma_50pct": {
+        "global": 1630612.8116517602,
+        "with_sys": 1121636.5916349608,
+        "no_sys": 508976.2200167996
+      },
+      "pct_exposure_penalized_gt_0p5pp": 26.799873277274425,
+      "q90_penalty_5y": 0.01513240633054386,
+      "feature_sum_shap_deficit": {
+        "global": 1207296.8712516876,
+        "with_sys": 855792.2433542709,
+        "no_sys": 351504.62789741595
+      }
+    },
+    "Factor 4: Historical Record Length": {
+      "parity_100pct": {
+        "global": 2516.4876782206156,
+        "with_sys": 1886.3851122442939,
+        "no_sys": 630.1025659763225
+      },
+      "penalty_50pct": {
+        "global": 1258.2438391103058,
+        "with_sys": 943.192556122144,
+        "no_sys": 315.0512829881618
+      },
+      "nonlinear_gamma_10pct": {
+        "global": 1607.787081118897,
+        "with_sys": 1193.6281763832762,
+        "no_sys": 414.15890473562035
+      },
+      "nonlinear_gamma_25pct": {
+        "global": 4376.697022876906,
+        "with_sys": 3247.859333997757,
+        "no_sys": 1128.8376888791481
+      },
+      "nonlinear_gamma_50pct": {
+        "global": 10474.927629962567,
+        "with_sys": 7765.772378324285,
+        "no_sys": 2709.1552516382817
+      },
+      "pct_exposure_penalized_gt_0p5pp": 0.019004563972415612,
+      "q90_penalty_5y": 0.003184461226483687,
+      "feature_sum_shap_deficit": {
+        "global": 2516.4876782206165,
+        "with_sys": 1886.385112244292,
+        "no_sys": 630.1025659763238
+      }
+    },
+    "Combined Factor 1: All Physical & Anthropogenic Catchment Attributes (1a-1g Net)": {
+      "parity_100pct": {
+        "global": 4883976.979663531,
+        "with_sys": 2438152.9257535376,
+        "no_sys": 2445824.0539099937
+      },
+      "penalty_50pct": {
+        "global": 2441988.489831765,
+        "with_sys": 1219076.4628767688,
+        "no_sys": 1222912.0269549969
+      },
+      "nonlinear_gamma_10pct": {
+        "global": 3423632.899749101,
+        "with_sys": 1714223.0088910698,
+        "no_sys": 1709409.8908580313
+      },
+      "nonlinear_gamma_25pct": {
+        "global": 8785869.487614539,
+        "with_sys": 4411519.782696062,
+        "no_sys": 4374349.704918476
+      },
+      "nonlinear_gamma_50pct": {
+        "global": 18582735.28270949,
+        "with_sys": 9387514.062993743,
+        "no_sys": 9195221.219715748
+      },
+      "pct_exposure_penalized_gt_0p5pp": 63.40649763317109,
+      "q90_penalty_5y": 0.1300254349536467,
+      "feature_sum_shap_deficit": {
+        "global": 21321972.75447849,
+        "with_sys": 14713795.614500646,
+        "no_sys": 6608177.139977857
+      }
+    },
+    "Combined Observational Factors (Factors 2 + 3 Net)": {
+      "parity_100pct": {
+        "global": 12856814.625779413,
+        "with_sys": 9078781.226970462,
+        "no_sys": 3778033.3988089515
+      },
+      "penalty_50pct": {
+        "global": 6428407.312889707,
+        "with_sys": 4539390.613485231,
+        "no_sys": 1889016.6994044757
+      },
+      "nonlinear_gamma_10pct": {
+        "global": 9375721.59715585,
+        "with_sys": 6564261.5442006225,
+        "no_sys": 2811460.052955229
+      },
+      "nonlinear_gamma_25pct": {
+        "global": 24139495.090425644,
+        "with_sys": 16919079.420107283,
+        "no_sys": 7220415.670318361
+      },
+      "nonlinear_gamma_50pct": {
+        "global": 51316082.26914839,
+        "with_sys": 36046469.36272054,
+        "no_sys": 15269612.906427847
+      },
+      "pct_exposure_penalized_gt_0p5pp": 96.32635159149451,
+      "q90_penalty_5y": 0.07861228867551857,
+      "feature_sum_shap_deficit": {
+        "global": 13009290.031535327,
+        "with_sys": 9203831.180638019,
+        "no_sys": 3805458.850897287
+      }
     }
   }
 }

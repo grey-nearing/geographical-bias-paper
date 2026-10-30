@@ -1,8 +1,8 @@
 cff-version: 1.2.0
 message: "If you use this software or dataset, please cite both the article and the Zenodo archive."
 title: "Global Flood Warning Gaps Reflect Forecasting and Observational Blockers Beyond Local Gauge Sparsity"
-version: "1.0.1"
-doi: "10.5281/zenodo.21416987"
+version: "1.0.2"
+doi: "10.5281/zenodo.21416986"
 date-released: "2026-10-30"
 url: "https://github.com/grey-nearing/geographical-bias-paper"
 repository-code: "https://github.com/grey-nearing/geographical-bias-paper"

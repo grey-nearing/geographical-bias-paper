@@ -28,11 +28,27 @@ predictor (`M_ungauged`), using `M_gauged` strictly as a secondary confirmation
 check on Factor 2 (river-network gauge coverage).
 """
 
+import glob
 import io
 import json
 import os
+import sys
 import time
+import types
 import warnings
+
+os.environ.setdefault(
+    'GEO_BIAS_DATA_DIR', 'data'
+)
+os.environ.setdefault(
+    'GEO_BIAS_THIRD_PARTY_DIR',
+    'data',
+)
+os.environ.setdefault(
+    'GEO_BIAS_OUTPUT_DIR', 'data'
+)
+
+from utils import gfile_compat as gfile
 
 from absl import app
 import geopandas as gpd
@@ -54,7 +70,6 @@ from utils.feature_utils import FEATURE_CLASSIFICATION
 from utils.feature_utils import FEATURE_DESCRIPTIONS
 from utils.feature_utils import FEATURE_PALETTE
 from utils.io_utils import load_experiment_metrics
-from utils import gfile_compat as gfile
 
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 warnings.filterwarnings('ignore', category=FutureWarning)
@@ -219,6 +234,18 @@ def main(argv):
       'rt',
   ) as f:
     df_shap_exp = pd.read_csv(f)
+
+  with gfile.Open(
+      os.path.join(stats_dir, 'five_factor_way_b_in_manifold_v2.csv'),
+      'rt',
+  ) as f:
+    df_wayb = pd.read_csv(f)
+
+  with gfile.Open(
+      os.path.join(stats_dir, 'basin_exposure_and_blockers_v2.pkl'),
+      'rb',
+  ) as f:
+    df_basin_v2 = pd.read_pickle(f)
 
   with gfile.Open(
       os.path.join(stats_dir, 'n_gauge_sets_evaluation_summary_v2.csv'), 'rt'
@@ -1167,112 +1194,165 @@ def main(argv):
   ax4a.grid(axis='y', linestyle='--', alpha=0.45)
   sns.despine(ax=ax4a)
 
-  # Panel b: Counterfactual Exposure Reduction Across Factors 1-4 on M_ungauged
+  # Panel b: Unified In-Manifold Targeted Exposure Reduction Across Factors 1-4 (Way B on M_ungauged)
   ax4b = fig4.add_subplot(gs4[0, 1])
-  cf_rows = [
-      (
-          'Combined Observational\nCeiling (Factors 2 + 3)',
-          'Combined Observational Ceiling (Factor 2 + Factor 3 in M_ungauged)',
-      ),
-      (
-          'Factor 3: Eliminating OOD\nRepresentation Bias',
-          'Factor 3 (M_ungauged): Eliminating Out-of-Distribution Representation Bias',
-      ),
-      (
-          'Factor 2: Universal 100%\nRiver-Network Gauging',
-          'Factor 2 (M_ungauged Primary): Universal Local & Network Gauge Coverage (100% Coverage)',
-      ),
-      (
-          'Factor 1a: Flashy/Arid Climate\n→ Humid Benchmark',
-          'Factor 1a (M_ungauged): Climate & Aridity Regime -> Humid Reference',
-      ),
-      (
-          'Factor 1c: Floodplains,\nWetlands & Lakes → Reference',
-          'Factor 1c (M_ungauged): Land Cover, Floodplains, Wetlands & Lakes -> Reference',
-      ),
-      (
-          'Factor 1b: Removing Reservoir\n& Irrigation Regulation',
-          'Factor 1b (M_ungauged): Removing Anthropogenic Reservoir & Irrigation Regulation',
-      ),
-      (
-          'Factor 1d: Steep/Small\nTopography → Reference',
-          'Factor 1d (M_ungauged): Topography & Drainage Scale -> Reference',
-      ),
-      (
-          'Factor 1e: Soil & Karst\nHydrogeology → Reference',
-          'Factor 1e (M_ungauged): Soil & Hydrogeology -> Reference',
-      ),
-      (
-          'Factor 4: Extending Record\nLength to 50 Years',
-          'Factor 4 (M_ungauged): Extending Historical Record Length to 50 Years',
-      ),
-  ]
-  cf_rows_rev = list(reversed(cf_rows))
-  y4b = np.arange(len(cf_rows_rev))
-  w_cf = np.array([iv[k]['rp_clipped_delta_with_sys'] / 1e6 for _, k in cf_rows_rev])
-  n_cf = np.array([iv[k]['rp_clipped_delta_no_sys'] / 1e6 for _, k in cf_rows_rev])
-  t_cf = np.array([iv[k]['rp_clipped_delta_global'] / 1e6 for _, k in cf_rows_rev])
+  wb_label_map = {
+      'Factor 3: Out-of-Distribution Representation Bias': 'Factor 3: OOD Representation Bias',
+      '1f: Sparse Canopy, Agricultural & Biome Land Cover': '1f: Sparse Canopy & Biome Land Cover',
+      '1a: Arid & Convective Hydroclimate': '1a: Arid & Convective Hydroclimate',
+      'Factor 2: River-Network Gauge Coverage': 'Factor 2: River-Network Gauge Coverage',
+      '1c: Floodplain, Wetland & Lake Storage': '1c: Floodplain, Wetland & Lake Storage',
+      '1d: Steep & Small-Scale Channel Routing': '1d: Steep & Small Channel Routing',
+      '1b: Dam, Reservoir & Irrigation Regulation': '1b: Dam, Reservoir & Irrigation',
+      '1g: Urban & Human Footprint': '1g: Urban & Human Footprint',
+      '1e: Subsurface Soil & Karst Hydrogeology': '1e: Subsurface Soil & Karst',
+      'Factor 4: Historical Record Length': 'Factor 4: Historical Record Length',
+  }
+  df_wb_plot = (
+      df_wayb.sort_values('parity_100pct_global', ascending=True)
+      .reset_index(drop=True)
+      .copy()
+  )
+  y4b = np.arange(len(df_wb_plot))
+  par_m = df_wb_plot['parity_100pct_global'].values / 1e6
+  g25_m = df_wb_plot['nonlinear_g25_global'].values / 1e6
 
   ax4b.barh(
-      y4b,
-      w_cf,
-      height=0.64,
+      y4b + 0.18,
+      par_m,
+      height=0.34,
       color='#0072B2',
       edgecolor='black',
-      label='With National Warning Capacity',
+      linewidth=0.65,
+      label='100% SHAP Penalty Elimination (In-Manifold Parity)',
   )
   ax4b.barh(
-      y4b,
-      n_cf,
-      left=w_cf,
-      height=0.64,
-      color='#D55E00',
+      y4b - 0.18,
+      g25_m,
+      height=0.34,
+      color='#56B4E9',
       edgecolor='black',
-      label='Without Effective Warning System',
-  )
-  # Plot secondary M_gauged confirmation diamond on Factor 2 row
-  f2_row_idx = [i for i, (lbl, _) in enumerate(cf_rows_rev) if 'Factor 2:' in lbl][0]
-  mg_val = iv['Confirmation Check ONLY (M_gauged): Independent In-Sample Local Gauging'][
-      'rp_clipped_delta_global'
-  ] / 1e6
-  ax4b.scatter(
-      [mg_val],
-      [f2_row_idx],
-      marker='D',
-      s=68,
-      facecolor='#FFD54F',
-      edgecolor='black',
-      linewidth=1.4,
-      zorder=6,
-      label=f'M_gauged Independent Confirmation ({mg_val:.2f}M)',
+      linewidth=0.65,
+      label='25% Missed-Event Reduction (γ = 25%, P* = 0.10)',
   )
 
-  for i, tv in enumerate(t_cf):
-    pct_u = (tv * 1e6 / 157529367.44) * 100.0
-    lbl_txt = f'+{tv:.2f}M ({pct_u:.1f}%)' if tv >= 0.05 else f'+{tv*1e3:.0f}k (0.01%)'
+  # Reference markers uniting Factor 2 (N=1,000 targeted, M_gauged check, 100% coverage ceiling) & Factor 3 ceiling
+  f2_idx = int(
+      df_wb_plot.index[
+          df_wb_plot['group'] == 'Factor 2: River-Network Gauge Coverage'
+      ][0]
+  )
+  f3_idx = int(
+      df_wb_plot.index[
+          df_wb_plot['group'] == 'Factor 3: Out-of-Distribution Representation Bias'
+      ][0]
+  )
+  b2a_1000_m = (
+      float(
+          df_n_sets[
+              (df_n_sets['Bucket'] == 'Bucket 2A (Global Exposure)')
+              & (df_n_sets['N'] == 1000)
+          ]['Global_Risk_Reduced_With_OOD_Transfer'].iloc[0]
+      )
+      / 1e6
+  )
+  mg_val = (
+      iv['Confirmation Check ONLY (M_gauged): Independent In-Sample Local Gauging'][
+          'rp_clipped_delta_global'
+      ]
+      / 1e6
+  )
+  f2_ceil_m = (
+      iv['Factor 2 (M_ungauged Primary): Universal Local & Network Gauge Coverage (100% Coverage)'][
+          'rp_clipped_delta_global'
+      ]
+      / 1e6
+  )
+  f3_ceil_m = (
+      iv['Factor 3 (M_ungauged): Eliminating Out-of-Distribution Representation Bias'][
+          'rp_clipped_delta_global'
+      ]
+      / 1e6
+  )
+
+  ax4b.scatter(
+      [b2a_1000_m],
+      [f2_idx],
+      marker='o',
+      s=56,
+      facecolor='#009E73',
+      edgecolor='black',
+      linewidth=1.2,
+      zorder=6,
+      label=f'N = 1,000 Targeted Gauges (+{b2a_1000_m:.2f}M)',
+  )
+  ax4b.scatter(
+      [mg_val],
+      [f2_idx],
+      marker='D',
+      s=62,
+      facecolor='#FFD54F',
+      edgecolor='black',
+      linewidth=1.2,
+      zorder=7,
+      label=f'M_gauged Confirmation Check (+{mg_val:.2f}M)',
+  )
+  ax4b.scatter(
+      [f2_ceil_m],
+      [f2_idx],
+      marker='s',
+      s=58,
+      facecolor='#CC79A7',
+      edgecolor='black',
+      linewidth=1.2,
+      zorder=6,
+      label=f'100% Network Coverage Ceiling (+{f2_ceil_m:.2f}M)',
+  )
+  ax4b.scatter(
+      [f3_ceil_m],
+      [f3_idx],
+      marker='^',
+      s=68,
+      facecolor='#D55E00',
+      edgecolor='black',
+      linewidth=1.2,
+      zorder=6,
+      label=f'Factor 3 Observational Ceiling (+{f3_ceil_m:.2f}M)',
+  )
+
+  for i, (pv, gv) in enumerate(zip(par_m, g25_m)):
+    right_x = max(pv, gv)
+    if i == f2_idx:
+      right_x = max(right_x, f2_ceil_m + 0.35)
+    if gv >= 0.05:
+      lbl_txt = f'+{pv:.2f}M / +{gv:.2f}M'
+    else:
+      lbl_txt = f'+{pv*1e3:.1f}k / +{gv*1e3:.1f}k'
     ax4b.text(
-        tv + 0.25,
+        right_x + 0.32,
         i,
         lbl_txt,
         va='center',
         ha='left',
-        fontsize=9.2,
+        fontsize=8.7,
         fontweight='bold',
     )
   ax4b.set_yticks(y4b)
-  ax4b.set_yticklabels([lbl for lbl, _ in cf_rows_rev], fontsize=9.6)
-  ax4b.set_xlim(0, 24.8)
+  ax4b.set_yticklabels(
+      [wb_label_map.get(g, g) for g in df_wb_plot['group']], fontsize=9.3
+  )
+  ax4b.set_xlim(0, 30.5)
   ax4b.set_xlabel(
-      'Counterfactual Unwarned Exposure Reduction at α = 1.0 (Millions of People/yr)',
-      fontsize=10.8,
+      'In-Manifold Unwarned Exposure Reduction at α = 1.0 (Millions of People/yr)',
+      fontsize=10.6,
   )
   ax4b.set_title(
-      'b  Counterfactual Exposure Reduction Across Catchment Factors (M_ungauged)',
-      fontsize=12.8,
+      'b  Unified In-Manifold Targeted Exposure Reduction Across All Factors (M_ungauged)',
+      fontsize=12.6,
       fontweight='bold',
       loc='left',
   )
-  ax4b.legend(loc='lower right', fontsize=8.8, frameon=True, framealpha=0.94)
+  ax4b.legend(loc='lower right', fontsize=8.0, frameon=True, framealpha=0.95)
   ax4b.grid(axis='x', linestyle='--', alpha=0.45)
   sns.despine(ax=ax4b)
 
@@ -1286,26 +1366,32 @@ def main(argv):
       .sort_values('deficit_exposure_people_yr', ascending=True)
   )
   remedy_short = {
-      'Model Architecture & Assimilation (Floodplain/Lake Routing & Satellite Water)': (
-          '2D Floodplain/Lake Routing &\nSatellite Water Assimilation (F1c)'
-      ),
       'Under-Sampled Gauging + Training Re-Weighting / Local Fine-Tuning': (
           'Under-Sampled Climate Gauging +\nTraining Re-Weighting / Fine-Tuning (F3)'
       ),
-      'Dynamic Input Data (High-Resolution Convective/Satellite Precipitation)': (
-          'High-Resolution Convective &\nSatellite Precipitation Inputs (F1a)'
+      'Sparse-Canopy Land-Surface Buffering & Biome-Aware Regionalization': (
+          'Sparse-Canopy Land-Surface Buffering &\nBiome-Aware Regionalization (F1f)'
       ),
-      'Dynamic Input Data (Reservoir Releases, SWOT Storage & Irrigation)': (
-          'Dynamic Reservoir Release,\nSWOT Storage & Irrigation Inputs (F1b)'
+      'Atmospheric State Coupling & High-Resolution Dryland Runoff Modeling': (
+          '4D Atmospheric State Coupling &\nDryland Flash-Flood Modeling (F1a)'
+      ),
+      'Model Architecture & Assimilation (2D Floodplain/Lake Routing & Satellite Water)': (
+          '2D Floodplain/Lake Routing &\nSatellite Water Assimilation (F1c)'
+      ),
+      'Urban Stormwater & Impervious Drainage Representation': (
+          'Urban Stormwater & Impervious\nDrainage Representation (F1g)'
       ),
       'Model Architecture (Sub-Daily & High-Resolution Channel Routing)': (
           'Sub-Daily & High-Resolution\nChannel Routing Architecture (F1d)'
       ),
+      'Subsurface Representation & Soil-Moisture Assimilation': (
+          'Subsurface Representation &\nSoil-Moisture Assimilation (F1e)'
+      ),
       'Targeted In Situ Gauging & Assimilation': (
           'Local River-Network Streamflow\nGauging & Assimilation (F2)'
       ),
-      'Subsurface Representation & Soil-Moisture Assimilation': (
-          'Subsurface Representation &\nSoil-Moisture Assimilation (F1e)'
+      'Dynamic Input Data (Reservoir Releases, SWOT Storage & Irrigation)': (
+          'Dynamic Reservoir Release,\nSWOT Storage & Irrigation Inputs (F1b)'
       ),
       'Archive Extension': 'Extending Historical Record Length (F4)',
   }
@@ -1320,45 +1406,50 @@ def main(argv):
   for i, tv in enumerate(t_sh):
     pct_s = (tv * 1e6 / total_shap_def) * 100.0
     txt = f'{tv:.2f}M ({pct_s:.1f}%)' if tv >= 0.05 else f'{tv*1e3:.1f}k (0.01%)'
-    ax4c.text(tv + 0.18, i, txt, va='center', ha='left', fontsize=9.1, fontweight='bold')
+    ax4c.text(tv + 0.18, i, txt, va='center', ha='left', fontsize=8.8, fontweight='bold')
 
   ax4c.set_yticks(y4c)
-  ax4c.set_yticklabels([remedy_short.get(r, r) for r in remedy_grp.index], fontsize=9.2)
-  ax4c.set_xlim(0, max(t_sh) * 1.28)
+  ax4c.set_yticklabels([remedy_short.get(r, r) for r in remedy_grp.index], fontsize=8.9)
+  ax4c.set_xlim(0, max(t_sh) * 1.30)
   ax4c.set_xlabel(
       f'TreeSHAP Catchment Exposure Deficit (Millions of People/yr; Sum = {total_shap_def/1e6:.2f}M)',
       fontsize=10.6,
   )
   ax4c.set_title(
-      'c  Catchment-Explained Exposure Deficit Grouped by Technical Remedy',
-      fontsize=12.8,
+      'c  Feature-Level Catchment Exposure Deficit Grouped by Technical Remedy',
+      fontsize=12.6,
       fontweight='bold',
       loc='left',
   )
-  ax4c.legend(loc='lower right', fontsize=8.8, frameon=True, framealpha=0.94)
+  ax4c.legend(loc='lower right', fontsize=8.6, frameon=True, framealpha=0.94)
   ax4c.grid(axis='x', linestyle='--', alpha=0.45)
   sns.despine(ax=ax4c)
 
-  # Panel d: Global Map of Dominant Catchment-Level Blocker per Country
+  # Panel d: Global Map of Dominant In-Manifold Catchment-Level Blocker per Country
   ax4d = fig4.add_subplot(gs4[1, 1])
   blocker_cols = {
-      'cf_factor3_ood': 'Factor 3: Out-of-Distribution Representation Bias',
-      'cf_factor1a_climate': 'Factor 1a: Flashy/Arid Climate & Precipitation Forcing',
-      'cf_factor1c_landcover': 'Factor 1c: Floodplain, Wetland & Lake Attenuation',
-      'cf_factor2_gauge_cov': 'Factor 2: Local River-Network Gauge Sparsity',
+      'wayb_parity_f3_ood': 'Factor 3: Out-of-Distribution Representation Bias',
+      'wayb_parity_1f_landcover': 'Factor 1f: Sparse Canopy & Biome Land Cover',
+      'wayb_parity_1a_climate': 'Factor 1a: Arid & Convective Hydroclimate',
+      'wayb_parity_1c_floodplain': 'Factor 1c: Floodplain, Wetland & Lake Storage',
+      'wayb_parity_1d_routing': 'Factor 1d: Steep & Small Channel Routing',
+      'wayb_parity_1b_regulation': 'Factor 1b: Dam, Reservoir & Irrigation',
+      'wayb_parity_1g_urban': 'Factor 1g: Urban & Human Footprint',
+      'wayb_parity_1e_soil': 'Factor 1e: Subsurface Soil & Karst',
+      'wayb_parity_f2_gauge': 'Factor 2: Local River-Network Gauge Sparsity',
   }
   df_dom = df_country[df_country['E_total'] > 0].copy()
   df_dom['dom_col'] = df_dom[list(blocker_cols.keys())].idxmax(axis=1)
   df_dom['dom_label'] = df_dom['dom_col'].map(blocker_cols)
   dom_counts = df_dom['dom_label'].value_counts()
-  print('  Dominant country-level catchment blocker counts:')
+  print('  Dominant country-level in-manifold catchment blocker counts:')
   for k_lbl, cnt in dom_counts.items():
     print(f'    - {k_lbl}: {cnt} countries')
 
   dom_palette = {
       'Factor 3: Out-of-Distribution Representation Bias': '#D55E00',
-      'Factor 1a: Flashy/Arid Climate & Precipitation Forcing': '#0072B2',
-      'Factor 1c: Floodplain, Wetland & Lake Attenuation': '#009E73',
+      'Factor 1f: Sparse Canopy & Biome Land Cover': '#009E73',
+      'Factor 1a: Arid & Convective Hydroclimate': '#0072B2',
       'Factor 2: Local River-Network Gauge Sparsity': '#CC79A7',
   }
   w4d = world_gdf.copy()
@@ -1379,15 +1470,15 @@ def main(argv):
   ax4d.set_ylim([-58, 84])
   ax4d.set_axis_off()
   ax4d.set_title(
-      'd  Dominant Catchment-Level Blocker to Flood Exposure Reduction by Country',
-      fontsize=12.8,
+      'd  Dominant In-Manifold Catchment-Level Blocker by Country (160 Countries)',
+      fontsize=12.6,
       fontweight='bold',
       loc='left',
   )
   ax4d.legend(
       handles=handles_4d,
       loc='lower left',
-      fontsize=8.6,
+      fontsize=8.5,
       frameon=True,
       framealpha=0.95,
   )
@@ -1930,9 +2021,41 @@ def main(argv):
   b2a_1000 = _get_set_val('Bucket 2A (Global Exposure)', 1000, 'Global_Risk_Reduced_With_OOD_Transfer')
   b2b_1000 = _get_set_val('Bucket 2B (Exposure-Weighted OOD)', 1000, 'Global_Risk_Reduced_With_OOD_Transfer')
 
+  z_mask = df_basin_v2['zero_open_gauge_cov']
+  z_tot_exp = float(df_basin_v2.loc[z_mask, 'E_total'].sum())
+  z_with_exp = float(
+      df_basin_v2.loc[
+          z_mask & df_basin_v2['has_system'] & df_basin_v2['country_name'].notna(),
+          'E_total',
+      ].sum()
+  )
+  z_no_exp = float(
+      df_basin_v2.loc[
+          z_mask
+          & (~df_basin_v2['has_system'])
+          & df_basin_v2['country_name'].notna(),
+          'E_total',
+      ].sum()
+  )
+  wb_dict = v2_interventions['way_b_in_manifold']
+
+  def _fmt_wb_pair(wb_key: str, sub_col: str) -> str:
+    p_val = wb_dict[wb_key]['parity_100pct'][sub_col]
+    g_val = wb_dict[wb_key]['nonlinear_gamma_25pct'][sub_col]
+    return f'+{p_val:,.0f} / +{g_val:,.0f}'
+
+  def _fmt_wb_pct(wb_key: str) -> str:
+    p_pct = (wb_dict[wb_key]['parity_100pct']['global'] / global_unw) * 100.0
+    g_pct = (
+        wb_dict[wb_key]['nonlinear_gamma_25pct']['global'] / global_unw
+    ) * 100.0
+    if g_pct < 0.05:
+      return f'{p_pct:.3f}% / {g_pct:.3f}%'
+    return f'{p_pct:.1f}% / {g_pct:.1f}%'
+
   t1_rows = [
       {
-          'Group': 'I. Baseline Global Riverine Flood Exposure (M_ungauged, α = 1.0)',
+          'Group': 'I. Baseline Global Riverine Flood Exposure (Real-World Predictor, α = 1.0)',
           'Exposure Metric or Intervention Lever': 'Total Expected Annual Riverine Flood Exposure',
           'Global Total (people/yr)': f"{base_s['Global Total (All 964,084 Sub-Basins)']['E_total']:,.0f}",
           'With Warning Capacity (60 Countries)': f"{base_s['Countries WITH National Warning Capacity']['E_total']:,.0f}",
@@ -1941,7 +2064,16 @@ def main(argv):
           'Primary Engineering or Policy Lever': 'Defended Fathom v3 + WorldPop (964,084 sub-basins)',
       },
       {
-          'Group': 'I. Baseline Global Riverine Flood Exposure (M_ungauged, α = 1.0)',
+          'Group': 'I. Baseline Global Riverine Flood Exposure (Real-World Predictor, α = 1.0)',
+          'Exposure Metric or Intervention Lever': 'Flood Exposure in River Networks with 0% Open-Access Gauge Coverage',
+          'Global Total (people/yr)': f'{z_tot_exp:,.0f}',
+          'With Warning Capacity (60 Countries)': f'{z_with_exp:,.0f}',
+          'Without Effective System (113 Countries)': f'{z_no_exp:,.0f}',
+          '% of Global Unwarned': '— (90.4% of total)',
+          'Primary Engineering or Policy Lever': '709,709 sub-basins (73.6%) outside open Caravan + EStreams networks',
+      },
+      {
+          'Group': 'I. Baseline Global Riverine Flood Exposure (Real-World Predictor, α = 1.0)',
           'Exposure Metric or Intervention Lever': 'Currently Warned Flood Exposure (Baseline AI Skill)',
           'Global Total (people/yr)': f"{base_s['Global Total (All 964,084 Sub-Basins)']['warned_ungauged']:,.0f}",
           'With Warning Capacity (60 Countries)': f"{base_s['Countries WITH National Warning Capacity']['warned_ungauged']:,.0f}",
@@ -1950,16 +2082,16 @@ def main(argv):
           'Primary Engineering or Policy Lever': 'Existing global AI streamflow forecasts + warning delivery',
       },
       {
-          'Group': 'I. Baseline Global Riverine Flood Exposure (M_ungauged, α = 1.0)',
+          'Group': 'I. Baseline Global Riverine Flood Exposure (Real-World Predictor, α = 1.0)',
           'Exposure Metric or Intervention Lever': 'Currently Unwarned Flood Exposure (Target Deficit)',
-          'Global Total (people/yr)': f"{global_unw:,.0f}",
+          'Global Total (people/yr)': f'{global_unw:,.0f}',
           'With Warning Capacity (60 Countries)': f"{base_s['Countries WITH National Warning Capacity']['unwarned_ungauged']:,.0f}",
           'Without Effective System (113 Countries)': f"{base_s['Countries WITHOUT Effective Warning Systems']['unwarned_ungauged']:,.0f}",
           '% of Global Unwarned': '100.0% (71.1% of total)',
           'Primary Engineering or Policy Lever': 'Combined forecasting, observational & institutional gap',
       },
       {
-          'Group': 'II. Targeted Streamflow Gauge Network Expansion (M_ungauged, α = 1.0)',
+          'Group': 'II. Targeted Streamflow Gauge Network Expansion (Real-World Predictor, α = 1.0)',
           'Exposure Metric or Intervention Lever': 'N = 100 Global Gauges (Unweighted OOD, Bucket 1)',
           'Global Total (people/yr)': f'+{b1_100:,.0f}',
           'With Warning Capacity (60 Countries)': '—',
@@ -1968,7 +2100,7 @@ def main(argv):
           'Primary Engineering or Policy Lever': 'Physical outlier siting without human-exposure weighting',
       },
       {
-          'Group': 'II. Targeted Streamflow Gauge Network Expansion (M_ungauged, α = 1.0)',
+          'Group': 'II. Targeted Streamflow Gauge Network Expansion (Real-World Predictor, α = 1.0)',
           'Exposure Metric or Intervention Lever': 'N = 100 Global Gauges (Exposure-Targeted, Bucket 2A)',
           'Global Total (people/yr)': f'+{b2a_100:,.0f}',
           'With Warning Capacity (60 Countries)': '—',
@@ -1977,7 +2109,7 @@ def main(argv):
           'Primary Engineering or Policy Lever': 'High-exposure river corridor siting',
       },
       {
-          'Group': 'II. Targeted Streamflow Gauge Network Expansion (M_ungauged, α = 1.0)',
+          'Group': 'II. Targeted Streamflow Gauge Network Expansion (Real-World Predictor, α = 1.0)',
           'Exposure Metric or Intervention Lever': 'N = 1,000 Global Gauges (Unweighted OOD, Bucket 1)',
           'Global Total (people/yr)': f'+{b1_1000:,.0f}',
           'With Warning Capacity (60 Countries)': '—',
@@ -1986,7 +2118,7 @@ def main(argv):
           'Primary Engineering or Policy Lever': 'Physical outlier siting without human-exposure weighting',
       },
       {
-          'Group': 'II. Targeted Streamflow Gauge Network Expansion (M_ungauged, α = 1.0)',
+          'Group': 'II. Targeted Streamflow Gauge Network Expansion (Real-World Predictor, α = 1.0)',
           'Exposure Metric or Intervention Lever': 'N = 1,000 Global Gauges (Exposure-Targeted, Bucket 2A)',
           'Global Total (people/yr)': f'+{b2a_1000:,.0f}',
           'With Warning Capacity (60 Countries)': '—',
@@ -1995,7 +2127,7 @@ def main(argv):
           'Primary Engineering or Policy Lever': 'High-exposure river corridor siting',
       },
       {
-          'Group': 'II. Targeted Streamflow Gauge Network Expansion (M_ungauged, α = 1.0)',
+          'Group': 'II. Targeted Streamflow Gauge Network Expansion (Real-World Predictor, α = 1.0)',
           'Exposure Metric or Intervention Lever': 'N = 1,000 Global Gauges (Exposure × OOD, Bucket 2B)',
           'Global Total (people/yr)': f'+{b2b_1000:,.0f}',
           'With Warning Capacity (60 Countries)': '—',
@@ -2004,7 +2136,7 @@ def main(argv):
           'Primary Engineering or Policy Lever': 'Joint human-exposure and OOD anomaly siting',
       },
       {
-          'Group': 'II. Targeted Streamflow Gauge Network Expansion (M_ungauged, α = 1.0)',
+          'Group': 'II. Targeted Streamflow Gauge Network Expansion (Real-World Predictor, α = 1.0)',
           'Exposure Metric or Intervention Lever': 'N = 20 National Gauges per Country (Joint National Sum)',
           'Global Total (people/yr)': f'+{n20_tot:,.0f}',
           'With Warning Capacity (60 Countries)': f'+{n20_with:,.0f}',
@@ -2013,71 +2145,35 @@ def main(argv):
           'Primary Engineering or Policy Lever': 'Coordinated national river-corridor gauge installation',
       },
       {
-          'Group': 'II. Targeted Streamflow Gauge Network Expansion (M_ungauged, α = 1.0)',
-          'Exposure Metric or Intervention Lever': 'Factor 2 Ceiling: Universal 100% River-Network Coverage',
+          'Group': 'II. Targeted Streamflow Gauge Network Expansion (Real-World Predictor, α = 1.0)',
+          'Exposure Metric or Intervention Lever': 'Factor 2 Observational Ceiling: Universal 100% Network Coverage',
           'Global Total (people/yr)': f"+{iv['Factor 2 (M_ungauged Primary): Universal Local & Network Gauge Coverage (100% Coverage)']['rp_clipped_delta_global']:,.0f}",
           'With Warning Capacity (60 Countries)': f"+{iv['Factor 2 (M_ungauged Primary): Universal Local & Network Gauge Coverage (100% Coverage)']['rp_clipped_delta_with_sys']:,.0f}",
           'Without Effective System (113 Countries)': f"+{iv['Factor 2 (M_ungauged Primary): Universal Local & Network Gauge Coverage (100% Coverage)']['rp_clipped_delta_no_sys']:,.0f}",
-          '% of Global Unwarned': f"{(f2_ceiling/global_unw)*100.0:.1f}%",
-          'Primary Engineering or Policy Lever': f'Universal in situ river gauging (M_gauged check: +{f2_mgauged/1e6:.2f}M, 2.6%)',
+          '% of Global Unwarned': f'{(f2_ceiling/global_unw)*100.0:.1f}%',
+          'Primary Engineering or Policy Lever': f'Universal in situ river gauging (Gauged predictor check: +{f2_mgauged/1e6:.2f}M, 2.6%)',
       },
       {
-          'Group': 'III. Five-Factor Predictability Ceilings & Benchmarks (M_ungauged, α = 1.0)',
-          'Exposure Metric or Intervention Lever': 'Factor 3 Ceiling: Eliminating OOD Representation Bias',
-          'Global Total (people/yr)': f"+{f3_ceiling:,.0f}",
+          'Group': 'III. Observational Counterfactual Ceilings & Residual Ceiling (Real-World Predictor, α = 1.0)',
+          'Exposure Metric or Intervention Lever': 'Factor 3 Observational Ceiling: Top-Quartile In-Distribution Similarity',
+          'Global Total (people/yr)': f'+{f3_ceiling:,.0f}',
           'With Warning Capacity (60 Countries)': f"+{iv['Factor 3 (M_ungauged): Eliminating Out-of-Distribution Representation Bias']['rp_clipped_delta_with_sys']:,.0f}",
           'Without Effective System (113 Countries)': f"+{iv['Factor 3 (M_ungauged): Eliminating Out-of-Distribution Representation Bias']['rp_clipped_delta_no_sys']:,.0f}",
-          '% of Global Unwarned': f"{(f3_ceiling/global_unw)*100.0:.1f}%",
+          '% of Global Unwarned': f'{(f3_ceiling/global_unw)*100.0:.1f}%',
           'Primary Engineering or Policy Lever': 'Under-sampled climate gauging + loss re-weighting / local fine-tuning',
       },
       {
-          'Group': 'III. Five-Factor Predictability Ceilings & Benchmarks (M_ungauged, α = 1.0)',
+          'Group': 'III. Observational Counterfactual Ceilings & Residual Ceiling (Real-World Predictor, α = 1.0)',
           'Exposure Metric or Intervention Lever': 'Combined Observational Ceiling (Factors 2 + 3 Jointly)',
           'Global Total (people/yr)': f"+{obs_ceil['rp_clipped_delta_global']:,.0f}",
           'With Warning Capacity (60 Countries)': f"+{obs_ceil['rp_clipped_delta_with_sys']:,.0f}",
           'Without Effective System (113 Countries)': f"+{obs_ceil['rp_clipped_delta_no_sys']:,.0f}",
           '% of Global Unwarned': f"{(obs_ceil['rp_clipped_delta_global']/global_unw)*100.0:.1f}%",
-          'Primary Engineering or Policy Lever': 'Global gauge sharing + distribution-aware / local adaptation',
+          'Primary Engineering or Policy Lever': 'Global open gauge sharing + distribution-aware / local adaptation',
       },
       {
-          'Group': 'III. Five-Factor Predictability Ceilings & Benchmarks (M_ungauged, α = 1.0)',
-          'Exposure Metric or Intervention Lever': 'Factor 1a Benchmark: Arid/Flashy Climate → Humid Reference',
-          'Global Total (people/yr)': f"+{iv['Factor 1a (M_ungauged): Climate & Aridity Regime -> Humid Reference']['rp_clipped_delta_global']:,.0f}",
-          'With Warning Capacity (60 Countries)': f"+{iv['Factor 1a (M_ungauged): Climate & Aridity Regime -> Humid Reference']['rp_clipped_delta_with_sys']:,.0f}",
-          'Without Effective System (113 Countries)': f"+{iv['Factor 1a (M_ungauged): Climate & Aridity Regime -> Humid Reference']['rp_clipped_delta_no_sys']:,.0f}",
-          '% of Global Unwarned': f"{(iv['Factor 1a (M_ungauged): Climate & Aridity Regime -> Humid Reference']['rp_clipped_delta_global']/global_unw)*100.0:.1f}%",
-          'Primary Engineering or Policy Lever': 'High-resolution convective & satellite precipitation forcings',
-      },
-      {
-          'Group': 'III. Five-Factor Predictability Ceilings & Benchmarks (M_ungauged, α = 1.0)',
-          'Exposure Metric or Intervention Lever': 'Factor 1c Benchmark: Floodplains/Wetlands/Lakes → Reference',
-          'Global Total (people/yr)': f"+{iv['Factor 1c (M_ungauged): Land Cover, Floodplains, Wetlands & Lakes -> Reference']['rp_clipped_delta_global']:,.0f}",
-          'With Warning Capacity (60 Countries)': f"+{iv['Factor 1c (M_ungauged): Land Cover, Floodplains, Wetlands & Lakes -> Reference']['rp_clipped_delta_with_sys']:,.0f}",
-          'Without Effective System (113 Countries)': f"+{iv['Factor 1c (M_ungauged): Land Cover, Floodplains, Wetlands & Lakes -> Reference']['rp_clipped_delta_no_sys']:,.0f}",
-          '% of Global Unwarned': f"{(iv['Factor 1c (M_ungauged): Land Cover, Floodplains, Wetlands & Lakes -> Reference']['rp_clipped_delta_global']/global_unw)*100.0:.1f}%",
-          'Primary Engineering or Policy Lever': 'Coupled 2D floodplain routing & satellite water assimilation',
-      },
-      {
-          'Group': 'III. Five-Factor Predictability Ceilings & Benchmarks (M_ungauged, α = 1.0)',
-          'Exposure Metric or Intervention Lever': 'Factor 1b Benchmark: Removing Reservoir & Irrigation Regulation',
-          'Global Total (people/yr)': f"+{iv['Factor 1b (M_ungauged): Removing Anthropogenic Reservoir & Irrigation Regulation']['rp_clipped_delta_global']:,.0f}",
-          'With Warning Capacity (60 Countries)': f"+{iv['Factor 1b (M_ungauged): Removing Anthropogenic Reservoir & Irrigation Regulation']['rp_clipped_delta_with_sys']:,.0f}",
-          'Without Effective System (113 Countries)': f"+{iv['Factor 1b (M_ungauged): Removing Anthropogenic Reservoir & Irrigation Regulation']['rp_clipped_delta_no_sys']:,.0f}",
-          '% of Global Unwarned': f"{(iv['Factor 1b (M_ungauged): Removing Anthropogenic Reservoir & Irrigation Regulation']['rp_clipped_delta_global']/global_unw)*100.0:.1f}%",
-          'Primary Engineering or Policy Lever': 'Dynamic reservoir release schedules & SWOT storage observations',
-      },
-      {
-          'Group': 'III. Five-Factor Predictability Ceilings & Benchmarks (M_ungauged, α = 1.0)',
-          'Exposure Metric or Intervention Lever': 'Factor 1d–1e Benchmarks: Topography (+0.90M) & Soil (+0.72M)',
-          'Global Total (people/yr)': f"+{iv['Factor 1d (M_ungauged): Topography & Drainage Scale -> Reference']['rp_clipped_delta_global']:,.0f} / +{iv['Factor 1e (M_ungauged): Soil & Hydrogeology -> Reference']['rp_clipped_delta_global']:,.0f}",
-          'With Warning Capacity (60 Countries)': f"+{iv['Factor 1d (M_ungauged): Topography & Drainage Scale -> Reference']['rp_clipped_delta_with_sys']:,.0f} / +{iv['Factor 1e (M_ungauged): Soil & Hydrogeology -> Reference']['rp_clipped_delta_with_sys']:,.0f}",
-          'Without Effective System (113 Countries)': f"+{iv['Factor 1d (M_ungauged): Topography & Drainage Scale -> Reference']['rp_clipped_delta_no_sys']:,.0f} / +{iv['Factor 1e (M_ungauged): Soil & Hydrogeology -> Reference']['rp_clipped_delta_no_sys']:,.0f}",
-          '% of Global Unwarned': '0.6% / 0.5%',
-          'Primary Engineering or Policy Lever': 'Sub-daily channel routing & satellite soil-moisture assimilation',
-      },
-      {
-          'Group': 'III. Five-Factor Predictability Ceilings & Benchmarks (M_ungauged, α = 1.0)',
-          'Exposure Metric or Intervention Lever': 'Factor 4 Ceiling: Extending Record Length to 50 Years',
+          'Group': 'III. Observational Counterfactual Ceilings & Residual Ceiling (Real-World Predictor, α = 1.0)',
+          'Exposure Metric or Intervention Lever': 'Factor 4 Observational Ceiling: Extending Record Length to 50 Years',
           'Global Total (people/yr)': f"+{iv['Factor 4 (M_ungauged): Extending Historical Record Length to 50 Years']['rp_clipped_delta_global']:,.0f}",
           'With Warning Capacity (60 Countries)': f"+{iv['Factor 4 (M_ungauged): Extending Historical Record Length to 50 Years']['rp_clipped_delta_with_sys']:,.0f}",
           'Without Effective System (113 Countries)': f"+{iv['Factor 4 (M_ungauged): Extending Historical Record Length to 50 Years']['rp_clipped_delta_no_sys']:,.0f}",
@@ -2085,7 +2181,7 @@ def main(argv):
           'Primary Engineering or Policy Lever': 'Short (1–2 yr) local records suffice for pretrained transfer',
       },
       {
-          'Group': 'III. Five-Factor Predictability Ceilings & Benchmarks (M_ungauged, α = 1.0)',
+          'Group': 'III. Observational Counterfactual Ceilings & Residual Ceiling (Real-World Predictor, α = 1.0)',
           'Exposure Metric or Intervention Lever': 'Factor 5 Residual Unwarned Ceiling Above Factors 2 + 3',
           'Global Total (people/yr)': f"{obs_ceil['unwarned_remaining_global']:,.0f}",
           'With Warning Capacity (60 Countries)': f"{obs_ceil['unwarned_remaining_with_sys']:,.0f}",
@@ -2094,7 +2190,106 @@ def main(argv):
           'Primary Engineering or Policy Lever': 'Meteorological precipitation accuracy, 2D inundation hydraulics & rating curves',
       },
       {
-          'Group': 'IV. Warning Response Compliance Sensitivity (Combined Observational Ceiling)',
+          'Group': 'IV. Unified In-Manifold Targeted Gains: SHAP Parity / γ = 25% Missed-Event Reduction (α = 1.0)',
+          'Exposure Metric or Intervention Lever': 'Factor 3 Targeted: Out-of-Distribution Representation Bias',
+          'Global Total (people/yr)': _fmt_wb_pair('Factor 3: Out-of-Distribution Representation Bias', 'global'),
+          'With Warning Capacity (60 Countries)': _fmt_wb_pair('Factor 3: Out-of-Distribution Representation Bias', 'with_sys'),
+          'Without Effective System (113 Countries)': _fmt_wb_pair('Factor 3: Out-of-Distribution Representation Bias', 'no_sys'),
+          '% of Global Unwarned': _fmt_wb_pct('Factor 3: Out-of-Distribution Representation Bias'),
+          'Primary Engineering or Policy Lever': 'Distribution-aware training re-weighting & local fine-tuning (96.5% exposed penalized)',
+      },
+      {
+          'Group': 'IV. Unified In-Manifold Targeted Gains: SHAP Parity / γ = 25% Missed-Event Reduction (α = 1.0)',
+          'Exposure Metric or Intervention Lever': 'Factor 2 Targeted: Local River-Network Gauge Coverage',
+          'Global Total (people/yr)': _fmt_wb_pair('Factor 2: River-Network Gauge Coverage', 'global'),
+          'With Warning Capacity (60 Countries)': _fmt_wb_pair('Factor 2: River-Network Gauge Coverage', 'with_sys'),
+          'Without Effective System (113 Countries)': _fmt_wb_pair('Factor 2: River-Network Gauge Coverage', 'no_sys'),
+          '% of Global Unwarned': _fmt_wb_pct('Factor 2: River-Network Gauge Coverage'),
+          'Primary Engineering or Policy Lever': 'Targeted river-corridor gauging (γ = 50%: +5.26M, matching +5.54M ceiling)',
+      },
+      {
+          'Group': 'IV. Unified In-Manifold Targeted Gains: SHAP Parity / γ = 25% Missed-Event Reduction (α = 1.0)',
+          'Exposure Metric or Intervention Lever': 'Combined Factor 1 Targeted: All Physical & Anthropogenic Attributes (1a–1g)',
+          'Global Total (people/yr)': _fmt_wb_pair('Combined Factor 1: All Physical & Anthropogenic Catchment Attributes (1a-1g Net)', 'global'),
+          'With Warning Capacity (60 Countries)': _fmt_wb_pair('Combined Factor 1: All Physical & Anthropogenic Catchment Attributes (1a-1g Net)', 'with_sys'),
+          'Without Effective System (113 Countries)': _fmt_wb_pair('Combined Factor 1: All Physical & Anthropogenic Catchment Attributes (1a-1g Net)', 'no_sys'),
+          '% of Global Unwarned': _fmt_wb_pct('Combined Factor 1: All Physical & Anthropogenic Catchment Attributes (1a-1g Net)'),
+          'Primary Engineering or Policy Lever': 'Process-targeted hydroclimate, land-surface, routing & regulation R&D',
+      },
+      {
+          'Group': 'IV. Unified In-Manifold Targeted Gains: SHAP Parity / γ = 25% Missed-Event Reduction (α = 1.0)',
+          'Exposure Metric or Intervention Lever': 'Factor 1f Targeted: Sparse Canopy, Agricultural & Biome Land Cover',
+          'Global Total (people/yr)': _fmt_wb_pair('1f: Sparse Canopy, Agricultural & Biome Land Cover', 'global'),
+          'With Warning Capacity (60 Countries)': _fmt_wb_pair('1f: Sparse Canopy, Agricultural & Biome Land Cover', 'with_sys'),
+          'Without Effective System (113 Countries)': _fmt_wb_pair('1f: Sparse Canopy, Agricultural & Biome Land Cover', 'no_sys'),
+          '% of Global Unwarned': _fmt_wb_pct('1f: Sparse Canopy, Agricultural & Biome Land Cover'),
+          'Primary Engineering or Policy Lever': 'Sparse-canopy land-surface buffering & biome-aware regionalization',
+      },
+      {
+          'Group': 'IV. Unified In-Manifold Targeted Gains: SHAP Parity / γ = 25% Missed-Event Reduction (α = 1.0)',
+          'Exposure Metric or Intervention Lever': 'Factor 1a Targeted: Arid & Convective Hydroclimate',
+          'Global Total (people/yr)': _fmt_wb_pair('1a: Arid & Convective Hydroclimate', 'global'),
+          'With Warning Capacity (60 Countries)': _fmt_wb_pair('1a: Arid & Convective Hydroclimate', 'with_sys'),
+          'Without Effective System (113 Countries)': _fmt_wb_pair('1a: Arid & Convective Hydroclimate', 'no_sys'),
+          '% of Global Unwarned': _fmt_wb_pct('1a: Arid & Convective Hydroclimate'),
+          'Primary Engineering or Policy Lever': '4D atmospheric state coupling & dryland flash-flood modeling',
+      },
+      {
+          'Group': 'IV. Unified In-Manifold Targeted Gains: SHAP Parity / γ = 25% Missed-Event Reduction (α = 1.0)',
+          'Exposure Metric or Intervention Lever': 'Factor 1c Targeted: Floodplain, Wetland & Lake Storage',
+          'Global Total (people/yr)': _fmt_wb_pair('1c: Floodplain, Wetland & Lake Storage', 'global'),
+          'With Warning Capacity (60 Countries)': _fmt_wb_pair('1c: Floodplain, Wetland & Lake Storage', 'with_sys'),
+          'Without Effective System (113 Countries)': _fmt_wb_pair('1c: Floodplain, Wetland & Lake Storage', 'no_sys'),
+          '% of Global Unwarned': _fmt_wb_pct('1c: Floodplain, Wetland & Lake Storage'),
+          'Primary Engineering or Policy Lever': 'Coupled 2D floodplain/lake hydrodynamic routing & satellite water assimilation',
+      },
+      {
+          'Group': 'IV. Unified In-Manifold Targeted Gains: SHAP Parity / γ = 25% Missed-Event Reduction (α = 1.0)',
+          'Exposure Metric or Intervention Lever': 'Factor 1d Targeted: Steep & Small-Scale Channel Routing',
+          'Global Total (people/yr)': _fmt_wb_pair('1d: Steep & Small-Scale Channel Routing', 'global'),
+          'With Warning Capacity (60 Countries)': _fmt_wb_pair('1d: Steep & Small-Scale Channel Routing', 'with_sys'),
+          'Without Effective System (113 Countries)': _fmt_wb_pair('1d: Steep & Small-Scale Channel Routing', 'no_sys'),
+          '% of Global Unwarned': _fmt_wb_pct('1d: Steep & Small-Scale Channel Routing'),
+          'Primary Engineering or Policy Lever': 'Sub-daily timestep & high-resolution vector channel routing',
+      },
+      {
+          'Group': 'IV. Unified In-Manifold Targeted Gains: SHAP Parity / γ = 25% Missed-Event Reduction (α = 1.0)',
+          'Exposure Metric or Intervention Lever': 'Factor 1b Targeted: Dam, Reservoir & Irrigation Regulation',
+          'Global Total (people/yr)': _fmt_wb_pair('1b: Dam, Reservoir & Irrigation Regulation', 'global'),
+          'With Warning Capacity (60 Countries)': _fmt_wb_pair('1b: Dam, Reservoir & Irrigation Regulation', 'with_sys'),
+          'Without Effective System (113 Countries)': _fmt_wb_pair('1b: Dam, Reservoir & Irrigation Regulation', 'no_sys'),
+          '% of Global Unwarned': _fmt_wb_pct('1b: Dam, Reservoir & Irrigation Regulation'),
+          'Primary Engineering or Policy Lever': 'Dynamic reservoir release records, irrigation withdrawals & SWOT altimetry',
+      },
+      {
+          'Group': 'IV. Unified In-Manifold Targeted Gains: SHAP Parity / γ = 25% Missed-Event Reduction (α = 1.0)',
+          'Exposure Metric or Intervention Lever': 'Factor 1g Targeted: Urban & Human Footprint',
+          'Global Total (people/yr)': _fmt_wb_pair('1g: Urban & Human Footprint', 'global'),
+          'With Warning Capacity (60 Countries)': _fmt_wb_pair('1g: Urban & Human Footprint', 'with_sys'),
+          'Without Effective System (113 Countries)': _fmt_wb_pair('1g: Urban & Human Footprint', 'no_sys'),
+          '% of Global Unwarned': _fmt_wb_pct('1g: Urban & Human Footprint'),
+          'Primary Engineering or Policy Lever': 'Urban impervious drainage & engineered stormwater representation',
+      },
+      {
+          'Group': 'IV. Unified In-Manifold Targeted Gains: SHAP Parity / γ = 25% Missed-Event Reduction (α = 1.0)',
+          'Exposure Metric or Intervention Lever': 'Factor 1e Targeted: Subsurface Soil & Karst Hydrogeology',
+          'Global Total (people/yr)': _fmt_wb_pair('1e: Subsurface Soil & Karst Hydrogeology', 'global'),
+          'With Warning Capacity (60 Countries)': _fmt_wb_pair('1e: Subsurface Soil & Karst Hydrogeology', 'with_sys'),
+          'Without Effective System (113 Countries)': _fmt_wb_pair('1e: Subsurface Soil & Karst Hydrogeology', 'no_sys'),
+          '% of Global Unwarned': _fmt_wb_pct('1e: Subsurface Soil & Karst Hydrogeology'),
+          'Primary Engineering or Policy Lever': 'Subsurface karst/permeability representation & satellite soil moisture',
+      },
+      {
+          'Group': 'IV. Unified In-Manifold Targeted Gains: SHAP Parity / γ = 25% Missed-Event Reduction (α = 1.0)',
+          'Exposure Metric or Intervention Lever': 'Factor 4 Targeted: Historical Record Length',
+          'Global Total (people/yr)': _fmt_wb_pair('Factor 4: Historical Record Length', 'global'),
+          'With Warning Capacity (60 Countries)': _fmt_wb_pair('Factor 4: Historical Record Length', 'with_sys'),
+          'Without Effective System (113 Countries)': _fmt_wb_pair('Factor 4: Historical Record Length', 'no_sys'),
+          '% of Global Unwarned': _fmt_wb_pct('Factor 4: Historical Record Length'),
+          'Primary Engineering or Policy Lever': 'Multi-decadal single-site archive extension negligible after global pretraining',
+      },
+      {
+          'Group': 'V. Warning Response Compliance Sensitivity (Combined Observational Ceiling)',
           'Exposure Metric or Intervention Lever': 'Combined Observational Ceiling at α = 0.80 (High Compliance)',
           'Global Total (people/yr)': f"+{0.80 * obs_ceil['rp_clipped_delta_global']:,.0f}",
           'With Warning Capacity (60 Countries)': f"+{0.80 * obs_ceil['rp_clipped_delta_with_sys']:,.0f}",
@@ -2103,7 +2298,7 @@ def main(argv):
           'Primary Engineering or Policy Lever': 'Paired with effective national CAP alerting & community action',
       },
       {
-          'Group': 'IV. Warning Response Compliance Sensitivity (Combined Observational Ceiling)',
+          'Group': 'V. Warning Response Compliance Sensitivity (Combined Observational Ceiling)',
           'Exposure Metric or Intervention Lever': 'Combined Observational Ceiling at α = 0.35 (Low Compliance)',
           'Global Total (people/yr)': f"+{0.35 * obs_ceil['rp_clipped_delta_global']:,.0f}",
           'With Warning Capacity (60 Countries)': f"+{0.35 * obs_ceil['rp_clipped_delta_with_sys']:,.0f}",

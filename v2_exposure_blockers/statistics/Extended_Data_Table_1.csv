@@ -1,0 +1,97 @@
+Variable Symbol,Description,Subcategory
+aet_mm_uyr,Actual evapotranspiration; multi-year annual average (mm/yr).,Climate & Hydrology
+ari_ix_uav,Aridity index; multi-year average.,Climate & Hydrology
+cmi_ix_uyr,Climate Moisture Index; multi-year annual average.,Climate & Hydrology
+pet_mm_uyr,Potential evapotranspiration; multi-year annual average (mm/yr).,Climate & Hydrology
+pre_mm_uyr,Precipitation; multi-year annual average (mm/yr).,Climate & Hydrology
+snw_pc_uyr,Snow cover; percentage multi-year annual average.,Climate & Hydrology
+swc_pc_uyr,Soil water content; percentage multi-year annual average.,Climate & Hydrology
+tmp_dc_uyr,Air temperature; multi-year annual average (degrees Celsius).,Climate & Hydrology
+calculated_drain_area,Drainage area.,Topography
+ele_mt_uav,Elevation; multi-year average in meters above sea level.,Topography
+riv_tc_usu,River volume; total sum in sub-basin (thousand m3).,Topography
+slp_dg_uav,Terrain slope; multi-year average in degrees.,Topography
+cly_pc_uav,Clay content of soil; percentage multi-year average.,Soil and Geology
+ero_kh_uav,Soil erosion; multi-year average in kg/ha/yr.,Soil and Geology
+kar_pc_use,Karst area; percentage of sub-basin area.,Soil and Geology
+slt_pc_uav,Silt content of soil; percentage multi-year average.,Soil and Geology
+snd_pc_uav,Sand content of soil; percentage multi-year average.,Soil and Geology
+soc_th_uav,Soil organic carbon; multi-year average (tonnes/ha).,Soil and Geology
+crp_pc_use,Cropland extent; percentage of sub-basin area.,Land Cover
+for_pc_use,Forest cover; percentage of sub-basin area.,Land Cover
+gla_pc_use,Glacier cover; percentage of sub-basin area.,Land Cover
+glc_pc_u01,Land cover: Evergreen Needleleaf Forest (percentage).,Land Cover
+glc_pc_u02,Land cover: Evergreen Broadleaf Forest (percentage).,Land Cover
+glc_pc_u03,Land cover: Deciduous Needleleaf Forest (percentage).,Land Cover
+glc_pc_u04,Land cover: Deciduous Broadleaf Forest (percentage).,Land Cover
+glc_pc_u05,Land cover: Mixed Forest (percentage).,Land Cover
+glc_pc_u06,Land cover: Closed Shrublands (percentage).,Land Cover
+glc_pc_u07,Land cover: Open Shrublands (percentage).,Land Cover
+glc_pc_u08,Land cover: Woody Savannas (percentage).,Land Cover
+glc_pc_u09,Land cover: Savannas (percentage).,Land Cover
+glc_pc_u10,Land cover: Grasslands (percentage).,Land Cover
+glc_pc_u11,Land cover: Permanent Wetlands (percentage).,Land Cover
+glc_pc_u12,Land cover: Croplands (percentage).,Land Cover
+glc_pc_u13,Land cover: Urban and Built-up (percentage).,Land Cover
+glc_pc_u14,Land cover: Cropland/Natural Vegetation Mosaic (percentage).,Land Cover
+glc_pc_u15,Land cover: Snow and Ice (percentage).,Land Cover
+glc_pc_u16,Land cover: Barren or Sparsely Vegetated (percentage).,Land Cover
+glc_pc_u17,Land cover: Water Bodies (percentage).,Land Cover
+glc_pc_u18,Land cover: Tundra (percentage).,Land Cover
+glc_pc_u19,Land cover: Permanent Snow/Ice (percentage).,Land Cover
+glc_pc_u20,Land cover: Sparse Vegetation (percentage).,Land Cover
+glc_pc_u21,Land cover: Salt Pans (percentage).,Land Cover
+glc_pc_u22,Land cover: Moss and Lichen (percentage).,Land Cover
+inu_pc_ult,Inundation (long-term); percentage of sub-basin area.,Land Cover
+inu_pc_umn,Inundation (minimum); percentage of sub-basin area.,Land Cover
+inu_pc_umx,Inundation (maximum); percentage of sub-basin area.,Land Cover
+lka_pc_use,Lake area; percentage of sub-basin area.,Land Cover
+lkv_mc_usu,Lake volume; total sum in sub-basin (million m3).,Land Cover
+pac_pc_use,Protected area cover; percentage of sub-basin area.,Land Cover
+pnv_pc_u01,Potential Natural Veg: Tropical/Subtropical Moist Broadleaf Forests (%).,Land Cover
+pnv_pc_u02,Potential Natural Veg: Tropical/Subtropical Dry Broadleaf Forests (%).,Land Cover
+pnv_pc_u03,Potential Natural Veg: Tropical/Subtropical Coniferous Forests (%).,Land Cover
+pnv_pc_u04,Potential Natural Veg: Temperate Broadleaf and Mixed Forests (%).,Land Cover
+pnv_pc_u05,Potential Natural Veg: Temperate Coniferous Forests (%).,Land Cover
+pnv_pc_u06,Potential Natural Veg: Boreal Forests/Taiga (%).,Land Cover
+pnv_pc_u07,Potential Natural Veg: Tropical/Subtropical Grasslands/Savannas (%).,Land Cover
+pnv_pc_u08,Potential Natural Veg: Temperate Grasslands/Savannas (%).,Land Cover
+pnv_pc_u09,Potential Natural Veg: Flooded Grasslands/Savannas (%).,Land Cover
+pnv_pc_u10,Potential Natural Veg: Montane Grasslands/Shrublands (%).,Land Cover
+pnv_pc_u11,Potential Natural Veg: Tundra (%).,Land Cover
+pnv_pc_u12,Potential Natural Veg: Mediterranean Forests/Woodlands (%).,Land Cover
+pnv_pc_u13,Potential Natural Veg: Deserts and Xeric Shrublands (%).,Land Cover
+pnv_pc_u14,Potential Natural Veg: Mangroves (%).,Land Cover
+pnv_pc_u15,Potential Natural Veg: Inland Water (%).,Land Cover
+prm_pc_use,Permafrost extent; percentage of sub-basin area.,Land Cover
+pst_pc_use,Pasture extent; percentage of sub-basin area.,Land Cover
+wet_pc_u01,Wetlands: Lakes (percentage).,Land Cover
+wet_pc_u03,Wetlands: Rivers (percentage).,Land Cover
+wet_pc_u04,Wetlands: Fresh Marsh/Floodplain (percentage).,Land Cover
+wet_pc_u05,Wetlands: Swamp/Flooded Forest (percentage).,Land Cover
+wet_pc_u06,Wetlands: Coastal (percentage).,Land Cover
+wet_pc_u07,Wetlands: Pan/Brackish/Saline (percentage).,Land Cover
+wet_pc_u08,Wetlands: Bog/Fen/Mire (percentage).,Land Cover
+wet_pc_u09,Wetlands: Intermittent (percentage).,Land Cover
+wet_pc_ug2,Wetlands Global Class: Floodplain/Marsh/Swamp (percentage).,Land Cover
+gdp_ud_usu,Gross Domestic Product (GDP); sum for sub-basin (USD).,Anthropogenic Factors
+hft_ix_u09,Human Footprint index for year 2009 (multi-year average).,Anthropogenic Factors
+hft_ix_u93,Human Footprint index for year 1993 (multi-year average).,Anthropogenic Factors
+ire_pc_use,Irrigated area; percentage of sub-basin area.,Anthropogenic Factors
+nli_ix_uav,Nighttime lights index; multi-year average.,Anthropogenic Factors
+pop_ct_usu,Population count; total sum within sub-basin.,Anthropogenic Factors
+ppd_pk_uav,Population density; multi-year average (people/km2).,Anthropogenic Factors
+rdd_mk_uav,Road density; multi-year average (m/km2).,Anthropogenic Factors
+rev_mc_usu,Reservoir volume; total sum in sub-basin (million m3).,Anthropogenic Factors
+ria_ha_usu,Reservoir area; total sum in sub-basin (hectares).,Anthropogenic Factors
+urb_pc_use,Urban area; percentage of sub-basin area.,Anthropogenic Factors
+wet_pc_u02,Wetlands: Reservoirs (percentage).,Anthropogenic Factors
+wet_pc_ug1,Wetlands Global Class: Lake/Reservoir (percentage).,Anthropogenic Factors
+max_downstream_coverage,Max Individual Downstream Coverage Fraction,Coverage/Overlap
+max_upstream_coverage,Max Individual Upstream Coverage Fraction,Coverage/Overlap
+total_upstream_coverage,Total Upstream Coverage Fraction,Coverage/Overlap
+upstream_gauge_count,Independent Upstream Gauge Count,Coverage/Overlap
+anomaly_score_if,Anomaly Score (Isolation Forest),Anomaly Score
+anomaly_score_lof,Anomaly Score (Local Outlier Factor),Anomaly Score
+anomaly_score_ocsvm,Anomaly Score (One-Class SVM),Anomaly Score
+record_length,Observation Record Length (years),Record Length

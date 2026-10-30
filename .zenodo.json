@@ -1,28 +1,29 @@
 {
   "title": "Global Flood Warning Gaps Reflect Forecasting and Observational Blockers Beyond Local Gauge Sparsity",
   "upload_type": "dataset",
+  "version": "1.0.1",
   "license": "apache-2.0",
   "publication_date": "2026-10-30",
   "creators": [
     {
       "name": "Nearing, Grey",
-      "affiliation": "Google Research"
+      "affiliation": "Google Research; Zurich, Switzerland"
     },
     {
       "name": "Rees, Stephanie",
-      "affiliation": "Google Research"
+      "affiliation": "Google; London, United Kingdom"
     },
     {
       "name": "Gauch, Martin",
-      "affiliation": "Google Research"
+      "affiliation": "Google Research; Zurich, Switzerland"
     },
     {
       "name": "Ginnetti, Justin",
-      "affiliation": "World Meteorological Organization"
+      "affiliation": "Google Research; Zurich, Switzerland"
     },
     {
       "name": "Rothenberg, Juliet",
-      "affiliation": "Google Research"
+      "affiliation": "Google Research; Mountain View, California, United States"
     }
   ],
   "keywords": [
@@ -37,7 +38,7 @@
   ],
   "related_identifiers": [
     {
-      "identifier": "https://github.com/grey-nearing/geographical-bias-paper/tree/v1.0.0",
+      "identifier": "https://github.com/grey-nearing/geographical-bias-paper/tree/v1.0.1",
       "relation": "isSupplementTo",
       "scheme": "url"
     }

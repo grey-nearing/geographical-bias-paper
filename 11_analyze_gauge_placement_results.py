@@ -21,7 +21,9 @@ country-level N-gauge placement summary statistics strictly from the v2
 
 from collections import defaultdict
 import io
+import json
 import os
+import shutil
 import time
 import warnings
 
@@ -43,6 +45,19 @@ from utils import viz_utils
 from utils import gfile_compat as gfile
 
 warnings.filterwarnings('ignore')
+
+
+def _safe_unlink(path: str):
+  if os.path.lexists(path):
+    if os.path.isdir(path) and not os.path.islink(path):
+      shutil.rmtree(path)
+    else:
+      os.unlink(path)
+
+
+def _save_figure_safe(fig: plt.Figure, figures_dir: str, filename: str):
+  _safe_unlink(os.path.join(figures_dir, filename))
+  viz_utils.save_figure(fig, figures_dir, filename)
 
 
 def _load_inform_vulnerability(world_gdf: gpd.GeoDataFrame) -> pd.Series:
@@ -116,11 +131,32 @@ def main(argv):
   blockers_csv = os.path.join(
       file_paths.STATS_DIR, 'country_exposure_and_blockers_v2.csv'
   )
+  interventions_json = os.path.join(
+      file_paths.STATS_DIR, 'five_factor_exposure_interventions_v2.json'
+  )
 
   df_nat = io_utils.load_csv(nat_csv)
   df_single = io_utils.load_csv(single_csv)
   df_sets = io_utils.load_csv(sets_csv)
   df_blockers = io_utils.load_csv(blockers_csv)
+  with gfile.Open(interventions_json, 'rt') as f:
+    v2_interventions = json.load(f)
+
+  f2_ceiling = float(
+      v2_interventions['interventions'][
+          'Factor 2 (M_ungauged Primary): Universal Local & Network Gauge Coverage (100% Coverage)'
+      ]['rp_clipped_delta_global']
+  )
+  f2_mgauged = float(
+      v2_interventions['interventions'][
+          'Confirmation Check ONLY (M_gauged): Independent In-Sample Local Gauging'
+      ]['rp_clipped_delta_global']
+  )
+  global_unwarned = float(
+      v2_interventions['baseline_summary'][
+          'Global Total (All 964,084 Sub-Basins)'
+      ]['unwarned_ungauged']
+  )
 
   df_nat['Country'] = df_nat['Country'].replace(file_paths.country_name_map)
   df_single['country_name'] = df_single['country_name'].replace(
@@ -176,6 +212,7 @@ def main(argv):
     out_path = os.path.join(
         out_dir, 'country_gauge_placement_exposure_reduction.csv'
     )
+    _safe_unlink(out_path)
     with gfile.Open(out_path, 'wt') as f:
       df_export.to_csv(f, index=False)
 
@@ -219,7 +256,7 @@ def main(argv):
       fig.add_subplot(gs[1, 0]),
       fig.add_subplot(gs[1, 1]),
   ]
-  panel_letters = ['a', 'b', 'c', 'd']
+  panel_letters = ['(a)', '(b)', '(c)', '(d)']
 
   nat_indexed = df_nat.set_index('Country')
   # Shared robust upper bound across N=1..20 so color progression across N is immediately visible
@@ -330,7 +367,7 @@ def main(argv):
       r'Exposure Reduced at $\alpha = 1.0$ (people/yr)', fontsize=11
   )
   ax_lines_abs.set_title(
-      'e  15 Most Vulnerable Countries (Absolute Gain)',
+      '(e)  15 Most Vulnerable Countries (Absolute Gain)',
       fontsize=12.5,
       fontweight='bold',
       loc='left',
@@ -343,7 +380,7 @@ def main(argv):
   ax_lines_pct.set_xlabel('New Gauges Installed per Country (N)', fontsize=11.5)
   ax_lines_pct.set_ylabel('% of National Flood Exposure Reduced', fontsize=11)
   ax_lines_pct.set_title(
-      'f  15 Most Vulnerable Countries (% of Baseline Exposure)',
+      '(f)  15 Most Vulnerable Countries (% of Baseline Exposure)',
       fontsize=12.5,
       fontweight='bold',
       loc='left',
@@ -365,7 +402,7 @@ def main(argv):
       fontweight='bold',
       y=0.98,
   )
-  viz_utils.save_figure(fig, file_paths.FIGURES_DIR, 'Extended_Data_Figure_5.png')
+  _save_figure_safe(fig, file_paths.FIGURES_DIR, 'Extended_Data_Figure_5.png')
   plt.close(fig)
 
   # ============================================================================
@@ -417,15 +454,21 @@ def main(argv):
 
   if need_build_mali:
     print(f"[{time.strftime('%H:%M:%S')}] Building Mali Level-12 outlet & upstream drainage geometries...")
-    af_sub_path = os.path.join(
-        file_paths.HYBAS_SUBBASINS_DIR, 'hybas_af_lev12_v1c.geojson'
+    af_gpq_path = os.path.join(
+        file_paths.THIRD_PARTY_DIR, 'geoparquet/af/hybas_af_lev12_v1c.geoparquet'
     )
-    if not gfile.Exists(af_sub_path):
+    if os.path.exists(af_gpq_path):
+      hybas_gdf = gpd.read_parquet(af_gpq_path)
+    else:
       af_sub_path = os.path.join(
-          file_paths.HYBAS_POLYGONS_DIR, 'hybas_af_lev12_v1c.geojson'
+          file_paths.HYBAS_SUBBASINS_DIR, 'hybas_af_lev12_v1c.geojson'
       )
-    with gfile.Open(af_sub_path, 'rb') as f:
-      hybas_gdf = gpd.read_file(f)
+      if not gfile.Exists(af_sub_path):
+        af_sub_path = os.path.join(
+            file_paths.HYBAS_POLYGONS_DIR, 'hybas_af_lev12_v1c.geojson'
+        )
+      with gfile.Open(af_sub_path, 'rb') as f:
+        hybas_gdf = gpd.read_file(f)
 
     if 'HYBAS_ID' in hybas_gdf.columns:
       hybas_gdf['HYBAS_ID'] = (
@@ -474,8 +517,10 @@ def main(argv):
         drainage_rows, geometry='geometry', crs=world.crs
     ).set_index('unique_gauge_id', drop=False)
 
+    _safe_unlink(cache_outlet_path)
     with gfile.Open(cache_outlet_path, 'w') as f:
       f.write(target_outlets_gdf.reset_index(drop=True).to_json())
+    _safe_unlink(cache_drainage_path)
     with gfile.Open(cache_drainage_path, 'w') as f:
       f.write(target_drainages_gdf.reset_index(drop=True).to_json())
 
@@ -538,18 +583,18 @@ def main(argv):
 
   # Reference ceiling lines from unified 5-factor decomposition
   ax_bar.axhline(
-      5535831.1,
+      f2_ceiling,
       color='#332288',
       linestyle='--',
       linewidth=1.5,
-      label='Factor 2 Universal Gauge Coverage Ceiling (5.54M)',
+      label=f'Factor 2 Universal Gauge Coverage Ceiling ({f2_ceiling/1e6:.2f}M)',
   )
   ax_bar.axhline(
-      4019704.5,
+      f2_mgauged,
       color='#7F7F7F',
       linestyle=':',
       linewidth=1.5,
-      label='M_gauged Independent Confirmation Ceiling (4.02M)',
+      label=f'In-Sample Gauged Confirmation Ceiling ({f2_mgauged/1e6:.2f}M)',
   )
 
   ax_bar.set_xticks(x_pos)
@@ -562,14 +607,13 @@ def main(argv):
   )
   ax_bar.set_xlabel('Total New Streamflow Gauges Installed Globally (N)', fontsize=11.5)
   ax_bar.set_title(
-      'a  Global Siting Strategies vs. Universal Gauge Coverage Ceiling',
+      '(a)  Global Siting Strategies vs. Universal Gauge Coverage Ceiling',
       fontsize=13,
       fontweight='bold',
       loc='left',
   )
   ax_bar.grid(True, which='both', ls='--', alpha=0.35)
 
-  global_unwarned = 157529367.44
   secax = ax_bar.secondary_yaxis(
       'right',
       functions=(
@@ -577,7 +621,10 @@ def main(argv):
           lambda x: (x / 100.0) * global_unwarned,
       ),
   )
-  secax.set_ylabel('% of Global Unwarned Exposure (157.5M people/yr)', fontsize=11)
+  secax.set_ylabel(
+      f'% of Global Unwarned Exposure ({global_unwarned/1e6:.1f}M people/yr)',
+      fontsize=11,
+  )
   ax_bar.legend(loc='upper left', fontsize=8.8, frameon=True, framealpha=0.92)
 
   # Panel b: Mali Top-5 Gauge Placement Topology
@@ -647,7 +694,7 @@ def main(argv):
       framealpha=0.94,
   )
   ax_mali.set_title(
-      'b  Optimal River-Network Gauge Siting in Mali (Outlets & Upstream Catchments)',
+      '(b)  Optimal River-Network Gauge Siting in Mali (Outlets & Upstream Catchments)',
       fontsize=13,
       fontweight='bold',
       loc='left',
@@ -655,7 +702,7 @@ def main(argv):
   ax_mali.axis('off')
 
   plt.tight_layout()
-  viz_utils.save_figure(
+  _save_figure_safe(
       fig_ed6, file_paths.FIGURES_DIR, 'Extended_Data_Figure_6.png'
   )
   plt.close(fig_ed6)

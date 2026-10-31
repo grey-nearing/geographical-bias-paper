@@ -36,6 +36,7 @@ import time
 
 from absl import app
 from absl import flags
+import joblib
 import numpy as np
 import pandas as pd
 from sklearn.neighbors import NearestNeighbors
@@ -95,6 +96,11 @@ def _ensure_v2_candidates(candidates_dir: str):
 
 
 def main(argv):
+  with joblib.parallel_backend('threading'):
+    return _main_impl(argv)
+
+
+def _main_impl(argv):
   del argv
   t_script = time.time()
   file_paths.init('5.0-year-2.0-window-recall')

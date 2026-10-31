@@ -45,6 +45,7 @@ Saved Output Files:
 - Global Inference Anomalies: file_paths.INFER_HYBAS_CARAVAN_OUT_PATH
 """
 
+import concurrent.futures
 import os
 import time
 
@@ -508,7 +509,7 @@ def calculate_anomaly_scores(
 
   # Deploy Isolation Forest: A tree-based algorithm that determines anomalies
   # by how few random splits it takes to isolate a point from the rest of the dataset.
-  isolation_forest = IsolationForest(random_state=42)
+  isolation_forest = IsolationForest(random_state=42, n_jobs=-1)
   isolation_forest.fit(X_train_scaled)
   scores_if = pd.Series(
       isolation_forest.decision_function(X_test_scaled),
@@ -519,13 +520,20 @@ def calculate_anomaly_scores(
   # 'normal' data in high-dimensional space and measures how far out points lie.
   one_class_svm = OneClassSVM()
   one_class_svm.fit(X_train_scaled)
-  scores_ocsvm = pd.Series(
-      one_class_svm.decision_function(X_test_scaled), index=X_test_aligned.index
-  )
+  if len(X_test_scaled) >= 2000:
+    n_threads = min(56, os.cpu_count() or 32)
+    chunks = np.array_split(X_test_scaled, n_threads)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=n_threads) as ex:
+      ocsvm_vals = np.concatenate(
+          list(ex.map(one_class_svm.decision_function, chunks))
+      )
+  else:
+    ocsvm_vals = one_class_svm.decision_function(X_test_scaled)
+  scores_ocsvm = pd.Series(ocsvm_vals, index=X_test_aligned.index)
 
   # Deploy Local Outlier Factor: Compares the local anomaly density around a test point
   # to the densities of its training phase neighbors, flagging unusually sparse regions.
-  local_outlier_factor = LocalOutlierFactor(novelty=True)
+  local_outlier_factor = LocalOutlierFactor(novelty=True, n_jobs=-1)
   local_outlier_factor.fit(X_train_scaled)
   scores_lof = pd.Series(
       local_outlier_factor.decision_function(X_test_scaled),

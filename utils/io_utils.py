@@ -375,3 +375,20 @@ def load_hybas_zarr(
     df.index = [str(x) for x in df.index]
     return df
 
+
+_SHAP_EXPLAINER_CACHE = {}
+
+
+def eval_shap_chunk_from_pkl(args):
+  """Worker helper for multi-process TreeSHAP evaluation via cached /tmp pickle."""
+  import pickle as _pickle  # pylint: disable=g-import-not-at-top
+  pkl_path, chunk_idx, chunk_df = args
+  explainer = _SHAP_EXPLAINER_CACHE.get(pkl_path)
+  if explainer is None:
+    _SHAP_EXPLAINER_CACHE.clear()
+    with open(pkl_path, 'rb') as fp:
+      explainer = _pickle.load(fp)
+    _SHAP_EXPLAINER_CACHE[pkl_path] = explainer
+  return chunk_idx, explainer.shap_values(chunk_df, check_additivity=False)
+
+

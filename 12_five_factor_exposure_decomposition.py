@@ -35,6 +35,7 @@ Evaluates:
    R_new(gamma) = 1 - (1 - R) * (1 - gamma)^w across gamma in {0.10, 0.25, 0.50}.
 """
 
+import concurrent.futures
 import copy
 import glob
 import json
@@ -70,6 +71,7 @@ from utils import feature_utils
 from utils import file_paths
 from utils import io_utils
 from utils import skill_predictor as sp
+import multiprocessing
 
 sys.modules['utils.skill_predictor'] = sp
 
@@ -612,51 +614,120 @@ def main(argv=None):
   has_sys_vec = df_exp_all.loc[shap_ids, 'has_system'].values
   group_nets_by_rp = {}
 
-  for m_name, e_col in [
-      ('5.0-year-2.0-window-recall', 'E_5'),
-      ('10.0-year-2.0-window-recall', 'E_10'),
-      ('20.0-year-2.0-window-recall', 'E_20_50_100'),
-  ]:
-    tm = time.time()
-    sp_impl = models_u[m_name].impl
-    X_shap_trans = sp_impl._preprocess_features(X_shap_raw_u).reindex(columns=sp_impl.feature_columns, fill_value=0)
-    X_bg_trans = sp_impl._preprocess_features(X_bg_raw_u).reindex(columns=sp_impl.feature_columns, fill_value=0)
+  mp_ctx = multiprocessing.get_context('spawn')
+  with concurrent.futures.ProcessPoolExecutor(
+      max_workers=56, mp_context=mp_ctx
+  ) as shap_pool:
+    for m_name, e_col in [
+        ('5.0-year-2.0-window-recall', 'E_5'),
+        ('10.0-year-2.0-window-recall', 'E_10'),
+        ('20.0-year-2.0-window-recall', 'E_20_50_100'),
+    ]:
+      tm = time.time()
+      sp_impl = models_u[m_name].impl
+      X_shap_trans = sp_impl._preprocess_features(X_shap_raw_u).reindex(
+          columns=sp_impl.feature_columns, fill_value=0
+      )
+      X_bg_trans = sp_impl._preprocess_features(X_bg_raw_u).reindex(
+          columns=sp_impl.feature_columns, fill_value=0
+      )
 
-    est_dict = dict(zip([n for n, _ in sp_impl.ensemble.estimators], sp_impl.ensemble.estimators_))
-    coef_map = dict(zip([n for n, _ in sp_impl.ensemble.estimators], sp_impl.ensemble.final_estimator_.coef_))
+      est_dict = dict(
+          zip(
+              [n for n, _ in sp_impl.ensemble.estimators],
+              sp_impl.ensemble.estimators_,
+          )
+      )
+      coef_map = dict(
+          zip(
+              [n for n, _ in sp_impl.ensemble.estimators],
+              sp_impl.ensemble.final_estimator_.coef_,
+          )
+      )
 
-    exp_h = shap.TreeExplainer(est_dict['hgbr'], X_bg_trans)
-    chunks_h = np.array_split(X_shap_trans, 64)
-    sv_hgbr = np.vstack(joblib.Parallel(n_jobs=-1)(joblib.delayed(_shap_chunk)(exp_h, ch) for ch in chunks_h))
+      exp_h = shap.TreeExplainer(est_dict['hgbr'], X_bg_trans)
+      pkl_h = f'/tmp/shap_exp_{os.getpid()}_{m_name}_hgbr.pkl'
+      with open(pkl_h, 'wb') as fp_h:
+        pickle.dump(exp_h, fp_h)
+      chunks_h = np.array_split(X_shap_trans, 56)
+      res_h = sorted(
+          shap_pool.map(
+              io_utils.eval_shap_chunk_from_pkl,
+              [(pkl_h, idx, ch) for idx, ch in enumerate(chunks_h)],
+          ),
+          key=lambda x: x[0],
+      )
+      if os.path.exists(pkl_h):
+        os.unlink(pkl_h)
+      sv_hgbr = np.vstack([arr for _, arr in res_h])
 
-    et_pipe = est_dict['et']
-    et_imp = et_pipe.named_steps['simpleimputer']
-    et_reg = et_pipe.named_steps['extratreesregressor']
-    X_shap_imp = pd.DataFrame(et_imp.transform(X_shap_trans), index=X_shap_trans.index, columns=X_shap_trans.columns)
-    X_bg_imp = pd.DataFrame(et_imp.transform(X_bg_trans), index=X_bg_trans.index, columns=X_bg_trans.columns)
-    et_sub = copy.copy(et_reg)
-    et_sub.estimators_ = et_reg.estimators_[:60]
-    exp_e = shap.TreeExplainer(et_sub, X_bg_imp)
-    chunks_e = np.array_split(X_shap_imp, 64)
-    sv_et = np.vstack(joblib.Parallel(n_jobs=-1)(joblib.delayed(_shap_chunk)(exp_e, ch) for ch in chunks_e))
+      et_pipe = est_dict['et']
+      et_imp = et_pipe.named_steps['simpleimputer']
+      et_reg = et_pipe.named_steps['extratreesregressor']
+      X_shap_imp = pd.DataFrame(
+          et_imp.transform(X_shap_trans),
+          index=X_shap_trans.index,
+          columns=X_shap_trans.columns,
+      )
+      X_bg_imp = pd.DataFrame(
+          et_imp.transform(X_bg_trans),
+          index=X_bg_trans.index,
+          columns=X_bg_trans.columns,
+      )
+      et_sub = copy.copy(et_reg)
+      et_sub.estimators_ = et_reg.estimators_[:60]
+      exp_e = shap.TreeExplainer(et_sub, X_bg_imp)
+      pkl_e = f'/tmp/shap_exp_{os.getpid()}_{m_name}_et.pkl'
+      with open(pkl_e, 'wb') as fp_e:
+        pickle.dump(exp_e, fp_e)
+      chunks_e = np.array_split(X_shap_imp, 56)
+      res_e = sorted(
+          shap_pool.map(
+              io_utils.eval_shap_chunk_from_pkl,
+              [(pkl_e, idx, ch) for idx, ch in enumerate(chunks_e)],
+          ),
+          key=lambda x: x[0],
+      )
+      if os.path.exists(pkl_e):
+        os.unlink(pkl_e)
+      sv_et = np.vstack([arr for _, arr in res_e])
 
-    w_hgbr = max(0.0, float(coef_map.get('hgbr', 0.5)))
-    w_et = max(0.0, float(coef_map.get('et', 0.5)))
-    w_sum = w_hgbr + w_et if (w_hgbr + w_et) > 0 else 1.0
-    sv_combined = (w_hgbr * sv_hgbr + w_et * sv_et) / w_sum
+      w_hgbr = max(0.0, float(coef_map.get('hgbr', 0.5)))
+      w_et = max(0.0, float(coef_map.get('et', 0.5)))
+      w_sum = w_hgbr + w_et if (w_hgbr + w_et) > 0 else 1.0
+      sv_combined = (w_hgbr * sv_hgbr + w_et * sv_et) / w_sum
 
-    sv_df = pd.DataFrame(sv_combined, index=shap_ids, columns=sp_impl.feature_columns)
-    group_nets_by_rp[m_name] = sv_df.T.groupby(group_list_per_col).sum().T
+      sv_df = pd.DataFrame(
+          sv_combined, index=shap_ids, columns=sp_impl.feature_columns
+      )
+      group_nets_by_rp[m_name] = sv_df.T.groupby(group_list_per_col).sum().T
 
-    basin_exp_vec = (df_exp_all.loc[shap_ids, e_col] * weights).values[:, None]
-    def_mat = np.maximum(0.0, -sv_combined * basin_exp_vec)
+      basin_exp_vec = (
+          df_exp_all.loc[shap_ids, e_col] * weights
+      ).values[:, None]
+      def_mat = np.maximum(0.0, -sv_combined * basin_exp_vec)
 
-    shap_abs_by_feat += pd.Series(np.abs(sv_combined * basin_exp_vec).sum(axis=0), index=sp_impl.feature_columns)
-    shap_def_by_feat += pd.Series(def_mat.sum(axis=0), index=sp_impl.feature_columns)
-    shap_def_with_sys += pd.Series(def_mat[has_sys_vec].sum(axis=0), index=sp_impl.feature_columns)
-    shap_def_no_sys += pd.Series(def_mat[~has_sys_vec].sum(axis=0), index=sp_impl.feature_columns)
-    shap_net_by_feat += pd.Series((sv_combined * basin_exp_vec).sum(axis=0), index=sp_impl.feature_columns)
-    print(f'   Finished TreeSHAP for {m_name} in {time.time() - tm:.1f}s', flush=True)
+      shap_abs_by_feat += pd.Series(
+          np.abs(sv_combined * basin_exp_vec).sum(axis=0),
+          index=sp_impl.feature_columns,
+      )
+      shap_def_by_feat += pd.Series(
+          def_mat.sum(axis=0), index=sp_impl.feature_columns
+      )
+      shap_def_with_sys += pd.Series(
+          def_mat[has_sys_vec].sum(axis=0), index=sp_impl.feature_columns
+      )
+      shap_def_no_sys += pd.Series(
+          def_mat[~has_sys_vec].sum(axis=0), index=sp_impl.feature_columns
+      )
+      shap_net_by_feat += pd.Series(
+          (sv_combined * basin_exp_vec).sum(axis=0),
+          index=sp_impl.feature_columns,
+      )
+      print(
+          f'   Finished 56-proc TreeSHAP for {m_name} in {time.time() - tm:.1f}s',
+          flush=True,
+      )
 
   shap_records = []
   for feat in shap_abs_by_feat.index:

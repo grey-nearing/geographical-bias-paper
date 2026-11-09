@@ -1,0 +1,71 @@
+{
+  "title": "What Fraction of the World's Watersheds are Ungauged?",
+  "upload_type": "dataset",
+  "version": "2.0.0",
+  "access_right": "closed",
+  "publication_date": "2026-11-09",
+  "creators": [
+    {
+      "name": "Nearing, Grey",
+      "affiliation": "Google Research; Zurich, Switzerland"
+    },
+    {
+      "name": "Ruparell, Karan",
+      "affiliation": "European Centre for Medium-Range Weather Forecasts; Reading, United Kingdom"
+    },
+    {
+      "name": "Kratzert, Frederik",
+      "affiliation": "Google Research; Vienna, Austria"
+    },
+    {
+      "name": "Taccari, Maria Luisa",
+      "affiliation": "European Centre for Medium-Range Weather Forecasts; Reading, United Kingdom"
+    },
+    {
+      "name": "Rees, Stephanie",
+      "affiliation": "Google; London, United Kingdom"
+    },
+    {
+      "name": "Gauch, Martin",
+      "affiliation": "Google Research; Zurich, Switzerland"
+    },
+    {
+      "name": "Ginnetti, Justin",
+      "affiliation": "Google Research; Zurich, Switzerland"
+    },
+    {
+      "name": "Wing, Oliver",
+      "affiliation": "Fathom; Bristol, United Kingdom"
+    },
+    {
+      "name": "Rothenberg, Juliet",
+      "affiliation": "Google Research; Mountain View, California, United States"
+    },
+    {
+      "name": "Prudhomme, Christel",
+      "affiliation": "European Centre for Medium-Range Weather Forecasts; Reading, United Kingdom"
+    },
+    {
+      "name": "Pappenberger, Florian",
+      "affiliation": "European Centre for Medium-Range Weather Forecasts; Reading, United Kingdom"
+    },
+    {
+      "name": "Cohen, Deborah",
+      "affiliation": "Google Research; Tel Aviv, Israel"
+    },
+    {
+      "name": "Matias, Yossi",
+      "affiliation": "Google Research; Mountain View, California, United States"
+    }
+  ],
+  "keywords": [
+    "hydrology",
+    "ungauged watersheds",
+    "streamflow gauges",
+    "flood forecasting",
+    "early warning systems",
+    "machine learning",
+    "data assimilation",
+    "HydroBASINS"
+  ]
+}

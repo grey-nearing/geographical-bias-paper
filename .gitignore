@@ -1,0 +1,40 @@
+# Python bytecode & caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Jupyter / IPython
+.ipynb_checkpoints/
+
+# Local data directory (hosted on Zenodo: https://doi.org/10.5281/zenodo.21416987)
+data/
+*.zarr/
+*.nc
+*.tif
+*.parquet
+*.pkl
+
+# OS / Editor files
+.DS_Store
+*.swp
+*~

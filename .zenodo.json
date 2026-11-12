@@ -1,9 +1,9 @@
 {
   "title": "What Fraction of the World's Watersheds are Ungauged?",
   "upload_type": "dataset",
-  "version": "2.0.0",
-  "access_right": "closed",
-  "publication_date": "2026-11-09",
+  "version": "2.1.0",
+  "access_right": "open",
+  "publication_date": "2026-11-12",
   "creators": [
     {
       "name": "Nearing, Grey",
@@ -40,14 +40,6 @@
     {
       "name": "Rothenberg, Juliet",
       "affiliation": "Google Research; Mountain View, California, United States"
-    },
-    {
-      "name": "Prudhomme, Christel",
-      "affiliation": "European Centre for Medium-Range Weather Forecasts; Reading, United Kingdom"
-    },
-    {
-      "name": "Pappenberger, Florian",
-      "affiliation": "European Centre for Medium-Range Weather Forecasts; Reading, United Kingdom"
     },
     {
       "name": "Cohen, Deborah",

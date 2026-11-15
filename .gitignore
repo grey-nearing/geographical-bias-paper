@@ -33,7 +33,6 @@ data/
 *fathom*
 *Fathom*
 *exposure_eae*
-!run_reproduce_non_fathom.sh
 !results/hydrofabric_summary/master_cross_hydrofabric_summary_nonfathom.csv
 
 # OS & editor clutter

@@ -31,6 +31,33 @@ OUT_DIR = os.path.join(CANON_DIR, 'round2', 'exposure')
 SHARDS_LOCAL_DIR = os.environ.get('GEO_BIAS_EXPOSURE_SHARDS_DIR', os.path.join(OUT_DIR, 'shards'))
 OLD_EXP_CSV = os.path.join(CANON_DIR, 'exposure', 'global_basin_exposure_defended_by_return_period.csv')
 HYBAS_PARQUET = os.path.join(CANON_DIR, 'round2', 'meta_models', 'hybas_inference_95_float32.parquet')
+HYBAS_GENERIC_PARQUET = os.path.join(CANON_DIR, 'generic_training_data', 'hybas_generic_inference_data.parquet')
+HYBAS_TOPO_PARQUET = os.path.join(CANON_DIR, 'attributes', 'hybas_l12_topology_and_runoff.parquet')
+HYBAS_TOPO_CSV = os.path.join(CANON_DIR, 'attributes', 'hybas_routing_topology.csv')
+
+
+def _load_canonical_hybas_ids() -> pd.Index:
+  """Loads the canonical 1,034,083 HydroBASINS v1c Level 12 index."""
+  for pq in (HYBAS_PARQUET, HYBAS_GENERIC_PARQUET):
+    if os.path.exists(pq):
+      idx = pd.read_parquet(pq, columns=['pre_mm_uyr']).index
+      ids = pd.Index(_norm_hybas(pd.Series(idx)))
+      assert len(ids) == 1034083, f'Unexpected basin count in {pq}: {len(ids)}'
+      return ids
+  if os.path.exists(HYBAS_TOPO_PARQUET):
+    df_t = pd.read_parquet(HYBAS_TOPO_PARQUET, columns=['HYBAS_ID'])
+    ids = pd.Index(_norm_hybas(df_t['HYBAS_ID'])).drop_duplicates()
+    assert len(ids) == 1034083, f'Unexpected basin count in {HYBAS_TOPO_PARQUET}: {len(ids)}'
+    return ids
+  if os.path.exists(HYBAS_TOPO_CSV):
+    df_t = pd.read_csv(HYBAS_TOPO_CSV, usecols=['HYBAS_ID'], dtype={'HYBAS_ID': str})
+    ids = pd.Index(_norm_hybas(df_t['HYBAS_ID'])).drop_duplicates()
+    assert len(ids) == 1034083, f'Unexpected basin count in {HYBAS_TOPO_CSV}: {len(ids)}'
+    return ids
+  raise FileNotFoundError(
+      'Cannot locate canonical 1,034,083 HydroBASINS L12 index under '
+      f'{CANON_DIR} (checked meta_models, generic_training_data, and attributes).'
+  )
 
 OLD_W = {5: 0.05, 10: 0.075, 20: 0.04, 50: 0.02, 100: 0.005}
 NEW_W = {5: 0.05, 10: 0.075, 20: 0.04, 50: 0.02, 100: 0.015}
@@ -47,6 +74,7 @@ def main():
   args = parser.parse_args()
 
   dt = args.defense.lower()
+  os.makedirs(OUT_DIR, exist_ok=True)
   os.makedirs(SHARDS_LOCAL_DIR, exist_ok=True)
 
   shard_files = sorted(glob.glob(os.path.join(SHARDS_LOCAL_DIR, f'global_basin_exposure_{dt}_all_rps_r2.csv-*')))
@@ -64,7 +92,7 @@ def main():
   df_agg = df_raw.groupby('hybas_id', as_index=True)[num_cols].sum()
 
   # Canonical 1,034,083 basin universe
-  all_ids = pd.read_parquet(HYBAS_PARQUET, columns=['pre_mm_uyr']).index
+  all_ids = _load_canonical_hybas_ids()
   assert len(all_ids) == 1034083
   in_both = all_ids.isin(df_agg.index).sum()
   missing_from_raw = len(all_ids) - in_both

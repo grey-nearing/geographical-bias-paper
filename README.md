@@ -36,8 +36,8 @@ This repository reproduces the global hydrological ungaugedness, national flood-
 Fluvial flood-hazard inundation maps from **Fathom Global 3.0** are proprietary third-party data and **cannot be redistributed publicly**. Accordingly:
 
 - **Zero Fathom data** (neither raw inundation rasters nor derived expected annual flood-exposure values) is hosted in this GitHub repository or in the public Zenodo archive (`10.5281/zenodo.21416986`).
-- Every non-Fathom analysis, figure, and table in the manuscript reproduces end-to-end from scratch using purely public code and data via `run_reproduce_non_fathom.sh`.
-- Optional Fathom-dependent outputs (**Table 2**, **Fig. 5**, **Figs. S6–S8**, Fathom exposure rows of **Table 1**, and Fathom exposure columns of **Table S2**) are skipped cleanly with an informative message when licensed Fathom data is not present locally. Users with a commercial or academic Fathom v3 license can stage their own basin-aggregated exposure parquet via `03_skill_predictors_and_shap/stage_b0_merge_and_audit_exposure.py` and run the full `stage_d_counterfactuals_bootstrap_s16.py --part all` workflow.
+- Every non-Fathom analysis, figure, and table in the manuscript reproduces end-to-end from scratch using purely public code and data via `run_reproduce.sh` (public mode is enabled automatically whenever Fathom inputs are absent).
+- Optional Fathom-dependent outputs (**Table 2**, **Fig. 5**, **Figs. S6–S8**, Fathom exposure rows of **Table 1**, and Fathom exposure columns of **Table S2**) are skipped cleanly with an informative message when licensed Fathom data is not present locally. Users with a commercial or academic Fathom v3 license can place their basin-aggregated exposure shards in `$GEO_BIAS_DATA_DIR/round2/exposure/shards/` (or `global_basin_exposure_defended_r2.parquet` in `$GEO_BIAS_DATA_DIR/round2/exposure/`) and run the exact same `bash run_reproduce.sh` command to automatically execute the full 14-figure, 7-table reproduction including bootstrap 95% CIs and national $N=1\text{–}20$ gauge siting.
 
 ---
 
@@ -80,13 +80,13 @@ geographical-bias-paper/
 │   ├── stage_d_counterfactuals_bootstrap_s16.py # Table S3 skill stats (public) + optional Fathom
 │   └── stage_e_global_kernelshap.py      # Exact 2^7 Group Shapley + 200-path permutation SHAP
 ├── 04_figures_and_tables/                # Stage 4: Publication figures, tables & verification
-│   ├── build_tables.py                   # Table 1 and Tables S1–S5 (non-Fathom by default)
+│   ├── build_tables.py                   # Table 1, optional Table 2, and Tables S1–S5
 │   ├── generate_main_figures.py          # Figs. 1, 2, 3, 4, 6 (+ optional Fig. 5)
 │   ├── generate_supp_figures.py          # Figs. S1–S5 (+ optional Figs. S6–S8)
 │   └── verify_reproduction.py            # Automated quantitative verification suite
 ├── utils/                                # Shared path, I/O, CAP status, coverage & feature utils
 ├── results/                              # Lightweight non-Fathom reference summaries & Fig. S3
-├── run_reproduce_non_fathom.sh           # One-command full non-Fathom reproduction script
+├── run_reproduce.sh                      # One-command reproduction (public mode & auto Fathom mode)
 ├── DATA_DICTIONARY.md                    # Complete schema guide for Zenodo archives & outputs
 ├── environment.yml                       # Reproducible Conda/Mamba environment
 ├── pyproject.toml
@@ -96,12 +96,12 @@ geographical-bias-paper/
 
 ---
 
-## Quick Start: Full Non-Fathom Reproduction from Scratch
+## Quick Start: End-to-End Reproduction from Scratch
 
 ### System Requirements
 
 - **OS:** Linux (tested on Debian 12 / Ubuntu 22.04+)
-- **CPU / RAM:** 16–32 CPU cores and ≥64 GB RAM recommended (reproduces cleanly in ~3–5 hours on a 32-vCPU / 256 GB `n2-highmem-32` VM; Stage 1 hydrofabric geometry processing peaks near ~40 GB RAM for HydroRIVERS and GRIT).
+- **CPU / RAM:** 16–32 CPU cores and ≥64 GB RAM recommended (reproduces cleanly in ~2–3 hours on a 32-vCPU / 256 GB `n2-highmem-32` VM; Stage 1 hydrofabric geometry processing peaks near ~40 GB RAM for HydroRIVERS and GRIT).
 - **Disk:** ~250 GB free SSD space (for downloading and extracting raw public global hydrofabrics: HydroSHEDS BasinATLAS v10, HydroRIVERS v1.0, MERIT-Basins v0.1, TDX-Hydro + GEOGLOWS v2, and GRIT v0.6).
 
 ### 1. Create the Conda / Mamba Environment
@@ -111,16 +111,16 @@ mamba env create -f environment.yml
 conda activate geographical-bias-paper
 ```
 
-### 2. Download and Extract the Public Zenodo Data Archive (v3.0.0)
+### 2. Download and Extract the Public Zenodo Data Archive
 
-Download the three public data tarballs (~650 MB total) from [Zenodo (`10.5281/zenodo.21416986`)](https://doi.org/10.5281/zenodo.21416986) into a local data directory (e.g., `./data`):
+Download the three public data tarballs (~405 MB total) from [Zenodo (`10.5281/zenodo.21416986`)](https://doi.org/10.5281/zenodo.21416986) into a local data directory (e.g., `./data`):
 
 ```bash
 export GEO_BIAS_DATA_DIR="$PWD/data"
 mkdir -p "$GEO_BIAS_DATA_DIR"
 
 # Or let the reproduction script fetch them automatically with --download-zenodo:
-bash run_reproduce_non_fathom.sh --download-zenodo
+bash run_reproduce.sh --download-zenodo
 ```
 
 If downloading manually, extract all three archives into `$GEO_BIAS_DATA_DIR`:
@@ -131,21 +131,23 @@ tar -xzf 02_hydroatlas_worldpop_and_auxiliary.tar.gz -C "$GEO_BIAS_DATA_DIR"
 tar -xzf 03_ohn_cv_metrics_and_splits.tar.gz -C "$GEO_BIAS_DATA_DIR"
 ```
 
+> **Note on ReachHydro MERIT-Basins Google Drive rate limits:** If ReachHydro's public Google Drive folder hits its 24-hour anonymous download quota during `03_download_merit_and_grades.py`, download MERIT-Basins v0.1 from ReachHydro's official Globus mirror (`origin_id=f349971a-b759-4e38-8bc4-f6ccb057c499`) and export `MERIT_BASINS_LOCAL_DIR=/path/to/merit` before running `run_reproduce.sh`.
+
 See [DATA_DICTIONARY.md](DATA_DICTIONARY.md) for the exact file tree and column schemas inside each archive.
 
 ### 3. Run the End-to-End Pipeline
 
 ```bash
-# Run mathematical unit tests + complete non-Fathom pipeline + automated verification:
-bash run_reproduce_non_fathom.sh
+# Public mode (non-Fathom) — or Full mode automatically if licensed Fathom v3 exposure is staged locally:
+bash run_reproduce.sh
 ```
 
-`run_reproduce_non_fathom.sh` executes four sequential stages:
+`run_reproduce.sh` executes four sequential stages:
 
-1. **Unit tests & Stage 1 (`01_hydrofabric_ungaugedness/`)**: Runs `pytest`, stages the clean 121,819-gauge catalog & WorldPop population table, downloads all four public global hydrofabric families from their official public hosts, runs all 17 hydrofabric configurations plus 4-fabric OOD dissimilarity, and synthesizes master 2D/1D/OOD tables.
-2. **Stage 3 (`03_skill_predictors_and_shap/`)**: Computes 1,034,083-basin coverage & OOD features for the core manuscript tiers (`--core-tiers-only`), verifies HydroBASINS L5–L12 scale invariance, trains all 171 LightGBM skill-predictor meta-models across 43 metrics and 4 regimes, builds the 4-regime Table S3 skill summary (`--part table_s3`), and computes Exact $2^7$ Group Shapley + 200-path antithetic permutation SHAP at $N = 1,000$ global medoids.
-3. **Stage 4 (`04_figures_and_tables/`)**: Generates **Table 1**, **Tables S1–S5**, **Figs. 1, 2, 3, 4, 6**, and **Figs. S1–S5**.
-4. **Automated Verification**: Runs `04_figures_and_tables/verify_reproduction.py`, checking all 10 non-Fathom figures, all 6 tables, and >150 quantitative manuscript values, writing `$GEO_BIAS_DATA_DIR/round2/verification/verification_report.{json,md}`.
+1. **Unit tests & Stage 1 (`01_hydrofabric_ungaugedness/`)**: Runs `pytest`, stages the clean 121,819-gauge catalog & WorldPop population table (plus optional locally staged Fathom exposure), downloads all four public global hydrofabric families from their official public hosts, runs all 17 hydrofabric configurations plus 4-fabric OOD dissimilarity, and synthesizes master 2D/1D/OOD tables.
+2. **Stage 3 (`03_skill_predictors_and_shap/`)**: Computes 1,034,083-basin coverage & OOD features, verifies HydroBASINS L5–L12 scale invariance, trains all 171 LightGBM skill-predictor meta-models across 43 metrics and 4 regimes, builds the 4-regime Table S3 skill summary (plus full exposure counterfactuals, $B=20$ gauge-clustered bootstrap 95% CIs, and national $N=1\text{–}20$ gauge siting when licensed Fathom exposure is staged locally), and computes Exact $2^7$ Group Shapley + 200-path antithetic permutation SHAP at $N = 1,000$ global medoids.
+3. **Stage 4 (`04_figures_and_tables/`)**: Generates **Table 1**, **Tables S1–S5**, **Figs. 1–4, 6**, and **Figs. S1–S5** (plus **Table 2**, **Fig. 5**, and **Figs. S6–S8** when licensed Fathom exposure is staged locally).
+4. **Automated Verification**: Runs `04_figures_and_tables/verify_reproduction.py`, writing `$GEO_BIAS_DATA_DIR/round2/verification/verification_report.{json,md}`.
 
 ---
 
@@ -157,10 +159,10 @@ bash run_reproduce_non_fathom.sh
 | **Fig. 2** (Polygon-size dependence across HydroSHEDS L1–L12 & 6 fine maps) | `04_figures_and_tables/generate_main_figures.py --only fig2` | Yes |
 | **Fig. 3** (Continental land/pop ungaugedness, aridity zones, OOD percentiles) | `04_figures_and_tables/generate_main_figures.py --only fig3` | Yes |
 | **Fig. 4** (National CAP-gap coverage, country ungaugedness & INFORM 2026) | `04_figures_and_tables/generate_main_figures.py --only fig4` | Yes |
-| **Fig. 5** (Flood exposure counterfactuals & INFORM vulnerability) | `04_figures_and_tables/generate_main_figures.py --only fig5` | Requires Fathom v3 license |
+| **Fig. 5** (Flood exposure counterfactuals across gauge tiers & mechanisms) | `04_figures_and_tables/generate_main_figures.py --only fig5` | Requires Fathom v3 license |
 | **Fig. 6** (Exact $2^7$ Group Shapley factor attribution across 12 metrics) | `04_figures_and_tables/generate_main_figures.py --only fig6` | Yes |
 | **Table 1** (Multi-hydrofabric ungaugedness ranges: area, runoff, pop, 1D Q) | `04_figures_and_tables/build_tables.py --only t1` | Yes (excl. 2 Fathom rows) |
-| **Table 2** (Global & CAP-gap annual riverine flood exposure breakdown) | `03_skill_predictors_and_shap/stage_d_counterfactuals_bootstrap_s16.py` | Requires Fathom v3 license |
+| **Table 2** (Forecast skill & global/CAP-gap annual flood exposure counterfactuals) | `04_figures_and_tables/build_tables.py --only t2` | Requires Fathom v3 license |
 | **Fig. S1** (Harmonized 2016–2023 $\Delta$NSE river-network vs. local gauge skill) | `04_figures_and_tables/generate_supp_figures.py --only figs1` | Yes |
 | **Fig. S2** (Top-35 individual features via 200-path permutation SHAP) | `04_figures_and_tables/generate_supp_figures.py --only figs2` | Yes |
 | **Fig. S3** (Latvia conceptual illustration of ungaugedness metrics) | `results/figures/Fig_S3_conceptual_ungaugedness.png` | Yes (pre-rendered schematic) |

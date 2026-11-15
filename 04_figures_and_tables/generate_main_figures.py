@@ -910,7 +910,7 @@ def build_fig5_optional(world_all: gpd.GeoDataFrame, out_dir: Path) -> Path | No
   ax_c = fig.add_subplot(gs_bot[0, 3])
 
   b_tiers = [
-      ('tier_caravan_estreams_34577', 'Tier 1:\nOpen\n(34,577)'),
+      ('tier_caravan_estreams_34577', 'Tier 1:\nCaravan + ES\n(34,577)'),
       ('tier_public_discharge_93827', 'Tier 2:\nPublic Q\n(93,827)'),
       ('tier4_all_publicly_knowable_121819', 'Tier 3:\nDiscoverable\n(121,819)'),
       ('tier5_universal_idealized_ceiling', 'Universal\ngauging\n(1,034,083)'),
@@ -920,49 +920,75 @@ def build_fig5_optional(world_all: gpd.GeoDataFrame, out_dir: Path) -> Path | No
   mechs_b = [
       ('000_global_train_joint', '000_train', '#0072B2', 'Global training alone', -1.5),
       ('010_ft_only_snap', '010_ft_only', '#009E73', 'Local FT alone', -0.5),
-      ('001_da_only_snap', '001_da_only', '#43A2CA', 'Real-time DA alone', 0.5),
-      ('111_all_three_combined_snap', '111_combined', '#E66101', 'Combined (train + FT + DA)', 1.5),
+      ('001_da_only_snap', '001_da_only', '#43A2CA', 'Real-time DA alone (Active)', 0.5),
+      ('111_all_three_combined_snap', '111_combined', '#E66101', 'Combined (train + FT + Active DA)', 1.5),
   ]
+  precomp_b = []
   max_b_top = 0.0
   for mk, b_mk, col, lbl, sh in mechs_b:
     vals = [float(get_sum(tk, mk)['delta_net_nosys115']) / 1e6 for tk, _ in b_tiers]
     lo_e, hi_e = zip(*[get_ci_bounds(f'{tk}__{b_mk}', 'delta_nosys115', v) for (tk, _), v in zip(b_tiers, vals)])
+    precomp_b.append((mk, b_mk, col, lbl, sh, vals, lo_e, hi_e))
+    for v, he in zip(vals, hi_e):
+      max_b_top = max(max_b_top, v + he)
+
+  for mk, b_mk, col, lbl, sh, vals, lo_e, hi_e in precomp_b:
     xs = xb + sh * bar_step
     ax_b.bar(xs, vals, width=wb, color=col, edgecolor='#222222', linewidth=0.4, label=lbl)
     if df_ci is not None and any(x > 0 for x in hi_e):
       ax_b.errorbar(xs, vals, yerr=[lo_e, hi_e], fmt='none', ecolor='#111111', elinewidth=0.65, capsize=1.4, zorder=5)
-    for v, he in zip(vals, hi_e):
-      max_b_top = max(max_b_top, v + he)
+    for i, (v, he) in enumerate(zip(vals, hi_e)):
+      ax_b.text(xs[i], v + he + 0.022 * max(1.0, max_b_top), f'{v:.2f}', ha='center', va='bottom', fontsize=4.0, fontweight='bold', color='#111111')
+
   ax_b.axvline(2.5 * 1.16, color='#78909C', linestyle='--', linewidth=0.7)
   ax_b.set_xticks(xb)
   ax_b.set_xticklabels([lbl for _, lbl in b_tiers], fontsize=5.6, fontweight='bold')
   ax_b.set_ylim(0, max_b_top * 1.28)
+  ax_b.tick_params(axis='y', labelsize=5.9)
   ax_b.set_ylabel('CAP-gap net reduction (M/yr)', fontsize=6.4, fontweight='bold')
   ax_b.set_title('(b) Exposure reduction in CAP-gap countries', fontsize=7.2, fontweight='bold', loc='left', pad=3.5)
-  ax_b.legend(loc='upper left', fontsize=4.8, frameon=True, framealpha=0.95, edgecolor='#CFD8DC')
+  ax_b.legend(loc='upper left', fontsize=4.8, frameon=True, framealpha=0.95, edgecolor='#CFD8DC', handlelength=1.0, borderpad=0.22, labelspacing=0.2)
   ax_b.grid(axis='y', linestyle='--', alpha=0.4, linewidth=0.4)
   sns.despine(ax=ax_b)
 
   c_tiers = [
-      ('tier1a_active_post2016_ccby_8811', '000_global_train_joint', 'Post-2016\nCaravan'),
-      ('tier_caravan_estreams_34577', '111_all_three_combined_snap', 'Tier 1:\nOpen'),
-      ('tier_public_discharge_93827', '111_all_three_combined_snap', 'Tier 2:\nPublic Q'),
-      ('tier4_all_publicly_knowable_121819', '111_all_three_combined_snap', 'Tier 3:\nDisc.'),
-      ('tier5_universal_idealized_ceiling', '111_all_three_combined_snap', 'Universal\ngauging'),
+      ('tier1a_active_post2016_ccby_8811', '000_global_train_joint', None, 'Post-2016\nCaravan\n(8,811)'),
+      ('tier_caravan_estreams_34577', '111_all_three_combined_snap', '111_combined', 'Tier 1:\nCaravan+ES\n(34,577)'),
+      ('tier_public_discharge_93827', '111_all_three_combined_snap', '111_combined', 'Tier 2:\nPublic Q\n(93,827)'),
+      ('tier4_all_publicly_knowable_121819', '111_all_three_combined_snap', '111_combined', 'Tier 3:\nDiscoverable\n(121,819)'),
+      ('tier5_universal_idealized_ceiling', '111_all_three_combined_snap', '111_combined', 'Universal\ngauging\n(1,034,083)'),
   ]
   xc = np.arange(len(c_tiers))
-  w_sys = np.array([float(get_sum(tk, mk)['warned_sys60']) / 1e6 for tk, mk, _ in c_tiers])
-  w_nos = np.array([float(get_sum(tk, mk)['warned_nosys115']) / 1e6 for tk, mk, _ in c_tiers])
+  w_sys = np.array([float(get_sum(tk, mk)['warned_sys60']) / 1e6 for tk, mk, _, _ in c_tiers])
+  w_nos = np.array([float(get_sum(tk, mk)['warned_nosys115']) / 1e6 for tk, mk, _, _ in c_tiers])
   w_tot = w_sys + w_nos
-  ax_c.bar(xc, w_sys, width=0.54, color='#0072B2', edgecolor='#222222', linewidth=0.45, label=f'National alerting ({n_sys})')
-  ax_c.bar(xc, w_nos, width=0.54, bottom=w_sys, color='#D55E00', edgecolor='#222222', linewidth=0.45, label=f'CAP-gap ({n_nosys})')
+  ax_c.bar(xc, w_sys, width=0.54, color='#0072B2', edgecolor='#222222', linewidth=0.45, label=f'Confirmed warning sys. ({n_sys})')
+  ax_c.bar(xc, w_nos, width=0.54, bottom=w_sys, color='#D55E00', edgecolor='#222222', linewidth=0.45, label=f'CAP warning gap ({n_nosys})')
+
+  lo_tot, hi_tot = [], []
+  for i, (tk, mk, b_mk, _) in enumerate(c_tiers):
+    if b_mk is None:
+      lo, hi = get_ci_bounds('baseline_warned_mapped', 'level', w_tot[i])
+    else:
+      lo, hi = get_ci_bounds(f'{tk}__{b_mk}', 'warned_mapped', w_tot[i])
+    lo_tot.append(lo)
+    hi_tot.append(hi)
+  if df_ci is not None and any(x > 0 for x in hi_tot):
+    ax_c.errorbar(xc, w_tot, yerr=[lo_tot, hi_tot], fmt='none', ecolor='#111111', elinewidth=0.75, capsize=2.0, zorder=5)
+
+  for i, (ws, wn, wt, he) in enumerate(zip(w_sys, w_nos, w_tot, hi_tot)):
+    ax_c.text(xc[i], wt + he + 0.025 * w_tot.max(), f'{wt:.1f}M', ha='center', va='bottom', fontsize=5.3, fontweight='bold', color='#222222')
+    ax_c.text(xc[i], ws * 0.5, f'{ws:.1f}', ha='center', va='center', fontsize=4.9, fontweight='bold', color='#ffffff')
+    ax_c.text(xc[i], ws + wn * 0.5, f'{wn:.1f}', ha='center', va='center', fontsize=4.9, fontweight='bold', color='#ffffff')
+
   ax_c.axvline(3.5, color='#78909C', linestyle='--', linewidth=0.7)
   ax_c.set_xticks(xc)
-  ax_c.set_xticklabels([lbl for _, _, lbl in c_tiers], fontsize=5.4, fontweight='bold')
-  ax_c.set_ylim(0, w_tot.max() * 1.24)
+  ax_c.set_xticklabels([lbl for _, _, _, lbl in c_tiers], fontsize=5.4, fontweight='bold')
+  ax_c.set_ylim(0, max(w_tot + np.array(hi_tot)) * 1.24)
+  ax_c.tick_params(axis='y', labelsize=5.9)
   ax_c.set_ylabel('Total exposure forecasted (M/yr)', fontsize=6.4, fontweight='bold')
   ax_c.set_title('(c) Total forecasted exposure', fontsize=7.2, fontweight='bold', loc='left', pad=3.5)
-  ax_c.legend(loc='upper left', fontsize=5.1, frameon=True, framealpha=0.95, edgecolor='#CFD8DC')
+  ax_c.legend(loc='upper left', fontsize=5.1, frameon=True, framealpha=0.95, edgecolor='#CFD8DC', handlelength=1.1, borderpad=0.22)
   ax_c.grid(axis='y', linestyle='--', alpha=0.4, linewidth=0.4)
   sns.despine(ax=ax_c)
 

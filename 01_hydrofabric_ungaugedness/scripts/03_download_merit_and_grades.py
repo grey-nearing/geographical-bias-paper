@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -128,11 +129,59 @@ def _gdrive_download_public(file_id: str, dst: Path, expected_size: int | None =
             print(f"  [retry {attempt+1}/4] {dst.name}: {exc}", flush=True)
         time.sleep(2 * (attempt + 1))
 
-    raise RuntimeError(f"Failed to download Google Drive file {file_id} -> {dst}")
+    raise RuntimeError(
+        f"Failed to download Google Drive file {file_id} -> {dst}. "
+        "Note: ReachHydro's public Google Drive folder enforces a 24-hour anonymous IP download quota. "
+        "If rate-limited, download MERIT-Basins v0.1 from ReachHydro's official Globus mirror "
+        "(https://www.reachhydro.org/home/params/merit-basins, Globus endpoint "
+        "origin_id=f349971a-b759-4e38-8bc4-f6ccb057c499) and point MERIT_BASINS_LOCAL_DIR "
+        "to the directory containing pfaf_*_MERIT_Hydro_v07_Basins_v01.zip (or pfaf_level_01/) "
+        "and coastal_hillslopes/."
+    )
+
+
+def _stage_from_local_mirror() -> None:
+    """Optionally stage pre-downloaded raw ReachHydro MERIT-Basins files from MERIT_BASINS_LOCAL_DIR."""
+    local_dir_env = os.environ.get("MERIT_BASINS_LOCAL_DIR", "").strip()
+    if not local_dir_env:
+        return
+    src_root = Path(local_dir_env)
+    if not src_root.exists():
+        raise FileNotFoundError(f"MERIT_BASINS_LOCAL_DIR does not exist: {src_root}")
+    print(f"[local-mirror] Staging raw ReachHydro MERIT-Basins from {src_root} -> {MERIT_DIR}", flush=True)
+    MERIT_DIR.mkdir(parents=True, exist_ok=True)
+    extract_dir = MERIT_DIR / "pfaf_level_01"
+    extract_dir.mkdir(parents=True, exist_ok=True)
+    hs_dir = MERIT_DIR / "coastal_hillslopes"
+    hs_dir.mkdir(parents=True, exist_ok=True)
+
+    # Link/copy any pfaf zip files
+    for _, name in MERIT_PFAF_ZIPS:
+        src_z = src_root / name
+        dst_z = MERIT_DIR / name
+        if src_z.exists() and not dst_z.exists():
+            os.symlink(src_z.resolve(), dst_z)
+
+    # Link/copy any pre-extracted pfaf_level_01 shapefiles
+    src_pfaf = src_root / "pfaf_level_01"
+    if src_pfaf.is_dir():
+        for f in src_pfaf.iterdir():
+            dst_f = extract_dir / f.name
+            if f.is_file() and not dst_f.exists():
+                os.symlink(f.resolve(), dst_f)
+
+    # Link/copy coastal_hillslopes files
+    src_hs = src_root / "coastal_hillslopes"
+    if src_hs.is_dir():
+        for f in src_hs.iterdir():
+            dst_f = hs_dir / f.name
+            if f.is_file() and not dst_f.exists():
+                os.symlink(f.resolve(), dst_f)
 
 
 def download_merit_basins() -> None:
     MERIT_DIR.mkdir(parents=True, exist_ok=True)
+    _stage_from_local_mirror()
     extract_dir = MERIT_DIR / "pfaf_level_01"
     extract_dir.mkdir(parents=True, exist_ok=True)
 

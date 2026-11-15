@@ -143,6 +143,7 @@ def _load_worldpop_pop(all_ids: list[str]) -> pd.Series:
       CANON_DIR / 'attributes' / 'hydrosheds_l12_worldpop_population.parquet',
       HYDRO_DATA_DIR / 'exposure' / 'hydrosheds_l12_worldpop_population.parquet',
       REPO_DIR / '01_hydrofabric_ungaugedness' / 'data' / 'exposure' / 'hydrosheds_l12_worldpop_population.parquet',
+      CANON_DIR / 'round2' / 'exposure' / 'global_basin_exposure_defended_r2.parquet',
   ]
   for p in candidates:
     if p.exists():
@@ -255,6 +256,101 @@ def build_table1(out_dir: Path) -> Path:
   out_path = out_dir / 'Table_1_ungaugedness_ranges.csv'
   df_out.to_csv(out_path, index=False)
   print(f'  Saved {out_path} ({len(df_out)} rows; Fathom exposure rows included={has_exposure})', flush=True)
+  return out_path
+
+
+# ==============================================================================
+# TABLE 2 (OPTIONAL — Requires Licensed Fathom v3 Counterfactual Outputs)
+# ==============================================================================
+def build_table2(out_dir: Path) -> Path | None:
+  sum_csv = CF_DIR / 'multi_mechanism_tiered_exposure_r2.csv'
+  if not sum_csv.exists():
+    print(
+        f'[Table 2] SKIPPED: Licensed Fathom v3 counterfactual summary not found at {sum_csv}.',
+        flush=True,
+    )
+    return None
+
+  print('[Table 2] Building optional Fathom v3 forecast-skill & exposure counterfactual table...', flush=True)
+  df = pd.read_csv(sum_csv)
+  boot_csv = CF_DIR / 'bootstrap_table1_fig3_ci95_r2.csv'
+  df_ci = pd.read_csv(boot_csv) if boot_csv.exists() else None
+
+  def _ci(scen: str, metric: str) -> tuple[float, float]:
+    if df_ci is None:
+      return (np.nan, np.nan)
+    sub = df_ci[(df_ci['scenario'] == scen) & (df_ci['metric'] == metric)]
+    if sub.empty:
+      return (np.nan, np.nan)
+    return (float(sub.iloc[0]['boot_p025']) / 1e6, float(sub.iloc[0]['boot_p975']) / 1e6)
+
+  tier_specs = [
+      ('tier1a_active_post2016_ccby_8811', 'Baseline: Post-2016 Caravan (8,811 / 8,075 stations)'),
+      ('tier_caravan_estreams_34577', 'Tier 1: Standardized Open Compilations (34,577)'),
+      ('tier_public_discharge_93827', 'Tier 2: Confirmed Public Discharge Records (93,827)'),
+      ('tier4_all_publicly_knowable_121819', 'Tier 3: All Publicly Discoverable Gauges (121,819)'),
+      ('tier5_universal_idealized_ceiling', 'Universal Gauging Ceiling (1,034,083 watersheds)'),
+  ]
+  mech_specs = [
+      ('000_global_train_joint', '000_train', 'Global training alone'),
+      ('010_ft_only_snap', '010_ft_only', 'Local fine-tuning (FT) alone'),
+      ('001_da_only_snap', '001_da_only', 'Real-time data assimilation (DA) alone'),
+      ('111_all_three_combined_snap', '111_combined', 'Combined (global training + FT + DA)'),
+  ]
+
+  rows = []
+  for tk, t_lbl in tier_specs:
+    for mk, b_mk, m_lbl in mech_specs:
+      sub = df[(df['tier_key'] == tk) & (df['mechanism'] == mk)]
+      if sub.empty:
+        continue
+      r = sub.iloc[0]
+      if tk == 'tier1a_active_post2016_ccby_8811' and mk == '000_global_train_joint':
+        dg_lo, dg_hi = (0.0, 0.0)
+        dc_lo, dc_hi = (0.0, 0.0)
+        wg_lo, wg_hi = _ci('baseline_warned_global', 'level')
+        wc_lo, wc_hi = _ci('baseline_warned_nosys115', 'level')
+      else:
+        dg_lo, dg_hi = _ci(f'{tk}__{b_mk}', 'delta_global')
+        dc_lo, dc_hi = _ci(f'{tk}__{b_mk}', 'delta_nosys115')
+        wg_lo, wg_hi = _ci(f'{tk}__{b_mk}', 'warned_global')
+        wc_lo, wc_hi = _ci(f'{tk}__{b_mk}', 'warned_nosys115')
+
+      rows.append({
+          'tier_key': tk,
+          'tier_label': t_lbl,
+          'mechanism': mk,
+          'mechanism_label': m_lbl,
+          'n_snap_all': int(r['n_snap_all']),
+          'n_snap_active': int(r['n_snap_active']),
+          'r5_med_pct': round(float(r['r5_med_pct']), 4),
+          'NSE_med': round(float(r['NSE_med']), 4),
+          'E_total_global_M_yr': round(float(r['E_total_global']) / 1e6, 4),
+          'E_total_sys60_M_yr': round(float(r['E_total_sys60']) / 1e6, 4),
+          'E_total_nosys115_M_yr': round(float(r['E_total_nosys115']) / 1e6, 4),
+          'warned_global_M_yr': round(float(r['warned_global']) / 1e6, 4),
+          'warned_global_ci95_lo_M_yr': round(wg_lo, 4) if np.isfinite(wg_lo) else np.nan,
+          'warned_global_ci95_hi_M_yr': round(wg_hi, 4) if np.isfinite(wg_hi) else np.nan,
+          'pct_warned_global': round(float(r['pct_warned_global']), 4),
+          'delta_net_global_M_yr': round(float(r['delta_net_global']) / 1e6, 4),
+          'delta_net_global_ci95_lo_M_yr': round(dg_lo, 4) if np.isfinite(dg_lo) else np.nan,
+          'delta_net_global_ci95_hi_M_yr': round(dg_hi, 4) if np.isfinite(dg_hi) else np.nan,
+          'pct_unw_closed_global': round(float(r['pct_unw_closed_net_global']), 4),
+          'warned_nosys115_M_yr': round(float(r['warned_nosys115']) / 1e6, 4),
+          'warned_nosys115_ci95_lo_M_yr': round(wc_lo, 4) if np.isfinite(wc_lo) else np.nan,
+          'warned_nosys115_ci95_hi_M_yr': round(wc_hi, 4) if np.isfinite(wc_hi) else np.nan,
+          'delta_net_nosys115_M_yr': round(float(r['delta_net_nosys115']) / 1e6, 4),
+          'delta_net_nosys115_ci95_lo_M_yr': round(dc_lo, 4) if np.isfinite(dc_lo) else np.nan,
+          'delta_net_nosys115_ci95_hi_M_yr': round(dc_hi, 4) if np.isfinite(dc_hi) else np.nan,
+          'pct_unw_closed_nosys115': round(float(r['pct_unw_closed_net_nosys115']), 4),
+          'warned_sys60_M_yr': round(float(r['warned_sys60']) / 1e6, 4),
+          'delta_net_sys60_M_yr': round(float(r['delta_net_sys60']) / 1e6, 4),
+      })
+
+  df_out = pd.DataFrame(rows)
+  out_path = out_dir / 'Table_2_forecast_skill_and_exposure.csv'
+  df_out.to_csv(out_path, index=False)
+  print(f'  Saved {out_path} ({len(df_out)} rows; bootstrap CIs included={df_ci is not None})', flush=True)
   return out_path
 
 
@@ -727,22 +823,23 @@ def build_table_s5(out_dir: Path) -> Path:
 
 
 def main() -> None:
-  parser = argparse.ArgumentParser(description='Build publication tables (Table 1 and Tables S1–S5; Fathom-free).')
+  parser = argparse.ArgumentParser(description='Build publication tables (Table 1, optional Table 2, and Tables S1–S5).')
   parser.add_argument('--out-dir', type=str, default=str(DEFAULT_OUT_DIR))
   parser.add_argument(
       '--only',
       type=str,
       default='',
-      help='Optional comma-separated subset of tables: t1,ts1,ts2,ts3,ts4,ts5',
+      help='Optional comma-separated subset of tables: t1,t2,ts1,ts2,ts3,ts4,ts5',
   )
   args = parser.parse_args()
 
   out_dir = Path(args.out_dir)
   out_dir.mkdir(parents=True, exist_ok=True)
-  selected = {x.strip().lower() for x in args.only.split(',') if x.strip()} if args.only else {'t1', 'ts1', 'ts2', 'ts3', 'ts4', 'ts5'}
+  selected = {x.strip().lower() for x in args.only.split(',') if x.strip()} if args.only else {'t1', 't2', 'ts1', 'ts2', 'ts3', 'ts4', 'ts5'}
 
   builders = [
       ('t1', build_table1),
+      ('t2', build_table2),
       ('ts1', build_table_s1),
       ('ts2', build_table_s2),
       ('ts3', build_table_s3),

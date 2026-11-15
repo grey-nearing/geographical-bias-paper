@@ -42,6 +42,13 @@ EXPECTED_FIGURES = [
     'Fig_S5_global_predicted_skill.png',
 ]
 
+EXPECTED_FATHOM_FIGURES = [
+    'Fig_5_exposure_counterfactuals.png',
+    'Fig_S6_exposure_and_warnings.png',
+    'Fig_S7_data_bias_gap.png',
+    'Fig_S8_national_gauge_siting.png',
+]
+
 EXPECTED_TABLES = [
     'Table_1_ungaugedness_ranges.csv',
     'Table_S1_gauge_status.csv',
@@ -84,8 +91,9 @@ class Verifier:
     self.check(group, name, actual == expected, actual, expected, note)
 
 
-def verify_figures(v: Verifier, fig_dir: Path) -> None:
-  for fname in EXPECTED_FIGURES:
+def verify_figures(v: Verifier, fig_dir: Path, with_fathom: bool = False) -> None:
+  targets = list(EXPECTED_FIGURES) + (list(EXPECTED_FATHOM_FIGURES) if with_fathom else [])
+  for fname in targets:
     p = fig_dir / fname
     exists = p.exists()
     size_kb = p.stat().st_size / 1024.0 if exists else 0.0
@@ -98,7 +106,7 @@ def verify_figures(v: Verifier, fig_dir: Path) -> None:
     )
 
 
-def verify_table1(v: Verifier, table_dir: Path) -> None:
+def verify_table1(v: Verifier, table_dir: Path, with_fathom: bool = False) -> None:
   p = table_dir / 'Table_1_ungaugedness_ranges.csv'
   if not p.exists():
     v.check('Table 1', 'file_exists', False, 'MISSING', str(p))
@@ -120,6 +128,11 @@ def verify_table1(v: Verifier, table_dir: Path) -> None:
       ('U_net_Eq4', 'population', (88.1, 95.0), (72.3, 88.2), (61.1, 83.4)),
       ('U_net_1d', 'Q_ds', (44.8, 53.5), (15.7, 21.6), (9.5, 11.7)),
   ]
+  if with_fathom:
+    expectations.extend([
+        ('U_never', 'exposure_eae', (92.0, 92.2), (42.7, 43.7), (23.4, 25.4)),
+        ('U_net_Eq4', 'exposure_eae', (94.6, 97.7), (65.8, 86.6), (53.0, 81.4)),
+    ])
   for metric, weight, t1, t2, t3 in expectations:
     try:
       r = _row(metric, weight)
@@ -129,6 +142,86 @@ def verify_table1(v: Verifier, table_dir: Path) -> None:
     for prefix, (exp_lo, exp_hi) in [('tier1', t1), ('tier2', t2), ('tier3', t3)]:
       v.check_close('Table 1', f'{metric}.{weight}.{prefix}_min', float(r[f'{prefix}_min_pct']), exp_lo, atol=0.15)
       v.check_close('Table 1', f'{metric}.{weight}.{prefix}_max', float(r[f'{prefix}_max_pct']), exp_hi, atol=0.15)
+
+
+def verify_fathom_outputs(v: Verifier, table_dir: Path, cf_dir: Path, s16_dir: Path) -> None:
+  """Verifies optional licensed Fathom v3 outputs (Table 2, Table S2 exposure cols, bootstrap CIs, S1.6)."""
+  # Table 2
+  t2_p = table_dir / 'Table_2_forecast_skill_and_exposure.csv'
+  if not t2_p.exists():
+    v.check('Table 2 (Fathom)', 'file_exists', False, 'MISSING', str(t2_p))
+  else:
+    df = pd.read_csv(t2_p)
+
+    def _r(tk: str, mk: str) -> pd.Series:
+      sub = df[(df['tier_key'] == tk) & (df['mechanism'] == mk)]
+      if len(sub) != 1:
+        raise KeyError(f'Missing {tk} / {mk}')
+      return sub.iloc[0]
+
+    b = _r('tier1a_active_post2016_ccby_8811', '000_global_train_joint')
+    v.check_close('Table 2 (Fathom)', 'E_total_global_M_yr', float(b['E_total_global_M_yr']), 29.54, atol=0.05)
+    v.check_close('Table 2 (Fathom)', 'E_total_sys60_M_yr', float(b['E_total_sys60_M_yr']), 20.03, atol=0.05)
+    v.check_close('Table 2 (Fathom)', 'E_total_nosys115_M_yr', float(b['E_total_nosys115_M_yr']), 9.19, atol=0.05)
+    v.check_close('Table 2 (Fathom)', 'baseline.warned_global_M_yr', float(b['warned_global_M_yr']), 8.43, atol=0.35)
+    v.check_close('Table 2 (Fathom)', 'baseline.pct_warned_global', float(b['pct_warned_global']), 28.53, atol=1.2)
+    v.check_close('Table 2 (Fathom)', 'baseline.warned_nosys115_M_yr', float(b['warned_nosys115_M_yr']), 2.53, atol=0.15)
+
+    checks_t2 = [
+        ('tier_caravan_estreams_34577', '111_all_three_combined_snap', 'delta_net_global_M_yr', 0.18, 0.12),
+        ('tier_public_discharge_93827', '111_all_three_combined_snap', 'delta_net_global_M_yr', 0.92, 0.25),
+        ('tier4_all_publicly_knowable_121819', '000_global_train_joint', 'delta_net_global_M_yr', 0.86, 0.25),
+        ('tier4_all_publicly_knowable_121819', '001_da_only_snap', 'delta_net_global_M_yr', 0.37, 0.12),
+        ('tier4_all_publicly_knowable_121819', '111_all_three_combined_snap', 'delta_net_global_M_yr', 1.32, 0.30),
+        ('tier4_all_publicly_knowable_121819', '111_all_three_combined_snap', 'delta_net_nosys115_M_yr', 0.32, 0.10),
+        ('tier5_universal_idealized_ceiling', '000_global_train_joint', 'delta_net_global_M_yr', 2.25, 0.45),
+        ('tier5_universal_idealized_ceiling', '000_global_train_joint', 'delta_net_nosys115_M_yr', 0.64, 0.18),
+        ('tier5_universal_idealized_ceiling', '010_ft_only_snap', 'delta_net_global_M_yr', 0.50, 0.25),
+        ('tier5_universal_idealized_ceiling', '001_da_only_snap', 'delta_net_global_M_yr', 2.91, 0.45),
+        ('tier5_universal_idealized_ceiling', '001_da_only_snap', 'delta_net_nosys115_M_yr', 0.85, 0.18),
+        ('tier5_universal_idealized_ceiling', '111_all_three_combined_snap', 'warned_global_M_yr', 13.86, 0.60),
+        ('tier5_universal_idealized_ceiling', '111_all_three_combined_snap', 'delta_net_global_M_yr', 5.43, 0.55),
+        ('tier5_universal_idealized_ceiling', '111_all_three_combined_snap', 'pct_unw_closed_global', 25.70, 2.5),
+        ('tier5_universal_idealized_ceiling', '111_all_three_combined_snap', 'delta_net_nosys115_M_yr', 1.64, 0.25),
+        ('tier5_universal_idealized_ceiling', '111_all_three_combined_snap', 'pct_unw_closed_nosys115', 24.62, 3.0),
+    ]
+    for tk, mk, col, exp, tol in checks_t2:
+      try:
+        row = _r(tk, mk)
+        v.check_close('Table 2 (Fathom)', f'{tk[:18]}.{mk[:12]}.{col}', float(row[col]), exp, atol=tol)
+      except KeyError as e:
+        v.check('Table 2 (Fathom)', f'{tk}.{mk}', False, str(e), 'row present')
+
+  # Table S2 Fathom columns
+  ts2_p = table_dir / 'Table_S2_175territories.csv'
+  if ts2_p.exists():
+    df_s2 = pd.read_csv(ts2_p)
+    has_etot = 'E_total' in df_s2.columns
+    v.check('Table S2 (Fathom)', 'E_total_col_present', has_etot, has_etot, True)
+    if has_etot:
+      v.check_close('Table S2 (Fathom)', 'mapped_E_total_M_yr', float(df_s2['E_total'].sum()) / 1e6, 29.22, atol=0.05)
+      v.check_close('Table S2 (Fathom)', 'sys60_E_total_M_yr', float(df_s2.loc[df_s2['has_system'], 'E_total'].sum()) / 1e6, 20.03, atol=0.05)
+      v.check_close('Table S2 (Fathom)', 'nosys115_E_total_M_yr', float(df_s2.loc[~df_s2['has_system'], 'E_total'].sum()) / 1e6, 9.19, atol=0.05)
+
+  # Bootstrap 95% CIs
+  boot_p = cf_dir / 'bootstrap_table1_fig3_ci95_r2.csv'
+  if not boot_p.exists():
+    v.check('Bootstrap (Fathom)', 'ci95_file_exists', False, 'MISSING', str(boot_p))
+  else:
+    df_b = pd.read_csv(boot_p)
+    v.check('Bootstrap (Fathom)', 'ci95_nonempty', len(df_b) >= 40, len(df_b), '>= 40 rows')
+    v.check('Bootstrap (Fathom)', 'ci95_ordered', bool((df_b['boot_p025'] <= df_b['boot_p975']).all()), 'all p025<=p975', 'all p025<=p975')
+
+  # S1.6 National N=1..20 Gauge Siting
+  s16_p = s16_dir / 'country_joint_n_gauge_r2.csv'
+  if not s16_p.exists():
+    v.check('S1.6 Siting (Fathom)', 'file_exists', False, 'MISSING', str(s16_p))
+  else:
+    df_nat = pd.read_csv(s16_p)
+    v.check_equal('S1.6 Siting (Fathom)', 'n_exposed_countries', len(df_nat), 173)
+    for N, exp_sum, exp_med in [(1, 0.20, 0.89), (5, 0.46, 2.76), (10, 0.65, 4.02), (20, 0.88, 5.69)]:
+      v.check_close('S1.6 Siting (Fathom)', f'N{N}_combined_sum_M_yr', float(df_nat[f'N={N}_Combined_Dom'].sum()) / 1e6, exp_sum, atol=0.12)
+      v.check_close('S1.6 Siting (Fathom)', f'N{N}_combined_med_pct', float(df_nat[f'N={N}_Combined_Dom_PctBase'].median()), exp_med, atol=0.60)
 
 
 def verify_table_s1(v: Verifier, table_dir: Path) -> None:
@@ -308,35 +401,45 @@ def verify_shap_and_cv(v: Verifier, shap_dir: Path, fig_dir: Path) -> None:
 
 
 def main() -> None:
-  parser = argparse.ArgumentParser(description='Verify full non-Fathom reproduction of figures, tables, and headline numbers.')
+  parser = argparse.ArgumentParser(description='Verify full reproduction of figures, tables, and headline numbers.')
   parser.add_argument('--fig-dir', type=str, default=str(CANON_DIR / 'round2' / 'figures'))
   parser.add_argument('--table-dir', type=str, default=str(CANON_DIR / 'round2' / 'tables'))
   parser.add_argument('--shap-dir', type=str, default=str(CANON_DIR / 'round2' / 'shap'))
+  parser.add_argument('--cf-dir', type=str, default=str(CANON_DIR / 'round2' / 'counterfactuals'))
+  parser.add_argument('--s16-dir', type=str, default=str(CANON_DIR / 'round2' / 's16_gauge_placement'))
   parser.add_argument('--out-dir', type=str, default=str(CANON_DIR / 'round2' / 'verification'))
+  parser.add_argument('--with-fathom', action='store_true', help='Also verify optional licensed Fathom v3 figures, tables, bootstrap CIs & S1.6 siting.')
   args = parser.parse_args()
 
   fig_dir = Path(args.fig_dir)
   table_dir = Path(args.table_dir)
   shap_dir = Path(args.shap_dir)
+  cf_dir = Path(args.cf_dir)
+  s16_dir = Path(args.s16_dir)
   out_dir = Path(args.out_dir)
   out_dir.mkdir(parents=True, exist_ok=True)
 
   v = Verifier()
-  verify_figures(v, fig_dir)
-  verify_table1(v, table_dir)
+  verify_figures(v, fig_dir, with_fathom=args.with_fathom)
+  verify_table1(v, table_dir, with_fathom=args.with_fathom)
   verify_table_s1(v, table_dir)
   verify_table_s2(v, table_dir)
   verify_table_s3(v, table_dir)
   verify_table_s4(v, table_dir)
   verify_table_s5(v, table_dir)
   verify_shap_and_cv(v, shap_dir, fig_dir)
+  if args.with_fathom:
+    verify_fathom_outputs(v, table_dir, cf_dir, s16_dir)
 
   n_total = len(v.checks)
   n_pass = sum(1 for c in v.checks if c['passed'])
   n_fail = n_total - n_pass
 
+  mode_label = 'Full Reproduction (Public + Licensed Fathom v3)' if args.with_fathom else 'Public Non-Fathom Reproduction'
   report = {
       'summary': {
+          'mode': mode_label,
+          'with_fathom': bool(args.with_fathom),
           'passed': n_fail == 0,
           'n_total': n_total,
           'n_pass': n_pass,
@@ -348,7 +451,7 @@ def main() -> None:
   json_path.write_text(json.dumps(report, indent=2))
 
   md_lines = [
-      '# Non-Fathom Reproduction Verification Report',
+      f'# {mode_label} Verification Report',
       '',
       f'**Overall status:** `{"PASS" if n_fail == 0 else "FAIL"}` ({n_pass}/{n_total} checks passed)',
       '',

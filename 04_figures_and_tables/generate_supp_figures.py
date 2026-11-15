@@ -438,60 +438,90 @@ def build_optional_fathom_supp_figs(out_dir: Path, targets: set[str]) -> None:
       if 'figs6' in targets:
         print('[Fig S6] Generating optional exposure & alerting coverage figure...', flush=True)
         _set_pub_rc(7.3)
-        df_c_exp = df_c[(df_c['country_name'] != 'Greenland') & (df_c['E_total'] > 0)].copy()
+        n_sys = int(df_c['has_system'].sum())
+        n_nosys = int((~df_c['has_system']).sum())
+        df_c_exp = df_c[df_c['E_total'] > 0].copy()
         glb_tot = float(df_b['E_total'].sum())
         glb_warn = float(df_b['warned_t1a'].sum())
         rho_ze, p_ze = spearmanr(df_c_exp['zero_up_pct_t4'], df_c_exp['E_total'])
 
-        fig = plt.figure(figsize=(9.2, 6.0), dpi=SAVE_DPI)
-        gs = fig.add_gridspec(2, 2, wspace=0.20, hspace=0.34, left=0.09, right=0.98, top=0.93, bottom=0.09)
+        fig = plt.figure(figsize=(NATURE_W, NATURE_W * 0.72), dpi=SAVE_DPI, facecolor='#ffffff')
+        gs = gridspec.GridSpec(2, 2, height_ratios=[1.0, 1.05], hspace=0.28, wspace=0.14, left=0.105, right=0.985, top=0.94, bottom=0.095)
+
         ax_a = fig.add_subplot(gs[0, 0])
-        world['sys_grp'] = world['map_name'].map(dict(zip(df_c['country_name'], df_c['has_system'])))
-        world[world['sys_grp'].isna()].plot(ax=ax_a, color='#E2E8F0', edgecolor='#CBD5E1', linewidth=0.25)
-        world[world['sys_grp'] == True].plot(ax=ax_a, color='#2171B5', edgecolor='#0F172A', linewidth=0.25, alpha=0.92)
-        world[world['sys_grp'] == False].plot(ax=ax_a, color='#E67E22', edgecolor='#0F172A', linewidth=0.25, alpha=0.92)
-        ax_a.set_xlim(-175, 180)
+        w_map = world.copy()
+        w_map['has_cap'] = w_map['map_name'].map(df_c.set_index('country_name')['has_system'].to_dict())
+        world.plot(ax=ax_a, color='#ECEFF1', edgecolor='#B0BEC5', linewidth=0.20)
+        w_map[w_map['has_cap'] == True].plot(ax=ax_a, color='#0072B2', edgecolor='#263238', linewidth=0.18, alpha=0.86)
+        w_map[w_map['has_cap'] == False].plot(ax=ax_a, color='#D55E00', edgecolor='#263238', linewidth=0.18, alpha=0.84)
+        ax_a.set_xlim(-180, 180)
         ax_a.set_ylim(-58, 84)
         ax_a.set_axis_off()
-        ax_a.set_title('(a) National flood-alerting coverage', fontsize=9.5, fontweight='bold', loc='left', pad=6)
+        ax_a.set_title('(a) National flood warning systems', fontsize=7.9, fontweight='bold', loc='left', pad=3)
+        ax_a.legend(
+            handles=[
+                Patch(facecolor='#0072B2', edgecolor='#263238', alpha=0.86, label=f'Confirmed system ({n_sys} territories)'),
+                Patch(facecolor='#D55E00', edgecolor='#263238', alpha=0.84, label=f'No confirmed system ({n_nosys} territories)'),
+            ],
+            loc='lower left', frameon=True, framealpha=0.94, fontsize=5.8,
+        )
 
         pts = df_b.dropna(subset=['lat', 'lon'])
-        b_zero = pts[pts['E_total'] <= 0]
-        b_pos = pts[pts['E_total'] > 0].sort_values('E_total').copy()
+        z_pts = pts[pts['E_total'] <= 0]
+        p_pts = pts[pts['E_total'] > 0].sort_values('E_total', ascending=True).copy()
+        p_pts['pct_warned'] = (100.0 * p_pts['warned_t1a'] / p_pts['E_total']).clip(0.0, 100.0)
+        cmap_exp = mcolors.LinearSegmentedColormap.from_list('YlGnBu_trunc', plt.get_cmap('YlGnBu')(np.linspace(0.24, 1.0, 256)))
+        vmax_e = max(1e3, float(np.nanpercentile(p_pts['E_total'].values, 99.5)))
+        vmin_e = max(0.1, vmax_e / 1e4)
+
         ax_b = fig.add_subplot(gs[0, 1])
-        world.plot(ax=ax_b, color='#EAECEE', edgecolor='#BFC9CA', linewidth=0.22)
-        ax_b.scatter(b_zero['lon'], b_zero['lat'], s=0.12, c='#E5E7EB', alpha=0.55, rasterized=True)
-        sc_b = ax_b.scatter(b_pos['lon'], b_pos['lat'], s=0.28, c=b_pos['E_total'].values, cmap='YlGnBu', norm=mcolors.LogNorm(vmin=0.1, vmax=2000.0), alpha=0.90, edgecolors='none', rasterized=True)
-        ax_b.set_xlim(-175, 180)
+        world.plot(ax=ax_b, color='#F4F6F8', edgecolor='none', zorder=1)
+        ax_b.scatter(z_pts['lon'], z_pts['lat'], s=0.04, marker='.', color='#D8DFE6', linewidths=0, rasterized=True, zorder=2)
+        sc_b = ax_b.scatter(p_pts['lon'], p_pts['lat'], c=np.maximum(p_pts['E_total'].values, vmin_e), s=0.08, marker='.', cmap=cmap_exp, norm=mcolors.LogNorm(vmin=vmin_e, vmax=vmax_e), linewidths=0, rasterized=True, zorder=3)
+        world.boundary.plot(ax=ax_b, color='#455A64', linewidth=0.18, zorder=4)
+        cb_b = fig.colorbar(sc_b, ax=ax_b, orientation='horizontal', fraction=0.052, pad=0.02, shrink=0.84, extend='both')
+        cb_b.set_label(f'Flood exposure >10 cm (persons/yr; total {glb_tot/1e6:.2f}M/yr)', fontsize=6.1, fontweight='bold')
+        cb_b.ax.tick_params(labelsize=5.8)
+        ax_b.set_xlim(-180, 180)
         ax_b.set_ylim(-58, 84)
         ax_b.set_axis_off()
-        ax_b.set_title('(b) Expected annual flood exposure (defended)', fontsize=9.5, fontweight='bold', loc='left', pad=6)
-        cb_b = fig.colorbar(sc_b, ax=ax_b, orientation='horizontal', fraction=0.055, pad=0.04, shrink=0.70, extend='both')
-        cb_b.set_label(f'Flood exposure >10 cm (persons/yr; total {glb_tot/1e6:.2f}M/yr)', fontsize=7.4, fontweight='bold')
+        ax_b.set_title('(b) Expected annual flood exposure (defended)', fontsize=7.9, fontweight='bold', loc='left', pad=3)
 
         ax_c = fig.add_subplot(gs[1, 0])
-        for hs, col, mk, lbl in [(True, '#2171B5', 'o', 'Established system'), (False, '#E67E22', '^', 'CAP-gap territory')]:
+        for hs, lbl, col, mk in [(True, 'Confirmed system', '#0072B2', 'o'), (False, 'No confirmed system', '#D55E00', '^')]:
           s = df_c_exp[df_c_exp['has_system'] == hs]
-          ax_c.scatter(s['zero_up_pct_t4'], s['E_total'], s=20, c=col, marker=mk, edgecolor='#0F172A', linewidth=0.45, alpha=0.88, label=lbl)
+          ax_c.scatter(s['zero_up_pct_t4'], s['E_total'], s=15, color=col, marker=mk, alpha=0.78, edgecolor='black', linewidth=0.35, label=lbl)
+        xg = np.linspace(0, 100, 200)
+        slope, ic = np.polyfit(df_c_exp['zero_up_pct_t4'].values, np.log10(np.maximum(df_c_exp['E_total'].values, 1.0)), 1)
+        ax_c.plot(xg, 10 ** (ic + slope * xg), color='#263238', ls='--', lw=0.95)
+        halo = [pe.withStroke(linewidth=2.0, foreground='white')]
+        for cname, ltxt, dx, dy in [('India', 'India', 7, 3), ('Bangladesh', 'Bangladesh', -46, -15), ('China', 'China', -28, -16), ('Brazil', 'Brazil', -36, -12), ('Nigeria', 'Nigeria', 5, 7), ('United States of America', 'USA', -24, -14)]:
+          rc = df_c_exp[df_c_exp['country_name'] == cname]
+          if not rc.empty:
+            ax_c.annotate(ltxt, xy=(float(rc['zero_up_pct_t4'].iloc[0]), float(rc['E_total'].iloc[0])), xytext=(dx, dy), textcoords='offset points', fontsize=5.8, fontweight='bold', color='#263238', path_effects=halo, arrowprops=dict(arrowstyle='-', color='#546E7A', lw=0.45))
         ax_c.set_yscale('log')
-        ax_c.text(0.03, 0.05, f'Spearman $r_s = {rho_ze:+.2f}$ ($p = {_fmt_sci_tex(p_ze)}$, N = {len(df_c_exp)})', transform=ax_c.transAxes, fontsize=7.0, bbox=dict(boxstyle='round,pad=0.24', facecolor='#F8FAFC', edgecolor='#CBD5E1'))
-        ax_c.set_xlabel('Watersheds with zero upstream gauges (%)', fontsize=8.0, fontweight='bold')
-        ax_c.set_ylabel('Flood exposure (persons/yr)', fontsize=8.0, fontweight='bold')
-        ax_c.set_title('(c) Zero upstream gauges vs. flood exposure', fontsize=9.5, fontweight='bold', loc='left', pad=6)
-        ax_c.legend(loc='upper left', fontsize=6.8)
+        ax_c.set_xlim(-4, 108)
+        ax_c.set_ylim(max(1.0, df_c_exp['E_total'].min() * 0.5), df_c_exp['E_total'].max() * 12.0)
+        ax_c.text(0.03, 0.06, f'Spearman $r_s = {rho_ze:+.2f}$ ($p = {_fmt_sci_tex(p_ze)}$, $N = {len(df_c_exp)}$)', transform=ax_c.transAxes, fontsize=6.0, bbox=dict(boxstyle='round,pad=0.20', facecolor='#FFF8E1', edgecolor='#B0BEC5', alpha=0.94))
+        ax_c.legend(loc='upper left', frameon=True, framealpha=0.95, fontsize=5.8)
+        ax_c.set_xlabel('Watersheds with zero upstream gauges (%)', fontsize=6.7, fontweight='bold')
+        ax_c.set_ylabel('Flood exposure (persons/yr)', fontsize=6.9, fontweight='bold')
+        ax_c.set_title('(c) Zero upstream gauges vs. flood exposure', fontsize=7.9, fontweight='bold', loc='left', pad=3)
+        ax_c.grid(True, which='both', ls='--', alpha=0.38)
         sns.despine(ax=ax_c)
 
         ax_d = fig.add_subplot(gs[1, 1])
-        world.plot(ax=ax_d, color='#EAECEE', edgecolor='#BFC9CA', linewidth=0.22)
-        ax_d.scatter(b_zero['lon'], b_zero['lat'], s=0.12, c='#E5E7EB', alpha=0.55, rasterized=True)
-        b_pos['pct_fc'] = (b_pos['warned_t1a'] / b_pos['E_total']) * 100.0
-        sc_d = ax_d.scatter(b_pos['lon'], b_pos['lat'], s=0.28, c=b_pos['pct_fc'].values, cmap='viridis', vmin=5, vmax=55, alpha=0.90, edgecolors='none', rasterized=True)
-        ax_d.set_xlim(-175, 180)
+        world.plot(ax=ax_d, color='#F4F6F8', edgecolor='none', zorder=1)
+        ax_d.scatter(z_pts['lon'], z_pts['lat'], s=0.04, marker='.', color='#D8DFE6', linewidths=0, rasterized=True, zorder=2)
+        sc_d = ax_d.scatter(p_pts['lon'], p_pts['lat'], c=p_pts['pct_warned'].values, s=0.08, marker='.', cmap='viridis', vmin=10.0, vmax=55.0, linewidths=0, rasterized=True, zorder=3)
+        world.boundary.plot(ax=ax_d, color='#455A64', linewidth=0.18, zorder=4)
+        cb_d = fig.colorbar(sc_d, ax=ax_d, orientation='horizontal', fraction=0.052, pad=0.02, shrink=0.84, extend='both')
+        cb_d.set_label(f'Exposure warned at α = 1.0 (%; global {100*glb_warn/glb_tot:.1f}%, {glb_warn/1e6:.2f}M/yr)', fontsize=6.1, fontweight='bold')
+        cb_d.ax.tick_params(labelsize=5.8)
+        ax_d.set_xlim(-180, 180)
         ax_d.set_ylim(-58, 84)
         ax_d.set_axis_off()
-        ax_d.set_title('(d) Flood exposure forecasted by global model', fontsize=9.5, fontweight='bold', loc='left', pad=6)
-        cb_d = fig.colorbar(sc_d, ax=ax_d, orientation='horizontal', fraction=0.055, pad=0.04, shrink=0.70, extend='both')
-        cb_d.set_label(f'Exposure forecasted at α = 1.0 (%; global {100*glb_warn/glb_tot:.1f}%, {glb_warn/1e6:.2f}M/yr)', fontsize=7.4, fontweight='bold')
+        ax_d.set_title('(d) Flood exposure warned by global model', fontsize=7.9, fontweight='bold', loc='left', pad=3)
 
         out_s6 = out_dir / 'Fig_S6_exposure_and_warnings.png'
         fig.savefig(out_s6, dpi=SAVE_DPI, bbox_inches='tight', pad_inches=0.05)
@@ -501,34 +531,56 @@ def build_optional_fathom_supp_figs(out_dir: Path, targets: set[str]) -> None:
       if 'figs7' in targets:
         print('[Fig S7] Generating optional data-bias gap figure...', flush=True)
         _set_pub_rc(7.3)
-        exp_c = df_c[(df_c['country_name'] != 'Greenland') & (df_c['E_total'] > 0)].copy()
-        exp_c['pct_train_closed'] = (exp_c['dnet__tier5_universal_idealized_ceiling__000_global_train_joint'] / exp_c['unwarned_t1a']) * 100.0
-        exp_c['comb_gain'] = exp_c['dnet__tier5_universal_idealized_ceiling__111_all_three_combined_snap']
-        fig, (ax_a, ax_b) = plt.subplots(1, 2, figsize=(9.4, 4.4), dpi=SAVE_DPI, gridspec_kw={'wspace': 0.25})
-        for hs, col, mk, lbl in [(True, '#2171B5', 'o', 'Established system'), (False, '#E67E22', '^', 'CAP-gap territory')]:
-          s = exp_c[exp_c['has_system'] == hs]
-          sz = np.clip(np.sqrt(s['E_total'].values / 1e4) * 5.0 + 10.0, 12, 160)
-          ax_a.scatter(s['zero_up_pct_t4'], s['pct_train_closed'], s=sz, c=col, marker=mk, edgecolor='#0F172A', linewidth=0.45, alpha=0.82, label=lbl)
-        rs_a, pv_a = spearmanr(exp_c['zero_up_pct_t4'], exp_c['pct_train_closed'])
-        ax_a.text(0.03, 0.94, f'$r_s = {rs_a:+.2f}$ ($p = {_fmt_sci_tex(pv_a)}$)', transform=ax_a.transAxes, ha='left', va='top', fontsize=7.6)
-        ax_a.set_xlabel('Watersheds with zero upstream gauges (%)')
-        ax_a.set_ylabel('Unforecasted exposure closed by training (%)')
-        ax_a.set_title('(a) Relative data-bias gap vs. ungauged network', loc='left')
-        ax_a.legend(loc='lower right', fontsize=7.0)
+        col_u000 = 'dnet__tier5_universal_idealized_ceiling__000_global_train_joint'
+        col_u111 = 'dnet__tier5_universal_idealized_ceiling__111_all_three_combined_snap'
+        df_cb = df_c[df_c['unwarned_t1a'] > 0].copy()
+        df_cb['bias_pct_unw'] = 100.0 * df_cb[col_u000] / df_cb['unwarned_t1a']
+        df_cb['comb_abs'] = np.maximum(df_cb[col_u111], 0.0)
+        halo = [pe.withStroke(linewidth=2.0, foreground='white')]
+
+        fig = plt.figure(figsize=(NATURE_W, NATURE_W * 0.48), dpi=SAVE_DPI, facecolor='#ffffff')
+        gs7 = gridspec.GridSpec(1, 2, width_ratios=[1.0, 1.0], wspace=0.25, left=0.075, right=0.985, top=0.89, bottom=0.16)
+
+        ax_a = fig.add_subplot(gs7[0, 0])
+        rho_a, p_a = spearmanr(df_cb['zero_up_pct_t4'], df_cb['bias_pct_unw'])
+        max_e_sqrt = max(1.0, float(np.sqrt(df_cb['E_total'].max())))
+        for hs, lbl, col, mk in [(True, 'Confirmed system', '#0072B2', 'o'), (False, 'No confirmed system', '#D55E00', '^')]:
+          s = df_cb[df_cb['has_system'] == hs]
+          sz = np.clip(90.0 * np.sqrt(s['E_total']) / max_e_sqrt, 10.0, 90.0)
+          ax_a.scatter(s['zero_up_pct_t4'], s['bias_pct_unw'], s=sz, color=col, marker=mk, alpha=0.76, edgecolor='black', linewidth=0.35, label=lbl)
+        sns.regplot(data=df_cb, x='zero_up_pct_t4', y='bias_pct_unw', scatter=False, ax=ax_a, color='#263238', line_kws={'ls': '--', 'lw': 0.95}, ci=95)
+        for cname, ltxt, dx, dy in [('India', 'India', -28, 16), ('Bangladesh', 'Bangladesh', -50, 6), ('Pakistan', 'Pakistan', -20, -24), ('China', 'China', -38, 4), ('Brazil', 'Brazil', -36, -16), ('Nigeria', 'Nigeria', -22, 34), ('United States of America', 'USA', -24, 12)]:
+          rc = df_cb[df_cb['country_name'] == cname]
+          if not rc.empty:
+            ax_a.annotate(ltxt, xy=(float(rc['zero_up_pct_t4'].iloc[0]), float(rc['bias_pct_unw'].iloc[0])), xytext=(dx, dy), textcoords='offset points', fontsize=5.7, fontweight='bold', color='#263238', path_effects=halo, arrowprops=dict(arrowstyle='-', color='#546E7A', lw=0.45))
+        ax_a.text(0.03, 0.88, f'$r_s = {rho_a:+.2f}$ ($p = {_fmt_sci_tex(p_a)}$)', transform=ax_a.transAxes, fontsize=6.0, bbox=dict(boxstyle='round,pad=0.20', facecolor='#FFF8E1', edgecolor='#B0BEC5', alpha=0.94))
+        ax_a.set_xlabel('Watersheds with zero upstream gauges (%)', fontsize=6.7, fontweight='bold')
+        ax_a.set_ylabel('Unwarned exposure closed by training (%)', fontsize=6.7, fontweight='bold')
+        ax_a.set_title('(a) Relative data-bias gap vs. ungauged network', fontsize=7.5, fontweight='bold', loc='left', pad=3)
+        ax_a.legend(loc='lower right', fontsize=5.7, frameon=True, framealpha=0.94)
+        ax_a.grid(True, ls='--', alpha=0.42)
         sns.despine(ax=ax_a)
 
-        pos_b = exp_c[exp_c['comb_gain'] > 0]
-        for hs, col, mk, lbl in [(True, '#2171B5', 'o', 'Established system'), (False, '#E67E22', '^', 'CAP-gap territory')]:
+        ax_b = fig.add_subplot(gs7[0, 1])
+        pos_b = df_cb[(df_cb['E_total'] > 0) & (df_cb['comb_abs'] > 0)].copy()
+        rho_b, p_b = spearmanr(pos_b['E_total'], pos_b['comb_abs'])
+        for hs, lbl, col, mk in [(True, 'Confirmed system', '#0072B2', 'o'), (False, 'No confirmed system', '#D55E00', '^')]:
           s = pos_b[pos_b['has_system'] == hs]
-          ax_b.scatter(s['E_total'], s['comb_gain'], s=22, c=col, marker=mk, edgecolor='#0F172A', linewidth=0.45, alpha=0.85, label=lbl)
-        rs_b, pv_b = spearmanr(exp_c['E_total'], exp_c['comb_gain'])
-        ax_b.text(0.03, 0.94, f'$r_s = {rs_b:+.2f}$ ($p = {_fmt_sci_tex(pv_b)}$)', transform=ax_b.transAxes, ha='left', va='top', fontsize=7.6)
+          ax_b.scatter(s['E_total'], s['comb_abs'], s=18, color=col, marker=mk, alpha=0.78, edgecolor='black', linewidth=0.35, label=lbl)
+        for cname, ltxt, dx, dy in [('India', 'India', -42, 10), ('Bangladesh', 'Bangladesh', -72, 12), ('China', 'China', -54, -2), ('Nigeria', 'Nigeria', -52, -16), ('Viet Nam', 'Viet Nam', 14, -18), ('Pakistan', 'Pakistan', 6, -38), ('United States of America', 'USA', -36, -6)]:
+          rc = pos_b[pos_b['country_name'] == cname]
+          if not rc.empty:
+            ax_b.annotate(ltxt, xy=(float(rc['E_total'].iloc[0]), float(rc['comb_abs'].iloc[0])), xytext=(dx, dy), textcoords='offset points', fontsize=5.6, fontweight='bold', color='#263238', path_effects=halo, arrowprops=dict(arrowstyle='-', color='#546E7A', lw=0.45))
         ax_b.set_xscale('log')
         ax_b.set_yscale('log')
-        ax_b.set_xlabel('Expected annual flood exposure (persons/yr)')
-        ax_b.set_ylabel('Combined exposure gain (persons/yr)')
-        ax_b.set_title('(b) Combined universal gain vs. annual exposure', loc='left')
-        ax_b.legend(loc='lower right', fontsize=7.0)
+        ax_b.set_xlim(right=pos_b['E_total'].max() * 45.0)
+        ax_b.set_ylim(top=pos_b['comb_abs'].max() * 25.0)
+        ax_b.text(0.03, 0.88, f'$r_s = {rho_b:+.2f}$ ($p = {_fmt_sci_tex(p_b)}$)', transform=ax_b.transAxes, fontsize=6.0, bbox=dict(boxstyle='round,pad=0.20', facecolor='#FFF8E1', edgecolor='#B0BEC5', alpha=0.94))
+        ax_b.set_xlabel('Expected annual flood exposure (persons/yr)', fontsize=6.7, fontweight='bold')
+        ax_b.set_ylabel('Combined exposure gain (persons/yr)', fontsize=6.7, fontweight='bold')
+        ax_b.set_title('(b) Combined universal gain vs. annual exposure', fontsize=7.5, fontweight='bold', loc='left', pad=3)
+        ax_b.legend(loc='lower right', fontsize=5.7, frameon=True, framealpha=0.94)
+        ax_b.grid(True, which='both', ls='--', alpha=0.38)
         sns.despine(ax=ax_b)
 
         out_s7 = out_dir / 'Fig_S7_data_bias_gap.png'
@@ -553,20 +605,70 @@ def build_optional_fathom_supp_figs(out_dir: Path, targets: set[str]) -> None:
       nat_idx = df_nat.set_index('Country')
       n_gauges = [1, 5, 10, 20]
       vmax_sh = max(2.0, float(np.nanpercentile(df_nat['N=20_Combined_Dom_PctBase'], 95)))
-      fig = plt.figure(figsize=(NATURE_W * 1.45, NATURE_W * 1.45 * (221.0 / 468.0)), dpi=SAVE_DPI)
+      fig = plt.figure(figsize=(NATURE_W * 1.45, NATURE_W * 1.45 * (221.0 / 468.0)), dpi=SAVE_DPI, facecolor='#ffffff')
       gs = gridspec.GridSpec(2, 3, width_ratios=[1.10, 1.10, 0.96], wspace=0.26, hspace=0.34, left=0.025, right=0.82, top=0.905, bottom=0.105)
       axes_maps = [fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 1]), fig.add_subplot(gs[1, 0]), fig.add_subplot(gs[1, 1])]
+      ltrs = ['(a)', '(b)', '(c)', '(d)']
       for i, N in enumerate(n_gauges):
         ax = axes_maps[i]
         w_p = world.copy()
         col_pct = f'N={N}_Combined_Dom_PctBase'
         w_p['val'] = w_p['map_name'].map(nat_idx[col_pct])
         world.plot(ax=ax, facecolor='#ECEFF1', edgecolor='#B0BEC5', linewidth=0.25)
-        w_p.dropna(subset=['val']).plot(column='val', cmap='viridis', ax=ax, vmin=0.0, vmax=vmax_sh, legend=True, legend_kwds={'label': f'% reduced (N={N})', 'orientation': 'horizontal', 'shrink': 0.72, 'pad': 0.02, 'extend': 'max'}, edgecolor='#37474F', linewidth=0.15)
-        ax.set_title(f'({chr(97+i)}) N = {N}', fontsize=7.0, fontweight='bold')
+        w_p.dropna(subset=['val']).plot(
+            column='val', cmap='viridis', ax=ax, vmin=0.0, vmax=vmax_sh,
+            legend=True,
+            legend_kwds={'label': f'% exposure reduced (N={N}; cap {vmax_sh:.1f}%)', 'orientation': 'horizontal', 'shrink': 0.72, 'pad': 0.02, 'extend': 'max'},
+            edgecolor='#37474F', linewidth=0.15,
+        )
+        med_c = float(df_nat[col_pct].median())
+        tot_c = float(df_nat[f'N={N}_Combined_Dom'].sum()) / 1e6
+        ax.set_title(f'{ltrs[i]} N = {N} ({tot_c:.2f}M/yr; med {med_c:.1f}%)', fontsize=7.0, fontweight='bold', loc='center', pad=3)
         ax.set_xlim([-180, 180])
         ax.set_ylim([-58, 84])
         ax.set_axis_off()
+
+      # Right column (e)–(f): Top 15 CAP-gap countries by baseline flood exposure
+      ax_e = fig.add_subplot(gs[0, 2])
+      ax_f = fig.add_subplot(gs[1, 2])
+      top15_df = df_nat[~df_nat['has_system']].sort_values('Baseline Exposure (people/yr)', ascending=False).head(15)
+      top15_names = top15_df['Country'].tolist()
+      cmap_15 = sns.color_palette('husl', len(top15_names))
+      ls_cyc = ['-', '--', '-.']
+      mk_cyc = ['o', 's', '^']
+      for i, cname in enumerate(top15_names):
+        r = nat_idx.loc[cname]
+        mc = int(r['Max_Evaluated_Candidates'])
+        y_abs, y_pct = [], []
+        for N in n_gauges:
+          if N > mc and N > 1:
+            y_abs.append(np.nan)
+            y_pct.append(np.nan)
+          else:
+            y_abs.append(float(r[f'N={N}_Combined_Dom']))
+            y_pct.append(float(r[f'N={N}_Combined_Dom_PctBase']))
+        lbl = f"{cname} ({r['Baseline Exposure (people/yr)']/1e6:.2f}M/yr)"
+        ax_e.plot(n_gauges, y_abs, marker=mk_cyc[i // 5], ls=ls_cyc[i % 3], color=cmap_15[i], lw=1.4, markersize=4.0, label=lbl)
+        ax_f.plot(n_gauges, y_pct, marker=mk_cyc[i // 5], ls=ls_cyc[i % 3], color=cmap_15[i], lw=1.4, markersize=4.0, label=lbl)
+
+      ax_e.set_xticks(n_gauges)
+      ax_e.set_yscale('symlog', linthresh=100.0)
+      ax_e.set_ylim(bottom=0.0)
+      ax_e.set_ylabel('Combined gain (persons/yr)', fontsize=6.5, fontweight='bold')
+      ax_e.set_title('(e) Top 15 CAP-gap countries (absolute)', fontsize=6.9, fontweight='bold', loc='left', pad=2)
+      ax_e.grid(True, which='both', ls='--', alpha=0.35)
+      sns.despine(ax=ax_e)
+
+      ax_f.set_xticks(n_gauges)
+      ax_f.set_ylim(bottom=0.0)
+      ax_f.set_xlabel('New active gauges installed per country (N)', fontsize=6.6, fontweight='bold')
+      ax_f.set_ylabel('% annual exposure reduced', fontsize=6.5, fontweight='bold')
+      ax_f.set_title('(f) Top 15 CAP-gap (% reduced)', fontsize=6.9, fontweight='bold', loc='left', pad=2)
+      ax_f.grid(True, which='both', ls='--', alpha=0.35)
+      ax_f.legend(loc='center left', bbox_to_anchor=(1.05, 1.12), fontsize=5.4, frameon=True, title='Top 15 CAP-gap (EAE/yr)', title_fontsize=5.8)
+      sns.despine(ax=ax_f)
+
+      fig.suptitle('National River-Network Exposure Reduction from Installing N = 1 to 20 Active Streamflow Gauges per Country (1,034,083 Watersheds)', fontsize=8.4, fontweight='bold', y=0.975)
       out_s8 = out_dir / 'Fig_S8_national_gauge_siting.png'
       fig.savefig(out_s8, dpi=SAVE_DPI, bbox_inches='tight', pad_inches=0.05)
       plt.close(fig)

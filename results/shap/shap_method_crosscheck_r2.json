@@ -1,0 +1,30 @@
+{
+  "n_medoids": 1000,
+  "k_bg": 100,
+  "n_metrics": 12,
+  "n_features": 95,
+  "n_categories": 7,
+  "max_exact_group_efficiency_error": 4.440892098500626e-16,
+  "max_antithetic_perm_efficiency_error": 4.440892098500626e-16,
+  "exact_group_vs_perm95_pct_spearman_r": 0.9981978333502077,
+  "exact_group_vs_perm95_pct_mean_abs_diff_pp": 0.27978256219665487,
+  "exact_group_vs_perm95_pct_max_abs_diff_pp": 1.3035774162379923,
+  "mean_across_12_metrics_exact_group_pct": {
+    "Anthropogenic": 7.72,
+    "Climate & Hydrology": 27.99,
+    "Climatic Similarity (OOD)": 12.53,
+    "Land Cover": 28.74,
+    "River-Network Gauge Cov.": 5.19,
+    "Soil & Geology": 8.37,
+    "Topography": 9.46
+  },
+  "mean_across_12_metrics_perm95_pct": {
+    "Anthropogenic": 7.56,
+    "Climate & Hydrology": 28.3,
+    "Climatic Similarity (OOD)": 12.7,
+    "Land Cover": 28.61,
+    "River-Network Gauge Cov.": 5.12,
+    "Soil & Geology": 8.22,
+    "Topography": 9.49
+  }
+}

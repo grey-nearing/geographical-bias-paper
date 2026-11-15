@@ -1,0 +1,67 @@
+{
+  "title": "What Fraction of the World's Watersheds Are Ungauged? — Code and Public Data Archive",
+  "upload_type": "dataset",
+  "version": "3.0.0",
+  "access_right": "open",
+  "license": "cc-by-4.0",
+  "publication_date": "2026-11-15",
+  "creators": [
+    {
+      "name": "Nearing, Grey",
+      "affiliation": "Google Research; Zurich, Switzerland"
+    },
+    {
+      "name": "Ruparell, Karan",
+      "affiliation": "European Centre for Medium-Range Weather Forecasts; Reading, United Kingdom & Department of Meteorology, University of Reading; Reading, United Kingdom"
+    },
+    {
+      "name": "Taccari, Maria Luisa",
+      "affiliation": "European Centre for Medium-Range Weather Forecasts; Reading, United Kingdom"
+    },
+    {
+      "name": "Rees, Stephanie",
+      "affiliation": "Google; London, United Kingdom"
+    },
+    {
+      "name": "Gauch, Martin",
+      "affiliation": "Google Research; Zurich, Switzerland"
+    },
+    {
+      "name": "Ginnetti, Justin",
+      "affiliation": "Google Research; Zurich, Switzerland"
+    },
+    {
+      "name": "Wing, Oliver",
+      "affiliation": "Fathom; Bristol, United Kingdom & School of Geographical Sciences, University of Bristol; Bristol, United Kingdom"
+    },
+    {
+      "name": "Rothenberg, Juliet",
+      "affiliation": "Google Research; Mountain View, California, United States"
+    },
+    {
+      "name": "Kratzert, Frederik",
+      "affiliation": "Google Research; Vienna, Austria"
+    },
+    {
+      "name": "Cohen, Deborah",
+      "affiliation": "Google Research; Tel Aviv, Israel"
+    },
+    {
+      "name": "Matias, Yossi",
+      "affiliation": "Google Research; Mountain View, California, United States"
+    }
+  ],
+  "keywords": [
+    "hydrology",
+    "ungauged watersheds",
+    "streamflow gauges",
+    "flood forecasting",
+    "early warning systems",
+    "machine learning",
+    "data assimilation",
+    "HydroSHEDS",
+    "MERIT-Basins",
+    "TDX-Hydro",
+    "GRIT"
+  ]
+}

@@ -1,0 +1,1502 @@
+[
+  {
+    "id": "1darznp_pPkZ5G1Ix6FbTOgs70ua0iHRy",
+    "name": "hillslope_11_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1jUA8dRefS08Ic8c7nCYt4kS3uWJ5XSzZ",
+    "name": "hillslope_11_clean.dbf",
+    "size": 49332
+  },
+  {
+    "id": "1SHPcYAPtUPvXysb2Zz7-NZNKaxnzfAR2",
+    "name": "hillslope_11_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1cVonb481XuhIpAn39fIC-lSjVx2QOu4k",
+    "name": "hillslope_11_clean.shp",
+    "size": 6026508
+  },
+  {
+    "id": "1ZobND1_2ObvXNZEUEteZaqi0jzPH7cv-",
+    "name": "hillslope_11_clean.shx",
+    "size": 20844
+  },
+  {
+    "id": "19Y5Tc0wrjhFN6VN79ZONskt554nodmhj",
+    "name": "hillslope_12_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1ZWgz_7N2CqoDhpMRN-W4M9W2dLAL3AYm",
+    "name": "hillslope_12_clean.dbf",
+    "size": 15018
+  },
+  {
+    "id": "1W4A694JL8drhgK_ImyeyG1oSxLUT52c-",
+    "name": "hillslope_12_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1ONZ8ldKNzHY6GEZXkNpheM4OKYZhAscV",
+    "name": "hillslope_12_clean.shp",
+    "size": 2924144
+  },
+  {
+    "id": "18YK7SBTOdt-eJt2jsDxzumxiMDZK23OH",
+    "name": "hillslope_12_clean.shx",
+    "size": 6396
+  },
+  {
+    "id": "1taBtZRNZJ5TWQMJjrH-hnOKDk-NMuK_U",
+    "name": "hillslope_13_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "178BZuE3NB93jaRVNFfH8DDYL9zJ7Fv56",
+    "name": "hillslope_13_clean.dbf",
+    "size": 9204
+  },
+  {
+    "id": "1qA9TLUYxpooCG-SyPAP9FPnzoZ7XFFIV",
+    "name": "hillslope_13_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1p5r4UQZA8att7t-RU0GKWOA8UUqUBcta",
+    "name": "hillslope_13_clean.shp",
+    "size": 1878532
+  },
+  {
+    "id": "1Dq-mIiewfug1parbPOEb6H1TOyngs0nB",
+    "name": "hillslope_13_clean.shx",
+    "size": 3948
+  },
+  {
+    "id": "1wP2TD7qdqyWaJpLKqwTGEYuWUPxa1VGr",
+    "name": "hillslope_14_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1ssuzM8aM2ltPC489h0ckP_kyESqLir-c",
+    "name": "hillslope_14_clean.dbf",
+    "size": 13574
+  },
+  {
+    "id": "1du2ZNH3mD1lT6cDcvd24VP0RkYwPCCU6",
+    "name": "hillslope_14_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1KXhvkZYzaXsXa4Llb1995eWBtCaLlnP_",
+    "name": "hillslope_14_clean.shp",
+    "size": 2360276
+  },
+  {
+    "id": "1tgVwLXd5p6C5bVHANrW7G7aKu_AY8X7o",
+    "name": "hillslope_14_clean.shx",
+    "size": 5788
+  },
+  {
+    "id": "1uUTZ3t0dNmiPpw311mncW3_89c0KWqsr",
+    "name": "hillslope_15_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1xIqzcGn-ABHSKfCZrlBohowSfubSQHsc",
+    "name": "hillslope_15_clean.dbf",
+    "size": 38825
+  },
+  {
+    "id": "1hVKe0TSMCNtn7kQrRTpg0YKcy5DclZNz",
+    "name": "hillslope_15_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1bjyUlVJ9BDObW0OOsru09ufZjyBIzOHj",
+    "name": "hillslope_15_clean.shp",
+    "size": 5151716
+  },
+  {
+    "id": "1wcOjtkaEdQpg4O1lgZFeLQgVsnYlKuMN",
+    "name": "hillslope_15_clean.shx",
+    "size": 16420
+  },
+  {
+    "id": "1N-nCIu-A8VDSF0QtWpSQ1zpapreO7-vV",
+    "name": "hillslope_16_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1P3PM8S86TUDEBZU01AqelN9UmCpAy4Ts",
+    "name": "hillslope_16_clean.dbf",
+    "size": 1243
+  },
+  {
+    "id": "1BFPufXecoiAl0PVBXvWd6bT6CjXvu0WM",
+    "name": "hillslope_16_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1wrDcsonB5wPNOO_VwaTyde-Nthnb2T3c",
+    "name": "hillslope_16_clean.shp",
+    "size": 209188
+  },
+  {
+    "id": "1fpucu8vdEHs-VQuu_Q1geUtrFvNjnlHi",
+    "name": "hillslope_16_clean.shx",
+    "size": 596
+  },
+  {
+    "id": "1_RGO1XJ2UqgWdOGBGNkpwZAndMKoe-lr",
+    "name": "hillslope_17_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1MTz4sAZMzyCEBz_n62MQ40z0Msl7qdcm",
+    "name": "hillslope_17_clean.dbf",
+    "size": 1224
+  },
+  {
+    "id": "1yal_WVADHBb8dt1op3erMRK7rnfMqFRx",
+    "name": "hillslope_17_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1mtrppfN2kSR5ZHGLf562KnHLbBy92DP8",
+    "name": "hillslope_17_clean.shp",
+    "size": 160300
+  },
+  {
+    "id": "1pAX0Y3J3H3jtpTgoUW9ug4Es0FUGxwlT",
+    "name": "hillslope_17_clean.shx",
+    "size": 588
+  },
+  {
+    "id": "1uV1ydbIcu5Ec2k0YMYa320orufNanb0p",
+    "name": "hillslope_18_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1myITYY0uuGkQxv-V2e8s-MLfjvJmvkri",
+    "name": "hillslope_18_clean.dbf",
+    "size": 23340
+  },
+  {
+    "id": "1J_tnhWTspZF6OwDQEeHEMVWsaN_32gvF",
+    "name": "hillslope_18_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1v-rsrqja4W_2-40NqsD-UWCC7_cEJPwa",
+    "name": "hillslope_18_clean.shp",
+    "size": 2417424
+  },
+  {
+    "id": "1kQ5Yk3-1n3TtAbc82dGcfhn8tV-mgW-s",
+    "name": "hillslope_18_clean.shx",
+    "size": 9900
+  },
+  {
+    "id": "1cSZ_Ji8yyEl5m2ha8Y4ewonzjOkPuWTV",
+    "name": "hillslope_21_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1CLmcGSW6z22hQJpvxcOqx-Vd0kvrU-Z-",
+    "name": "hillslope_21_clean.dbf",
+    "size": 120449
+  },
+  {
+    "id": "1WgZG5sRj1Ku2p2Gl7DcRMZM6jLdS8mzW",
+    "name": "hillslope_21_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1NuvyBWPU04-31j3KqiFmGt8dUZiQSYal",
+    "name": "hillslope_21_clean.shp",
+    "size": 13365976
+  },
+  {
+    "id": "12Bg4sr8VdrHVw8T90hF0VzWS163KcJsn",
+    "name": "hillslope_21_clean.shx",
+    "size": 50788
+  },
+  {
+    "id": "1LuEyyGsvahGhrOeIw-Mh_TocD7zL_l7T",
+    "name": "hillslope_22_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1Jk5Kt_L4aXdexe59ax0d1D1dvj7nIxGe",
+    "name": "hillslope_22_clean.dbf",
+    "size": 19730
+  },
+  {
+    "id": "1Syfo9KneTtZ0rOroTvvJYzmJlk68DarN",
+    "name": "hillslope_22_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "13rK0ZstWtq7xJpz3lUK9m7jHMtaTl2LX",
+    "name": "hillslope_22_clean.shp",
+    "size": 2979832
+  },
+  {
+    "id": "18COBXn7-ZchIyQ81RIY7T9fNXCJ8yATy",
+    "name": "hillslope_22_clean.shx",
+    "size": 8380
+  },
+  {
+    "id": "15N7sSWUUoivXN1DwYoKNUaoPH-V_8_Ol",
+    "name": "hillslope_23_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1z6HGjZy1Q5RVWRO-dcNm5CkWPOEbVItq",
+    "name": "hillslope_23_clean.dbf",
+    "size": 139677
+  },
+  {
+    "id": "1NRw_-BjSgbj-wt8PGe-t5pR7VMjksGCI",
+    "name": "hillslope_23_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1POIxa1_CkFTq-ZfjKOmCgSbmJ6th7DNB",
+    "name": "hillslope_23_clean.shp",
+    "size": 11667796
+  },
+  {
+    "id": "1gTYuEKjZpvvdpZGCSINSWXQalJdwIj-d",
+    "name": "hillslope_23_clean.shx",
+    "size": 58884
+  },
+  {
+    "id": "1pUiuJti6hrQnQo2B997w3uohrD_YOfEM",
+    "name": "hillslope_24_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1_EcOicfkfoQJ-Bc0WTXlbr_-vPcBCSax",
+    "name": "hillslope_24_clean.dbf",
+    "size": 642797
+  },
+  {
+    "id": "1Y4A89AVmBy5qlAGUCFMMQspsSqcxF3Pd",
+    "name": "hillslope_24_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1IRDyIf_AXy7gHC5j0e3FbBEKC9ySAwx7",
+    "name": "hillslope_24_clean.shp",
+    "size": 18516072
+  },
+  {
+    "id": "1HNaQdTWAewi7hn31vZhYXyYK8-NFLu3w",
+    "name": "hillslope_24_clean.shx",
+    "size": 270724
+  },
+  {
+    "id": "1tY87k069hOLvHzwHV9XJnONLPOQQbzne",
+    "name": "hillslope_25_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1rjdvbwFy18FQMd_wiF1wKEwsoAzsGfYW",
+    "name": "hillslope_25_clean.dbf",
+    "size": 562560
+  },
+  {
+    "id": "1NSz1TSoRTIv3M_MKkUDgpNNrApC02Uui",
+    "name": "hillslope_25_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1sIXnr5rL6jj9vRq-QFgbe1Kt_7WoMBe0",
+    "name": "hillslope_25_clean.shp",
+    "size": 23168824
+  },
+  {
+    "id": "1xhfGNhT754R7XDvKA0cjeCS2NHV8nzyk",
+    "name": "hillslope_25_clean.shx",
+    "size": 236940
+  },
+  {
+    "id": "1Okhn8l1WiRVcl7X1MOoVFY9rgucc4uhd",
+    "name": "hillslope_26_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1PPGqWSMKmGHrSMOD9BpeYnUwQ1HeWgDT",
+    "name": "hillslope_26_clean.dbf",
+    "size": 31795
+  },
+  {
+    "id": "18tABwoONS8IfwJkcF6uQcF0XvcVq8IQK",
+    "name": "hillslope_26_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1DFv2pjV6gPFHB_77DS9A1IRym5QBD2eR",
+    "name": "hillslope_26_clean.shp",
+    "size": 8125596
+  },
+  {
+    "id": "1ugfggnUENjyIqjjnl5uJnL9w-3uHnG5v",
+    "name": "hillslope_26_clean.shx",
+    "size": 13460
+  },
+  {
+    "id": "1OcDZd9T1vCV9SDqeXxCnSMf6BAmxUvrG",
+    "name": "hillslope_27_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1BWig_sYjBYGC-9KAq7VVzNcnieLJZzDP",
+    "name": "hillslope_27_clean.dbf",
+    "size": 34455
+  },
+  {
+    "id": "1ORAnttpUSOYejRDh_RcbwFdaeUWTH8ER",
+    "name": "hillslope_27_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1ZTWJFWXYKdkitKT4iTaZ-62JmN1_C0Jf",
+    "name": "hillslope_27_clean.shp",
+    "size": 2847216
+  },
+  {
+    "id": "1NWnxDH1ziR1cGDXHzwxYwWjXo-FFJJb_",
+    "name": "hillslope_27_clean.shx",
+    "size": 14580
+  },
+  {
+    "id": "17lwBo2sXc-VtAwOrjAkqAGIUvypRhC8d",
+    "name": "hillslope_28_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "174GvJL5y7fhA28V8K_cyAQ47zh84DaLV",
+    "name": "hillslope_28_clean.dbf",
+    "size": 445
+  },
+  {
+    "id": "1Uqi0q12Am69V13ipODNmubbQyooeXFk-",
+    "name": "hillslope_28_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1nO81VzVbB2iVEDRrc80-xktD8hEBwR-U",
+    "name": "hillslope_28_clean.shp",
+    "size": 63908
+  },
+  {
+    "id": "1zGtbBCiLr68TYkdoihLZBLqZ5cYsP9OE",
+    "name": "hillslope_28_clean.shx",
+    "size": 260
+  },
+  {
+    "id": "16bJKXjL2VycSnXVoIZRnY73HgcEZdjdN",
+    "name": "hillslope_29_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1-9-qmMBEaQ3hBCOxH32KR4LVtrrh52vT",
+    "name": "hillslope_29_clean.dbf",
+    "size": 104964
+  },
+  {
+    "id": "19Fz0MLTKGtMWrOPfi58v44aHfDkBP8b7",
+    "name": "hillslope_29_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1QdJnQjJZ05wRYHNK_BXUI8bDog2vHfj0",
+    "name": "hillslope_29_clean.shp",
+    "size": 8380896
+  },
+  {
+    "id": "1-Anl4YF2kbRG4nGuS4AM0m--GFzdHClD",
+    "name": "hillslope_29_clean.shx",
+    "size": 44268
+  },
+  {
+    "id": "1IfrrNUUJNn58L4dKREfWbXOp-JNQSVO6",
+    "name": "hillslope_31_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1gZYyh8SqbvXl-7pCiAEauiDaiC_ZQCTy",
+    "name": "hillslope_31_clean.dbf",
+    "size": 11674
+  },
+  {
+    "id": "1eyAbOs7Df6F7Vegx6ZBfSkxglUIGbWzM",
+    "name": "hillslope_31_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1TJeu69wMRmz3NXBhe99vgFWABweubLuN",
+    "name": "hillslope_31_clean.shp",
+    "size": 3189860
+  },
+  {
+    "id": "1jVe_0mo5B_sr4kpYjLyv7jqEIOwFkrSP",
+    "name": "hillslope_31_clean.shx",
+    "size": 4988
+  },
+  {
+    "id": "1qx-58hWbmIri-HXASe72P_b609o9DxgF",
+    "name": "hillslope_32_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1sgdua19p36VemDZt2hl-MSCSPIkMOzqK",
+    "name": "hillslope_32_clean.dbf",
+    "size": 8502
+  },
+  {
+    "id": "1oC45ONaFYoBT_XP_XPb1QW0_TlF0CsNT",
+    "name": "hillslope_32_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1kN93bpng6Okry3kc30RKM3OJ2G2ghbEd",
+    "name": "hillslope_32_clean.shp",
+    "size": 1263184
+  },
+  {
+    "id": "1p2rhoV0uOSRDOZpP_5xXlw7au9N2MFQ0",
+    "name": "hillslope_32_clean.shx",
+    "size": 3652
+  },
+  {
+    "id": "19s2e3ODjJNW_kK0FOjeBMQbxbDlX7B9o",
+    "name": "hillslope_33_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "109KX8AhycrW9MHte7Gik9R6QXHcQgiKi",
+    "name": "hillslope_33_clean.dbf",
+    "size": 26133
+  },
+  {
+    "id": "10eLviCRRT_lIKaT67inrKGOvpucy4S5i",
+    "name": "hillslope_33_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1ihSU-z14hBV6WKuRYe4TBt50E3zcr2BG",
+    "name": "hillslope_33_clean.shp",
+    "size": 6891520
+  },
+  {
+    "id": "135uaZWNuPf0pdT-06bfHcP1-xghMPjvZ",
+    "name": "hillslope_33_clean.shx",
+    "size": 11076
+  },
+  {
+    "id": "1qpvIwN0QofIpevULcyrxn8y6VNtl9j02",
+    "name": "hillslope_34_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "14N--KKPqQ8dB_mG1WqSRJpwUGhoTUgQ8",
+    "name": "hillslope_34_clean.dbf",
+    "size": 7437
+  },
+  {
+    "id": "1ooQbpAABBtLwY2U7_Os5LZUGFon8nFfL",
+    "name": "hillslope_34_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1tPipIJ0E_lCGeY8eWoQyNp-CAnidsBPn",
+    "name": "hillslope_34_clean.shp",
+    "size": 1149288
+  },
+  {
+    "id": "1DG4okCrVnYm-aBUkriePNZemCeHk3qse",
+    "name": "hillslope_34_clean.shx",
+    "size": 3204
+  },
+  {
+    "id": "1X5OhIZjtXRMCe68TagPucgCsxqcq4i0Y",
+    "name": "hillslope_35_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1OU9EVCwy4Q05LYwf2fZ5XXa_FDqfMVEk",
+    "name": "hillslope_35_clean.dbf",
+    "size": 64950
+  },
+  {
+    "id": "12mzOW3OM9cC-FJ92tVGiKb37BTqln_bX",
+    "name": "hillslope_35_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1Bfi8F_xGSA7yZ8uHXiN_AaOWwvIOFV4E",
+    "name": "hillslope_35_clean.shp",
+    "size": 13232096
+  },
+  {
+    "id": "14mj7AiDR8MTiU2o1Uobk2Dy_TW_Dd31r",
+    "name": "hillslope_35_clean.shx",
+    "size": 27420
+  },
+  {
+    "id": "1rbtvE8x0nUjCCcAAhkGGv6Zqvf1Tz5VF",
+    "name": "hillslope_36_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1KR0xr7A5mUyfj_IVQerKqJOfEVFpNHxn",
+    "name": "hillslope_36_clean.dbf",
+    "size": 85
+  },
+  {
+    "id": "11BAsFiYpcnmoZps8ema0S5VxrhjuYZUg",
+    "name": "hillslope_36_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1G05emztiYPukb1OE-TNwiNcP1XcZWd3G",
+    "name": "hillslope_36_clean.shp",
+    "size": 4540
+  },
+  {
+    "id": "1-RdivXmGvqEAIRRkP1bX8n3xLuiAsetS",
+    "name": "hillslope_36_clean.shx",
+    "size": 108
+  },
+  {
+    "id": "1WK5qAmzyv2r6VmlPjgmfJ0hkgDrEapDD",
+    "name": "hillslope_41_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1IPkhhgGl_eVQoPrwlHAtv22ABkzx7DnZ",
+    "name": "hillslope_41_clean.dbf",
+    "size": 121361
+  },
+  {
+    "id": "1_CI8ntMt236rqQHDLKTWDbZuh0PZ7KE2",
+    "name": "hillslope_41_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1xSg4dPnxJJW1h8Ij5QwU7sEATtqP3vUd",
+    "name": "hillslope_41_clean.shp",
+    "size": 9584092
+  },
+  {
+    "id": "1AAoNiBNksXFLTFuZK5MuC-g0yVb4LG_Z",
+    "name": "hillslope_41_clean.shx",
+    "size": 51172
+  },
+  {
+    "id": "19W96OrkPGOkQf4ABtSQacJmN8ZasvUyl",
+    "name": "hillslope_42_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1kFD4hjIhlEvLpAlhMpKSPdQSkntKrgwN",
+    "name": "hillslope_42_clean.dbf",
+    "size": 94305
+  },
+  {
+    "id": "1nLD4lSq7t8dfzDjdKvCBR0L2TOhmRyiy",
+    "name": "hillslope_42_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "18TZ-QNa0gWhlrRTPPTSSySbixWv5iSe_",
+    "name": "hillslope_42_clean.shp",
+    "size": 6521988
+  },
+  {
+    "id": "1xGobBtgn4PGrA2lJIhh8VvMzCRmBBi55",
+    "name": "hillslope_42_clean.shx",
+    "size": 39780
+  },
+  {
+    "id": "1KXQTTi6Ms7RiEyWbINEqSOIakKNiVn54",
+    "name": "hillslope_43_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "17uV08a5ntAFvvgEIhbyHVdfXa494qUl7",
+    "name": "hillslope_43_clean.dbf",
+    "size": 116231
+  },
+  {
+    "id": "12bcC2XV03NFj3COUfEfNboPEH-Gdyj-3",
+    "name": "hillslope_43_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1w4hkJJO4OCxGJVKQe5H5Ovm-Rfp1ZnUq",
+    "name": "hillslope_43_clean.shp",
+    "size": 7561644
+  },
+  {
+    "id": "1qHUrYbekdohglk29q3q16WO07ldLySsK",
+    "name": "hillslope_43_clean.shx",
+    "size": 49012
+  },
+  {
+    "id": "10Pjmwm2aPM5h6pQnQyn2ynIk5-kUErQ5",
+    "name": "hillslope_44_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1J-EKrv168J4V892SNGGf6lxndM-mvtu2",
+    "name": "hillslope_44_clean.dbf",
+    "size": 58623
+  },
+  {
+    "id": "1EVdQDlpaM8aXFVoMxs-AJkeNkyIl-mZc",
+    "name": "hillslope_44_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1yjHk6Vv_NaZWVom1zsOqGj1XGDIj6tqq",
+    "name": "hillslope_44_clean.shp",
+    "size": 5939544
+  },
+  {
+    "id": "1I8pBfPn4caN62M9vYuSwCKE20OS7ktsy",
+    "name": "hillslope_44_clean.shx",
+    "size": 24756
+  },
+  {
+    "id": "1CPpv042zO4tR9UoAQtgzasvuFuO6CD8C",
+    "name": "hillslope_45_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1rKttBQhMgNJVt1NCAkowDjDG3bMMawp6",
+    "name": "hillslope_45_clean.dbf",
+    "size": 51688
+  },
+  {
+    "id": "1hIzNhz7_u97XVeEaRzFxQm6SXiJC9xih",
+    "name": "hillslope_45_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1ldKXT5OQZlODPTXNNWiIrnfgpr2d7qBL",
+    "name": "hillslope_45_clean.shp",
+    "size": 5764996
+  },
+  {
+    "id": "1VrEqljazijKDgr0TKEvBiQBDzSVhfZEm",
+    "name": "hillslope_45_clean.shx",
+    "size": 21836
+  },
+  {
+    "id": "1LL3kfvW9Z2W_63qyuGQlXqi-i0BKxpHY",
+    "name": "hillslope_46_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1hfOMTXlyaPmsxVru_mzoMWEkocO3UzrC",
+    "name": "hillslope_46_clean.dbf",
+    "size": 351
+  },
+  {
+    "id": "1WSHp9R4UwWhsQyxQ13hr8Y2CqKsMYaPv",
+    "name": "hillslope_46_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1JhBtLGFR2o69JokEYtvPT-7vTFJscmfb",
+    "name": "hillslope_46_clean.shp",
+    "size": 43424
+  },
+  {
+    "id": "1-zRvqT2cXvpj6cWsq5_B58jyzJ6m7Ao2",
+    "name": "hillslope_46_clean.shx",
+    "size": 220
+  },
+  {
+    "id": "13ZlZ_jQAVYbicWI6ySu_9ih-wtS-NOGI",
+    "name": "hillslope_47_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1YJuJ6pNlgkECLITZuS7rnAUBvEMzcsiC",
+    "name": "hillslope_47_clean.dbf",
+    "size": 1453
+  },
+  {
+    "id": "1kGdgQk6cFrV_cI7cbwIuo0xExs24t-S3",
+    "name": "hillslope_47_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1l7sMX3HUtOu2L4v90XwA7JyPyPfIXIMp",
+    "name": "hillslope_47_clean.shp",
+    "size": 412840
+  },
+  {
+    "id": "1w4eLXDk_rxNalPkDbyEkbEISEnShpaDt",
+    "name": "hillslope_47_clean.shx",
+    "size": 684
+  },
+  {
+    "id": "1Mdzzd7CZOag-JQxYzA4pLrSYE7FqxGa1",
+    "name": "hillslope_48_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1-rSY0U-7WAI6wh0KEo463Cv8MlnAEt9q",
+    "name": "hillslope_48_clean.dbf",
+    "size": 788
+  },
+  {
+    "id": "1AZ0Lnr1gqb_e1mIurhpgEyLPCsmYsfEc",
+    "name": "hillslope_48_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1kt10b3kJnG8TTkGsD_SNDoirU-Pv10ib",
+    "name": "hillslope_48_clean.shp",
+    "size": 123728
+  },
+  {
+    "id": "1_mS88JgIW21CJm0Q8TzyE-Y07Bz9xkTY",
+    "name": "hillslope_48_clean.shx",
+    "size": 404
+  },
+  {
+    "id": "1O8xKlYx5xduzw2u1Jw42uOPJXFWO2of1",
+    "name": "hillslope_51_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1cKelsgN31CvLc6PEDV_bWqJNTyucbyNj",
+    "name": "hillslope_51_clean.dbf",
+    "size": 80644
+  },
+  {
+    "id": "1PmCq4JaIOzSmpkml6S76bUkK9wo3M45n",
+    "name": "hillslope_51_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "13PecQCjInQx6yT4F8NRI3FDiwZ7NYtQg",
+    "name": "hillslope_51_clean.shp",
+    "size": 9858824
+  },
+  {
+    "id": "1ZSPY4iTWy_EX50T9H0oNnWRe_SIFMbia",
+    "name": "hillslope_51_clean.shx",
+    "size": 34028
+  },
+  {
+    "id": "1PWPtmw5IVBsfeOEBlE32D3cnd3iB8DQQ",
+    "name": "hillslope_52_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1DcNlzbQcC7K9VJsy6lOxRj54gS27mcVd",
+    "name": "hillslope_52_clean.dbf",
+    "size": 131621
+  },
+  {
+    "id": "1kBMJW-YICWuCTyuAZOoXT8jIt5cuQLCB",
+    "name": "hillslope_52_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1rqh9yih0UHPsA2zHt-tsFSHB2Apuha_Q",
+    "name": "hillslope_52_clean.shp",
+    "size": 15940624
+  },
+  {
+    "id": "1FqsLwgtbFy5Py_XS-4CSDmWNp5GaIoam",
+    "name": "hillslope_52_clean.shx",
+    "size": 55492
+  },
+  {
+    "id": "1i2ydvbaMd3CsC77k9lpznHUp-XtcvdMJ",
+    "name": "hillslope_53_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1iC9mgmA5KIi8js3Ph6E1dxeAKDu0by34",
+    "name": "hillslope_53_clean.dbf",
+    "size": 118853
+  },
+  {
+    "id": "1bjF9UXyClTe5YPEEzjXFNjyQ1cX4nhDO",
+    "name": "hillslope_53_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1N_WIZmhY9TIuZEXuT39czSBWvQjXeIML",
+    "name": "hillslope_53_clean.shp",
+    "size": 13113808
+  },
+  {
+    "id": "1GXB-BiVQfGp0WKqyg7_zTXv6BdOfzy-J",
+    "name": "hillslope_53_clean.shx",
+    "size": 50116
+  },
+  {
+    "id": "1WYherr327BjFh_R2RApJrtTNzaRD2vOj",
+    "name": "hillslope_54_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1wHYK29HDxwKNOCQdW_5gouaUnDAI3zXo",
+    "name": "hillslope_54_clean.dbf",
+    "size": 45323
+  },
+  {
+    "id": "1XLkTH58OqzhmKNO59y9kgSzaye9UAu_i",
+    "name": "hillslope_54_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1XXs1J5rf0lBVeahjT3zSLtCiLjTR0PLE",
+    "name": "hillslope_54_clean.shp",
+    "size": 1192256
+  },
+  {
+    "id": "1i5Hc4aewUpqurt_d0h2fgOus9KXoZL9x",
+    "name": "hillslope_54_clean.shx",
+    "size": 19156
+  },
+  {
+    "id": "16hNwZ0wOFuArvqxkMarH7E7N_ScnsOjG",
+    "name": "hillslope_55_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1NBYZ93om2H4OarEUYNPudxFJhF1Pa8uI",
+    "name": "hillslope_55_clean.dbf",
+    "size": 25848
+  },
+  {
+    "id": "1_aVk2Gr538R5idYPP1sTz6Viyv1bI0Dq",
+    "name": "hillslope_55_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1XpAPqsVrMSZ6caxX3tNDeKZlk4ijZkAk",
+    "name": "hillslope_55_clean.shp",
+    "size": 2426412
+  },
+  {
+    "id": "1EeAD74oFebEbpVLTtDoOU3LfyBTXRpZj",
+    "name": "hillslope_55_clean.shx",
+    "size": 10956
+  },
+  {
+    "id": "1JwjdwhH5PyBLGZwJelIq_HzTqHuZy062",
+    "name": "hillslope_56_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1Uk4wbK9f1qEH556i69lcRzTRqNLEs2KO",
+    "name": "hillslope_56_clean.dbf",
+    "size": 136333
+  },
+  {
+    "id": "1a2Pye08aj-KtxaeTYvVxMUKzrm4Cby3z",
+    "name": "hillslope_56_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "19Exq6PsY6ltvGOdv2mEBYAK4IU46IhAt",
+    "name": "hillslope_56_clean.shp",
+    "size": 15148484
+  },
+  {
+    "id": "1Zf9038x0WktaUi-PnEcaaD0AoRI_DEZn",
+    "name": "hillslope_56_clean.shx",
+    "size": 57476
+  },
+  {
+    "id": "1I4n9ALDTDEiOTZ-0cHByAoqFpd_6GPsd",
+    "name": "hillslope_57_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1zs7HgJAxYf8rwdnxluoXNMCG9maKJDUj",
+    "name": "hillslope_57_clean.dbf",
+    "size": 34418
+  },
+  {
+    "id": "1hBfYegiaN-0_rADl2x8FD-LTB8LXk4qF",
+    "name": "hillslope_57_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1ZsApwCHfvc0piJr8Xj2wPt2njMb67ot3",
+    "name": "hillslope_57_clean.shp",
+    "size": 4376800
+  },
+  {
+    "id": "1Fo3XFQQq_kcxcIkNQlsCyOkRBGzVm9nk",
+    "name": "hillslope_57_clean.shx",
+    "size": 14564
+  },
+  {
+    "id": "14vl75gulmcJxrDe82tqvmd9WQIEjj7Lg",
+    "name": "hillslope_61_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1etovjMQuK1gsYNGBvKYYIGaKMgTmHIWk",
+    "name": "hillslope_61_clean.dbf",
+    "size": 32897
+  },
+  {
+    "id": "1eKjuaBWCUS8lnAIsoIZfD36coa67kvD5",
+    "name": "hillslope_61_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "10bY7c08Rvt6ph86PqDlh6k_IRnflAXds",
+    "name": "hillslope_61_clean.shp",
+    "size": 3851872
+  },
+  {
+    "id": "1tYqUMtZBEPRee_VkD-9BaknNxFpK1Cwt",
+    "name": "hillslope_61_clean.shx",
+    "size": 13924
+  },
+  {
+    "id": "1uJCNOP8BZV6iPtpNj5FdtIiNY2uIaJww",
+    "name": "hillslope_62_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "18x_M3iKQRODCNxDtqIFg7wty56baSMq7",
+    "name": "hillslope_62_clean.dbf",
+    "size": 5271
+  },
+  {
+    "id": "1d_6Oue5nof6Yin0Akw4biyp4NbEbfDKs",
+    "name": "hillslope_62_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1p8-NP5OMxt7eicOXAlVM-MzrM1K4y6vG",
+    "name": "hillslope_62_clean.shp",
+    "size": 939560
+  },
+  {
+    "id": "1Jg4OXnB6_jTwkeeGE1dio9718vyvWH9M",
+    "name": "hillslope_62_clean.shx",
+    "size": 2292
+  },
+  {
+    "id": "1tUoCI8KaFoYn21b-iWvZptdAPQWiNs3n",
+    "name": "hillslope_63_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1hd1sx9wxCjqjnVCKXDi7PhpXFtJmRvLz",
+    "name": "hillslope_63_clean.dbf",
+    "size": 28375
+  },
+  {
+    "id": "19AG7TiCJhL33Sh2GGndXavGCzA-hahNu",
+    "name": "hillslope_63_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1n_ay8JNDbIroQkNOMmzIBUm3FT_ekcGE",
+    "name": "hillslope_63_clean.shp",
+    "size": 3103532
+  },
+  {
+    "id": "1gbbNEdk7WXyA4FC_keqEZImWVAvHejqy",
+    "name": "hillslope_63_clean.shx",
+    "size": 12020
+  },
+  {
+    "id": "1Nl45yPVlpVUIPd01iUKuxsbi_qO7Py5Q",
+    "name": "hillslope_64_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "17hJW0PO3FF1Yvugl3puIndxxQRGRjjkH",
+    "name": "hillslope_64_clean.dbf",
+    "size": 6677
+  },
+  {
+    "id": "1S8DxWiQBgTp3E6xuBydsPuT3q7knY3I6",
+    "name": "hillslope_64_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1cxG_ntShLgfzF-lHVreDpa_fmC1IlkhS",
+    "name": "hillslope_64_clean.shp",
+    "size": 1357464
+  },
+  {
+    "id": "1feoaHUmVIaTf2xME419Y07wk_kg04xIP",
+    "name": "hillslope_64_clean.shx",
+    "size": 2884
+  },
+  {
+    "id": "1-r2NBKJc97Qhx7XrpK_gD_83gV-y7EzF",
+    "name": "hillslope_65_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "19LvdkwpsFh7hWW12MJDFPW3f-YSEjrK1",
+    "name": "hillslope_65_clean.dbf",
+    "size": 46558
+  },
+  {
+    "id": "1tWSLtzgrPEkgM-O6yZSqREh9u6YO8IpI",
+    "name": "hillslope_65_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1BUmbID6Uy2-w026XscbeNKEtQeXIt50P",
+    "name": "hillslope_65_clean.shp",
+    "size": 3957232
+  },
+  {
+    "id": "10V1vZr4r5LdQpytFHs5ZJKRkV2cnh47f",
+    "name": "hillslope_65_clean.shx",
+    "size": 19676
+  },
+  {
+    "id": "1aE4NYaH5vnEssmuxRFLf5Oi_U9plru0x",
+    "name": "hillslope_66_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1djUrJok2mxQ7GXuV-KBld2cS2ehImCf9",
+    "name": "hillslope_66_clean.dbf",
+    "size": 193751
+  },
+  {
+    "id": "1QYWDzETeUHqT5EpxSi0fXe7buwrBrEVY",
+    "name": "hillslope_66_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1lEi6ISlkwFJRlowwXgAov2sXV3N5Yl7J",
+    "name": "hillslope_66_clean.shp",
+    "size": 17665992
+  },
+  {
+    "id": "16HiiDL9TnBktw6aCwWtlmWtt2BlaDUVZ",
+    "name": "hillslope_66_clean.shx",
+    "size": 81652
+  },
+  {
+    "id": "1ur1ZkuZs7OBt-A_4rddBWFi1Nm2VLMu9",
+    "name": "hillslope_67_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "10Mjc3T_XEDdBKM_QVSleBwjnMCSoX0wx",
+    "name": "hillslope_67_clean.dbf",
+    "size": 29382
+  },
+  {
+    "id": "1iyI98jm2whYPQ41Y2wzjZsUdL7FbPLpM",
+    "name": "hillslope_67_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1ppLG79fjnpi-L7T-Nxr2QeSjtNZ2yENB",
+    "name": "hillslope_67_clean.shp",
+    "size": 3367484
+  },
+  {
+    "id": "104ng_WjqWn-_OFzplmA4qgJsQTDm2GWf",
+    "name": "hillslope_67_clean.shx",
+    "size": 12444
+  },
+  {
+    "id": "1Jgsna6lsWs9JCGMH1hQAl4YTm0B5SaTp",
+    "name": "hillslope_71_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1XTGAaYhd04ykbTTBtkFe74QI4NBvcdsf",
+    "name": "hillslope_71_clean.dbf",
+    "size": 33049
+  },
+  {
+    "id": "17e6Xv9yROpRrBkiNvkaGiWRPxrQgG3s3",
+    "name": "hillslope_71_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1pzRttEZdOxnR9CdIDz0BNZg5CLjwClql",
+    "name": "hillslope_71_clean.shp",
+    "size": 1889088
+  },
+  {
+    "id": "1yRUALwq7Lw_YAZ49FGBFLNcO0gY4QVyK",
+    "name": "hillslope_71_clean.shx",
+    "size": 13988
+  },
+  {
+    "id": "1g0STCp7bBpc2k-iZl8igw4Dy3_o5tCLV",
+    "name": "hillslope_72_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "17p5mnxb6IOS-4wKVGaKgh1NqA3hsx2eB",
+    "name": "hillslope_72_clean.dbf",
+    "size": 400813
+  },
+  {
+    "id": "1hgchoMHHA1unizKNCBrxc_9ZaSfk1Qn-",
+    "name": "hillslope_72_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "11tjrk9_qkw1FOGoIo71OONg5W9QqzteP",
+    "name": "hillslope_72_clean.shp",
+    "size": 21755020
+  },
+  {
+    "id": "1rmgN4In_27IRpzPQfRb7l3OwTcyKO2Bm",
+    "name": "hillslope_72_clean.shx",
+    "size": 168836
+  },
+  {
+    "id": "1u-hc0ZJMEMfu17LvhiWIymuaf0x2Gss2",
+    "name": "hillslope_73_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1JAW6x-o1Mwu9gXZ1cVewdvj_jRQ7N2Jj",
+    "name": "hillslope_73_clean.dbf",
+    "size": 117390
+  },
+  {
+    "id": "1SuWlwb4VXa20aeAFL06ASiCDoVZkGNUT",
+    "name": "hillslope_73_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "13nhtFua6nzP0XH7RsQRrQLrc1f0RCTH2",
+    "name": "hillslope_73_clean.shp",
+    "size": 7151848
+  },
+  {
+    "id": "12lqH5MpShT8cBWqsy-TDY_YY3RKU4V3x",
+    "name": "hillslope_73_clean.shx",
+    "size": 49500
+  },
+  {
+    "id": "10ErnDMtACLkenQ847Ksl_rIyf0K9zXT-",
+    "name": "hillslope_74_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1EHopHOYjdZ7hdFzBGyB8-l-ATW44PI49",
+    "name": "hillslope_74_clean.dbf",
+    "size": 37134
+  },
+  {
+    "id": "1vTEkxMsHf_tjeuYTHPKczFFvf7N4nIY4",
+    "name": "hillslope_74_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1TgwVen3_JgtBHTlIugpFt9lMwD7ssXyE",
+    "name": "hillslope_74_clean.shp",
+    "size": 1352716
+  },
+  {
+    "id": "1Go4LXHW72kA5pKpiUVAEwQuAqRk48oEx",
+    "name": "hillslope_74_clean.shx",
+    "size": 15708
+  },
+  {
+    "id": "1JrF1GyYlCUNlcdrufvcoaDao7HMhhGqt",
+    "name": "hillslope_75_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1hpOpVPLkAcd8t0YiT7X-qJiqsWu8PFry",
+    "name": "hillslope_75_clean.dbf",
+    "size": 47508
+  },
+  {
+    "id": "1x1JTJrhw06Mf-lceHSneWEmhz8qJzruy",
+    "name": "hillslope_75_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1QPFtpz0o1KOUEMggmwihjNeq0wRuliUu",
+    "name": "hillslope_75_clean.shp",
+    "size": 3636552
+  },
+  {
+    "id": "1zLwE8uigyrqGCCiY4fOGpaIYB3Ig6BnL",
+    "name": "hillslope_75_clean.shx",
+    "size": 20076
+  },
+  {
+    "id": "1xClA8dat1_Pw4joeoysVx8-3q4q0G8Qu",
+    "name": "hillslope_76_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1pi90f7IOvBgGcMj7UXUzEaIudy3N_ovs",
+    "name": "hillslope_76_clean.dbf",
+    "size": 96167
+  },
+  {
+    "id": "1PyjA3Y9pc0ngoSVG0JDyJvRpjtVJphVT",
+    "name": "hillslope_76_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1hSO-awQZA5Lnrs-rxfMGm2Dc15ah240N",
+    "name": "hillslope_76_clean.shp",
+    "size": 6968804
+  },
+  {
+    "id": "1RUM6nhrpNqPoIwdyAf1f1oxTC6c__oeh",
+    "name": "hillslope_76_clean.shx",
+    "size": 40564
+  },
+  {
+    "id": "1jNrNOsg1Cj9S4wdKfw1gi0YHSyBGShLJ",
+    "name": "hillslope_77_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1QapE2AuK_0v0p87lhJ3uICvLA6E5Bff-",
+    "name": "hillslope_77_clean.dbf",
+    "size": 61701
+  },
+  {
+    "id": "1Lkxw8sggo5UdA77Dd3RCMW8Aeq3SF7Ld",
+    "name": "hillslope_77_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1Dx7BwjghQMl9IyGPuc8ufOTIcQAh6niU",
+    "name": "hillslope_77_clean.shp",
+    "size": 7301704
+  },
+  {
+    "id": "1y5CfpbSEwCeUqusyvT-RtTt6grQxhFQn",
+    "name": "hillslope_77_clean.shx",
+    "size": 26052
+  },
+  {
+    "id": "1Q5i0y8B607wHUSfeDnlaMCKFh0O-MWlW",
+    "name": "hillslope_78_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1zVDTGi8o9nX2QHjfxKiiii2M4X35Hh1_",
+    "name": "hillslope_78_clean.dbf",
+    "size": 194378
+  },
+  {
+    "id": "1LDzEWlUwcTL5ILF83803PZvtlpxP_x09",
+    "name": "hillslope_78_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "16xspBxD-iDaI2IlOO3GOcA5JjIvKKumj",
+    "name": "hillslope_78_clean.shp",
+    "size": 14124260
+  },
+  {
+    "id": "1BkN5YMxCxzRbFU6P6k6S1e-0Ptq5kWl5",
+    "name": "hillslope_78_clean.shx",
+    "size": 81916
+  },
+  {
+    "id": "1007-7oc41_16Siavprt0bRLZZfQxifP_",
+    "name": "hillslope_81_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1c1RlW3gakbGb-0q96PNzAzYxoWcKQ01m",
+    "name": "hillslope_81_clean.dbf",
+    "size": 98599
+  },
+  {
+    "id": "137q7AiOUk_4ZG7NX20QlaJ5aJFZqZCTA",
+    "name": "hillslope_81_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1F89sScxwenvbSNPGgilTYXWpYcBt62B8",
+    "name": "hillslope_81_clean.shp",
+    "size": 12506752
+  },
+  {
+    "id": "1ulyXuct6GGt5koGAZev-q-peaeqCI3Nk",
+    "name": "hillslope_81_clean.shx",
+    "size": 41588
+  },
+  {
+    "id": "1V4IH3KzbI2kMqUBQ1dQfS85dHI9yqj2u",
+    "name": "hillslope_82_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1QfwA94QBhCjK2EeXXb89Blqt7Ef47ayM",
+    "name": "hillslope_82_clean.dbf",
+    "size": 21117
+  },
+  {
+    "id": "1PWukeqHYTFHnGMQ4nPD2pv_VZY7-715S",
+    "name": "hillslope_82_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1CBYF-1ff0RZl-iC0UtaHALYcXv-O3jy1",
+    "name": "hillslope_82_clean.shp",
+    "size": 2589368
+  },
+  {
+    "id": "12ImCgCSrGa1oopx-qKAJXmtphPyEb2uX",
+    "name": "hillslope_82_clean.shx",
+    "size": 8964
+  },
+  {
+    "id": "1w-c5Zsr4J7Dkf9GpfZvGQiBl_84EBQP_",
+    "name": "hillslope_83_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "12FFYC5I98bMsYI-Gxp1Fl4FxJrSBAo3B",
+    "name": "hillslope_83_clean.dbf",
+    "size": 210205
+  },
+  {
+    "id": "1fGkIFMxjny1D5UXNFyMO0fz4A4-I9Ine",
+    "name": "hillslope_83_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1QrzaSjmdsSFp_OFJVtcEoEfTlnl396FX",
+    "name": "hillslope_83_clean.shp",
+    "size": 14895056
+  },
+  {
+    "id": "1vEsoiv8RSrSjSEzxV9PJHf8b0qp4Iorm",
+    "name": "hillslope_83_clean.shx",
+    "size": 88580
+  },
+  {
+    "id": "17p7gny4FzQkW_LsAMGXhp_E8x46ngXCs",
+    "name": "hillslope_84_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1mnroW4mJDcElWdeZghEzelyxqlVS2F7N",
+    "name": "hillslope_84_clean.dbf",
+    "size": 65843
+  },
+  {
+    "id": "1NyLG5z8VVuyo0I-aDI8X4gZM_4RbPwSW",
+    "name": "hillslope_84_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1DwwKj_lvYBSiZJeK3LCJEzhOoRQwidb3",
+    "name": "hillslope_84_clean.shp",
+    "size": 8468704
+  },
+  {
+    "id": "1zCEqNSZvjQgUSu9wNxFDqLl7tlfBg-r9",
+    "name": "hillslope_84_clean.shx",
+    "size": 27796
+  },
+  {
+    "id": "1IpJFs0pcRhGgcRIztj0DilyMyJX-c1wI",
+    "name": "hillslope_85_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1WVdx0hAbVddDj8wwsQ_FaKYNmIV7NVP4",
+    "name": "hillslope_85_clean.dbf",
+    "size": 286395
+  },
+  {
+    "id": "1DXeNRmdNVJ_gNrXSbzhijdnkAtDWmeoG",
+    "name": "hillslope_85_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1mgpV2U1UIDsUY7a7w5VDAUwddJdHQsdf",
+    "name": "hillslope_85_clean.shp",
+    "size": 19822356
+  },
+  {
+    "id": "125eWg1Qhx4mv6beIQbFlLsMQAkZsQ_0S",
+    "name": "hillslope_85_clean.shx",
+    "size": 120660
+  },
+  {
+    "id": "13wVwiIsAD3_h6sGiKGIKYyM-C6jyckVF",
+    "name": "hillslope_86_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "1A2m0Js3Xy9HIy3WGdHZVbzO9yZAwFcDk",
+    "name": "hillslope_86_clean.dbf",
+    "size": 73215
+  },
+  {
+    "id": "1IrVAcQHYOmwSvJ9MbfCYlkMTFGbEhXL4",
+    "name": "hillslope_86_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1n9NbnKaDFv9O_nfC0mhKQ10FyXHOQjvG",
+    "name": "hillslope_86_clean.shp",
+    "size": 19835536
+  },
+  {
+    "id": "1OaUSddz3uAvudJY27HUOmAV81YbPSarn",
+    "name": "hillslope_86_clean.shx",
+    "size": 30900
+  },
+  {
+    "id": "19g4VIjV1cpUG3RWItM4xTqvS22NG-cnj",
+    "name": "hillslope_91_clean.cpg",
+    "size": 10
+  },
+  {
+    "id": "149l1Z8OTMYic0fM7JwuuG3Gye_oC4Gqu",
+    "name": "hillslope_91_clean.dbf",
+    "size": 242277
+  },
+  {
+    "id": "16dKs_9AhZWloinZsnMfpM-2_goR78KEI",
+    "name": "hillslope_91_clean.prj",
+    "size": 143
+  },
+  {
+    "id": "1remRPnw6zn-pavrlj3GbDxtQOXB_OC_4",
+    "name": "hillslope_91_clean.shp",
+    "size": 28064240
+  },
+  {
+    "id": "1fyL_-qRi5NSMapcUCzxfjW74J9R_OEbL",
+    "name": "hillslope_91_clean.shx",
+    "size": 102084
+  }
+]

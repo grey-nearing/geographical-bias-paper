@@ -1,0 +1,45 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+dist/
+build/
+
+# Downloaded public data, large caches, and regenerated runtime outputs
+data/
+01_hydrofabric_ungaugedness/data/
+01_hydrofabric_ungaugedness/results/
+*.parquet
+*.zarr/
+*.gdb/
+*.gpkg
+*.shp
+*.shx
+*.dbf
+*.prj
+*.cpg
+*.tif
+*.tiff
+*.nc
+*.zip
+*.tar.gz
+*.part
+*.joblib
+*.pkl
+
+# Proprietary third-party flood hazard maps (never commit)
+*fathom*
+*Fathom*
+*exposure_eae*
+!run_reproduce_non_fathom.sh
+!results/hydrofabric_summary/master_cross_hydrofabric_summary_nonfathom.csv
+
+# OS & editor clutter
+.DS_Store
+*.swp
+*.swo
+.vscode/
+.idea/
+*.log

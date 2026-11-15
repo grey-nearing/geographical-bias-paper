@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=65.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "geographical-bias-paper"
+version = "3.0.0"
+description = "What Fraction of the World's Watersheds Are Ungauged? — Multi-hydrofabric ungaugedness, ML flood-forecast skill prediction, and SHAP attribution."
+readme = "README.md"
+license = {text = "Apache-2.0"}
+requires-python = ">=3.11"
+authors = [
+  {name = "Grey Nearing"},
+  {name = "Karan Ruparell"},
+  {name = "Maria Luisa Taccari"},
+  {name = "Stephanie Rees"},
+  {name = "Martin Gauch"},
+  {name = "Justin Ginnetti"},
+  {name = "Oliver Wing"},
+  {name = "Juliet Rothenberg"},
+  {name = "Frederik Kratzert"},
+  {name = "Deborah Cohen"},
+  {name = "Yossi Matias"},
+]
+dependencies = [
+  "gdown>=5.0.0",
+  "geopandas>=0.14.0",
+  "joblib>=1.3.0",
+  "lightgbm>=4.0.0",
+  "matplotlib>=3.8.0",
+  "netCDF4>=1.6.0",
+  "numba>=0.59.0",
+  "numcodecs>=0.12.0",
+  "numpy>=1.26.0",
+  "pandas>=2.1.0",
+  "pyarrow>=14.0.0",
+  "pyogrio>=0.8.0",
+  "pytest>=8.0.0",
+  "PyYAML>=6.0",
+  "rasterio>=1.3.0",
+  "requests>=2.31.0",
+  "scikit-learn>=1.4.0",
+  "scipy>=1.11.0",
+  "seaborn>=0.13.0",
+  "shapely>=2.0.0",
+  "torch>=2.2.0",
+  "tqdm>=4.66.0",
+  "xarray>=2023.10.0",
+  "xgboost>=2.0.0",
+  "zarr>=2.16.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["utils*"]

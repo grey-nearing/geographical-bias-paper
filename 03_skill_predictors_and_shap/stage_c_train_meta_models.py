@@ -16,6 +16,7 @@ Fixes all Round-2 statistical & modeling issues:
 import argparse
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import json
+import multiprocessing as mp
 import os
 import sys
 import time
@@ -452,8 +453,13 @@ def main():
       flush=True,
   )
 
+  os.environ['OMP_NUM_THREADS'] = str(args.threads)
+  os.environ['OPENBLAS_NUM_THREADS'] = str(args.threads)
+  os.environ['MKL_NUM_THREADS'] = str(args.threads)
+  os.environ['NUMEXPR_NUM_THREADS'] = str(args.threads)
+
   completed = 0
-  with ProcessPoolExecutor(max_workers=args.workers) as ex:
+  with ProcessPoolExecutor(max_workers=args.workers, mp_context=mp.get_context('spawn')) as ex:
     fut_map = {ex.submit(train_one_metric_task, t): t for t in tasks}
     for fut in as_completed(fut_map):
       t = fut_map[fut]

@@ -17,6 +17,7 @@ Reports both:
 
 from __future__ import annotations
 
+import multiprocessing as mp
 import os
 import sys
 import time
@@ -446,16 +447,24 @@ def main() -> None:
     print(sub_a.pivot_table(index=["detector", "weight", "tier"], columns="hydrofabric", values="frac_lt_train_q05").round(4).to_string())
 
     # PHASE B: One-Class SVM in parallel across workers (exact sklearn settings)
+    # Use "spawn" context to prevent Linux fork()-after-OpenBLAS/OpenMP deadlocks
+    # inherited from Phase A's parallel LOF/IsolationForest calls.
     n_cpus = os.cpu_count() or 8
     n_workers = min(8, max(1, n_cpus // 4))
     blas_threads = max(1, n_cpus // n_workers)
-    print(f"\n=== PHASE B: One-Class SVM across 4 hydrofabrics x 4 tiers (workers={n_workers}, threads={blas_threads}) ===", flush=True)
+    print(f"\n=== PHASE B: One-Class SVM across 4 hydrofabrics x 4 tiers (workers={n_workers}, threads={blas_threads}, spawn) ===", flush=True)
     os.environ["OMP_NUM_THREADS"] = str(blas_threads)
     os.environ["OPENBLAS_NUM_THREADS"] = str(blas_threads)
     os.environ["MKL_NUM_THREADS"] = str(blas_threads)
+    os.environ["NUMEXPR_NUM_THREADS"] = str(blas_threads)
 
-    tasks = [(f, tkey, train_row_map[(f, tkey)]) for f in fabrics for tkey, _ in TIERS]
-    with ProcessPoolExecutor(max_workers=n_workers) as ex:
+    # Schedule largest tiers first to minimize tail stragglers
+    tasks = sorted(
+        [(f, tkey, train_row_map[(f, tkey)]) for f in fabrics for tkey, _ in TIERS],
+        key=lambda item: -len(item[2]),
+    )
+    spawn_ctx = mp.get_context("spawn")
+    with ProcessPoolExecutor(max_workers=n_workers, mp_context=spawn_ctx) as ex:
         futs = [ex.submit(fit_score_ocsvm_worker, t) for t in tasks]
         for fut in as_completed(futs):
             f, tkey, s_ocsvm, q05_ocsvm, _ = fut.result()

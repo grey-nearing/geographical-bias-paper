@@ -18,6 +18,7 @@ import argparse
 from collections import defaultdict, deque
 import concurrent.futures
 import json
+import multiprocessing as mp
 import os
 import sys
 import time
@@ -635,7 +636,10 @@ def main():
     ].copy()
     net_new['hybas_str'] = 'hybas_' + net_new['snapped_hybas_id'].astype(np.int64).astype(str)
     tasks = [(cont, valid_38k, net_new, old_caravan_tt, old_caravan_areas, cont_topo_dfs[cont]) for cont in CONTINENTS]
-    with concurrent.futures.ProcessPoolExecutor(max_workers=min(9, os.cpu_count() or 4)) as ex:
+    with concurrent.futures.ProcessPoolExecutor(
+        max_workers=min(9, os.cpu_count() or 4),
+        mp_context=mp.get_context('spawn'),
+    ) as ex:
       dfs = list(ex.map(compute_combined_coverage_continent, tasks))
     df_all = pd.concat(dfs, axis=0)
     return df_all[~df_all.index.duplicated(keep='first')].reindex(all_ids).fillna(0.0)

@@ -13,6 +13,7 @@ import argparse
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import json
+import multiprocessing as mp
 import os
 import sys
 import time
@@ -1093,8 +1094,12 @@ def run_part_bootstrap(n_boot: int = 20, workers: int = 7, threads: int = 8):
   os.makedirs(BOOT_DIR, exist_ok=True)
   t0 = time.time()
   print(f'\n--- Running B={n_boot} Gauge-Clustered Bootstrap Replicates ({workers} workers x {threads} thr) ---', flush=True)
+  os.environ['OMP_NUM_THREADS'] = str(threads)
+  os.environ['OPENBLAS_NUM_THREADS'] = str(threads)
+  os.environ['MKL_NUM_THREADS'] = str(threads)
+  os.environ['NUMEXPR_NUM_THREADS'] = str(threads)
   reps = []
-  with ProcessPoolExecutor(max_workers=workers) as ex:
+  with ProcessPoolExecutor(max_workers=workers, mp_context=mp.get_context('spawn')) as ex:
     futs = [ex.submit(_run_one_bootstrap_rep, b, threads) for b in range(n_boot)]
     for fut in as_completed(futs):
       r = fut.result()

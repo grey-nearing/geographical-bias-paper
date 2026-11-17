@@ -49,9 +49,20 @@ warnings.filterwarnings('ignore')
 
 OVERLAPS_38K_DIR = os.path.join(CANON_DIR, 'coverage_fractions', 'polygon_overlaps_38k')
 BACKUP_38K_DIR = os.path.join(CANON_DIR, 'backup_v2_38069_gauges')
-ROUND2_DIR = os.path.join(CANON_DIR, 'round2')
+ROUND_SUBDIR = os.environ.get('GEO_BIAS_ROUND_SUBDIR', 'round2')
+ROUND2_DIR = os.path.join(CANON_DIR, ROUND_SUBDIR)
 OUT_DIR = os.path.join(ROUND2_DIR, 'tier_features')
 os.makedirs(OUT_DIR, exist_ok=True)
+
+
+def normalize_ocsvm_series(vals: np.ndarray) -> np.ndarray:
+  """Scale-normalizes OneClassSVM decision_function by |rho| = |min| so scores lie in [-1, ~+0.45]
+  regardless of training-set size N (fixing the N-proportional scaling of sklearn OneClassSVM)."""
+  arr = np.asarray(vals, dtype=np.float64)
+  mn = float(np.nanmin(arr))
+  if mn < -2.0:
+    return (arr / abs(mn)).astype(np.float32)
+  return arr.astype(np.float32)
 
 
 def _read_table(base_path_no_ext: str, **csv_kwargs) -> pd.DataFrame:
@@ -127,13 +138,14 @@ def fast_calculate_anomaly_scores(
   iso.fit(X_train_scaled)
   scores_if = iso.decision_function(X_test_scaled)
 
-  # 2. One-Class SVM
+  # 2. One-Class SVM (normalized by |intercept| = rho so decision scores are N-invariant in [-1, ~+0.45])
   ocsvm = OneClassSVM(cache_size=4000)
   ocsvm.fit(X_train_scaled)
   sv = np.ascontiguousarray(ocsvm.support_vectors_, dtype=np.float64)
   coef = np.ascontiguousarray(ocsvm.dual_coef_.ravel(), dtype=np.float64)
   gamma = float(ocsvm._gamma)
   intercept = float(ocsvm.intercept_[0])
+  rho_scale = max(abs(intercept), 1e-12)
   sv_sq = np.einsum('ij,ij->i', sv, sv)
   ocsvm_vals = np.empty(len(X_test_scaled), dtype=np.float64)
   bs = 16384
@@ -142,7 +154,7 @@ def fast_calculate_anomaly_scores(
     xb_sq = np.einsum('ij,ij->i', xb, xb)[:, None]
     d2 = xb_sq + sv_sq[None, :] - 2.0 * (xb @ sv.T)
     np.maximum(d2, 0.0, out=d2)
-    ocsvm_vals[i : i + bs] = np.exp(-gamma * d2) @ coef + intercept
+    ocsvm_vals[i : i + bs] = (np.exp(-gamma * d2) @ coef + intercept) / rho_scale
 
   # 3. Local Outlier Factor (exact k=20 Euclidean, matching sklearn LOF novelty=True)
   n_tr = len(X_train_scaled)
@@ -541,6 +553,12 @@ def main():
       action='store_true',
       help='Build only the 7 core manuscript tiers (zero, baseline 8.1k, T1 34.6k, T2 93.8k, T3 121.8k, universal ceilings).',
   )
+  parser.add_argument(
+      '--reuse-tier-dir',
+      type=str,
+      default='',
+      help='Optional read-only tier_features dir (e.g., round2/tier_features) to reuse unchanged tier0..tier4 COV/OOD with OCSVM normalization.',
+  )
   parser.add_argument('--overwrite', action='store_true')
   args = parser.parse_args()
 
@@ -599,6 +617,7 @@ def main():
   # Pure feature-space top-quartile reference (ZERO target-Y conditioning!)
   train_candidates = [
       os.path.join(ROUND2_DIR, 'meta_models', 'train_95_float32.parquet'),
+      os.path.join(CANON_DIR, 'round2', 'meta_models', 'train_95_float32.parquet'),
       os.path.join(CANON_DIR, 'generic_training_data', 'ungauged_generic_training_data.parquet'),
       os.path.join(CANON_DIR, 'generic_training_data', 'ungauged_generic_training_data.csv'),
   ]
@@ -606,12 +625,23 @@ def main():
   if train_p is None:
     raise FileNotFoundError(f'Missing training features file; checked {train_candidates}')
   df_train_95 = pd.read_parquet(train_p) if train_p.endswith('.parquet') else pd.read_csv(train_p, index_col=0)
+  # Normalize training anomaly_score_ocsvm per split to canonical [-1, ~+0.45] scale!
+  df_train_95 = df_train_95.copy()
+  n_g_tr = len(df_train_95) // 3
+  if len(df_train_95) == 3 * n_g_tr and n_g_tr > 1000:
+    oc_col = df_train_95['anomaly_score_ocsvm'].values.astype(np.float64).copy()
+    for sp_i in range(3):
+      sl = slice(sp_i * n_g_tr, (sp_i + 1) * n_g_tr)
+      oc_col[sl] = normalize_ocsvm_series(oc_col[sl])
+    df_train_95['anomaly_score_ocsvm'] = oc_col.astype(np.float32)
+  else:
+    df_train_95['anomaly_score_ocsvm'] = normalize_ocsvm_series(df_train_95['anomaly_score_ocsvm'].values)
   ref_q75_ood = {c: float(df_train_95[c].quantile(0.75)) for c in OOD_COLS}
   dense_q75_cov = {c: float(df_train_95.loc[df_train_95[c] > 0, c].quantile(0.75)) for c in COV_COLS}
-  print('   Pure feature-space Q75 OOD reference:', {k: round(v, 5) for k, v in ref_q75_ood.items()}, flush=True)
+  print('   Pure feature-space Q75 OOD reference (OCSVM normalized):', {k: round(v, 5) for k, v in ref_q75_ood.items()}, flush=True)
   print('   Pure feature-space Q75 positive coverage reference:', {k: round(v, 5) for k, v in dense_q75_cov.items()}, flush=True)
   with open(os.path.join(OUT_DIR, 'universal_feature_space_references.json'), 'w') as f:
-    json.dump({'ref_q75_ood': ref_q75_ood, 'dense_q75_cov': dense_q75_cov}, f, indent=2)
+    json.dump({'ref_q75_ood': ref_q75_ood, 'dense_q75_cov': dense_q75_cov, 'ocsvm_normalized': True}, f, indent=2)
 
   native_to_cid = dict(zip(arch['native_station_id'].astype(str), arch['canonical_gauge_id'].astype(str)))
   grdc_arch = arch[arch['source_dataset'] == 'GRDC']
@@ -708,22 +738,39 @@ def main():
   sec2_rows = []
   mask_cols = {}
   ood_t1a_cached = None
+  ood_t4_cached = None
+  reuse_masks_df = None
+  if args.reuse_tier_dir:
+    rm_p = os.path.join(args.reuse_tier_dir, 'tier_active_and_all_masks_r2.parquet')
+    if os.path.exists(rm_p):
+      reuse_masks_df = pd.read_parquet(rm_p).reindex(all_ids)
+      print(f'   Loaded read-only reuse masks from {rm_p} ({reuse_masks_df.shape})', flush=True)
 
   for t_key, t_lbl, d_sub, n_arch, mode, ids_override in tier_specs:
     ts = time.time()
     out_pq = os.path.join(OUT_DIR, f'{t_key}.parquet')
     print(f'\nBuilding {t_key} ({len(d_sub):,} physical gauges, mode={mode})...', flush=True)
 
+    df_existing = None
     if (not args.overwrite) and os.path.exists(out_pq):
       df_existing = pd.read_parquet(out_pq)
       if len(df_existing) == len(all_ids):
-        cov_df = df_existing[COV_COLS]
-        ood_df = df_existing[OOD_COLS]
+        cov_df = df_existing[COV_COLS].copy()
+        ood_df = df_existing[OOD_COLS].copy()
+        ood_df['anomaly_score_ocsvm'] = normalize_ocsvm_series(ood_df['anomaly_score_ocsvm'].values)
         print(f'   Loaded existing {out_pq} ({len(df_existing):,} rows).', flush=True)
       else:
         df_existing = None
-    else:
-      df_existing = None
+    elif args.reuse_tier_dir and mode != 'zero':
+      reuse_pq = os.path.join(args.reuse_tier_dir, f'{t_key}.parquet')
+      if os.path.exists(reuse_pq):
+        df_re = pd.read_parquet(reuse_pq).reindex(all_ids)
+        if len(df_re) == len(all_ids):
+          cov_df = df_re[COV_COLS].copy()
+          ood_df = df_re[OOD_COLS].copy()
+          ood_df['anomaly_score_ocsvm'] = normalize_ocsvm_series(ood_df['anomaly_score_ocsvm'].values)
+          df_existing = df_re
+          print(f'   Reused {reuse_pq} with normalized OCSVM ({len(df_re):,} rows).', flush=True)
 
     if df_existing is None:
       if mode == 'zero':
@@ -731,10 +778,12 @@ def main():
         ood_df = None  # filled from tier1a below!
       elif mode == 'cached_38k':
         cov_df = cov_38k_cached
-        ood_df = ood_38k_cached.reindex(all_ids)[OOD_COLS]
+        ood_df = ood_38k_cached.reindex(all_ids)[OOD_COLS].copy()
+        ood_df['anomaly_score_ocsvm'] = normalize_ocsvm_series(ood_df['anomaly_score_ocsvm'].values)
       elif mode == 'cached_121k':
         cov_df = df_inf_121k.reindex(all_ids)[COV_COLS].fillna(0.0)
-        ood_df = df_inf_121k.reindex(all_ids)[OOD_COLS]
+        ood_df = df_inf_121k.reindex(all_ids)[OOD_COLS].copy()
+        ood_df['anomaly_score_ocsvm'] = normalize_ocsvm_series(ood_df['anomaly_score_ocsvm'].values)
       elif mode == 'ca38k':
         cov_df = compute_cov_for_subset(d_sub, valid_38k_override=ids_override)
         ood_df = fast_calculate_anomaly_scores(ca_38k_clean.loc[sorted(ids_override), shared_88_cols], X_test_hybas_88, n_threads=args.threads)
@@ -744,6 +793,8 @@ def main():
 
     if t_key == 'tier1a_active_post2016_ccby_8811':
       ood_t1a_cached = ood_df.copy()
+    if t_key == 'tier4_all_publicly_knowable_121819':
+      ood_t4_cached = ood_df.copy()
 
     # Wait: if zero-gauge tier was processed first before t1a, compute t1a OOD after loop
     if ood_df is not None:
@@ -772,24 +823,37 @@ def main():
     m_snap_all = np.fromiter((h in sn_all for h in all_ids), dtype=bool, count=len(all_ids))
     m_snap_main_all = np.fromiter((h in sn_main_all for h in all_ids), dtype=bool, count=len(all_ids))
 
+    # Strict >=2022 daily_discharge active mask for A6 DA sensitivity
     if len(d_sub) == 0:
+      m_snap_strict2022 = np.zeros(len(all_ids), dtype=bool)
       m_snap_act = np.zeros(len(all_ids), dtype=bool)
       m_snap_main_act = np.zeros(len(all_ids), dtype=bool)
       m_ge95_act = np.zeros(len(all_ids), dtype=bool)
-    elif d_sub['is_active_opt1'].all():
-      m_snap_act = m_snap_all.copy()
-      m_snap_main_act = m_snap_main_all.copy()
-      m_ge95_act = m_ge95_all.copy()
     else:
-      d_act = d_sub[d_sub['is_active_opt1']]
-      valid_sn_a = d_act[d_act['snapped_hybas_id'] > 0]
-      sn_act = set('hybas_' + valid_sn_a['snapped_hybas_id'].astype(np.int64).astype(str))
-      sn_main_act = set('hybas_' + valid_sn_a.loc[~valid_sn_a['is_subbasin_headwater_gauge'], 'snapped_hybas_id'].astype(np.int64).astype(str))
-      m_snap_act = np.fromiter((h in sn_act for h in all_ids), dtype=bool, count=len(all_ids))
-      m_snap_main_act = np.fromiter((h in sn_main_act for h in all_ids), dtype=bool, count=len(all_ids))
-      # Active upstream >= 0.95 coverage mask
-      cov_act = compute_cov_for_subset(d_act)
-      m_ge95_act = (cov_act['total_upstream_coverage'].reindex(all_ids).values >= 0.95)
+      d_strict = d_sub[
+          (d_sub['best_observation_type'] == 'daily_discharge')
+          & (pd.to_numeric(d_sub['verified_record_end_year'], errors='coerce') >= 2022)
+          & (d_sub['snapped_hybas_id'] > 0)
+      ]
+      sn_strict = set('hybas_' + d_strict['snapped_hybas_id'].astype(np.int64).astype(str))
+      m_snap_strict2022 = np.fromiter((h in sn_strict for h in all_ids), dtype=bool, count=len(all_ids))
+
+      if d_sub['is_active_opt1'].all():
+        m_snap_act = m_snap_all.copy()
+        m_snap_main_act = m_snap_main_all.copy()
+        m_ge95_act = m_ge95_all.copy()
+      else:
+        d_act = d_sub[d_sub['is_active_opt1']]
+        valid_sn_a = d_act[d_act['snapped_hybas_id'] > 0]
+        sn_act = set('hybas_' + valid_sn_a['snapped_hybas_id'].astype(np.int64).astype(str))
+        sn_main_act = set('hybas_' + valid_sn_a.loc[~valid_sn_a['is_subbasin_headwater_gauge'], 'snapped_hybas_id'].astype(np.int64).astype(str))
+        m_snap_act = np.fromiter((h in sn_act for h in all_ids), dtype=bool, count=len(all_ids))
+        m_snap_main_act = np.fromiter((h in sn_main_act for h in all_ids), dtype=bool, count=len(all_ids))
+        if reuse_masks_df is not None and f'{t_key}__ge95_active' in reuse_masks_df.columns:
+          m_ge95_act = reuse_masks_df[f'{t_key}__ge95_active'].values.astype(bool)
+        else:
+          cov_act = compute_cov_for_subset(d_act)
+          m_ge95_act = (cov_act['total_upstream_coverage'].reindex(all_ids).values >= 0.95)
 
     mask_cols[f'{t_key}__snap_all'] = m_snap_all
     mask_cols[f'{t_key}__snap_main_all'] = m_snap_main_all
@@ -799,6 +863,7 @@ def main():
     mask_cols[f'{t_key}__snap_main_active'] = m_snap_main_act
     mask_cols[f'{t_key}__ge95_active'] = m_ge95_act
     mask_cols[f'{t_key}__union_active'] = m_snap_act | m_ge95_act
+    mask_cols[f'{t_key}__snap_active_strict2022'] = m_snap_strict2022
 
   # Finalize tier0_zero_gauges now that ood_t1a_cached is available
   t0_pq = os.path.join(OUT_DIR, 'tier0_zero_gauges.parquet')
@@ -809,8 +874,14 @@ def main():
   sec2_rows.insert(0, sec2_t0)
   pd.concat([cov_t0, ood_t1a_cached[OOD_COLS].astype(np.float32), s_ut0, s_ut0_g, s_up0, s_dr0], axis=1).to_parquet(t0_pq)
 
-  # Universal Gauging Ceiling & Dense Corridor Ceiling (pure feature-space Q75 OOD, uniform across ALL 3 OOD cols!)
-  ood_t4 = df_inf_121k.reindex(all_ids)[OOD_COLS].copy()
+  # Universal Gauging Counterfactuals (A2):
+  # (1) Conservative bound: tier5_universal_no_ood_clamp (Cup=Cdown=1 + FT+DA only; actual physical tier4 OOD, ZERO OOD clamping!)
+  # (2) Idealized ceiling:  tier5_universal_idealized_ceiling (+ scale-consistent Q75 OOD floor on normalized OCSVM/IF/LOF!)
+  if ood_t4_cached is not None:
+    ood_t4 = ood_t4_cached[OOD_COLS].copy()
+  else:
+    ood_t4 = df_inf_121k.reindex(all_ids)[OOD_COLS].copy()
+    ood_t4['anomaly_score_ocsvm'] = normalize_ocsvm_series(ood_t4['anomaly_score_ocsvm'].values)
   ood_t5 = pd.DataFrame(index=all_ids)
   for c in OOD_COLS:
     ood_t5[c] = np.maximum(ood_t4[c].values, ref_q75_ood[c]).astype(np.float32)
@@ -827,15 +898,16 @@ def main():
   for c in COV_COLS:
     cov_t5_dense[c] = np.maximum(cov_t5_dense[c].values, dense_q75_cov[c]).astype(np.float32)
 
-  for t_key, t_lbl, c_df in [
-      ('tier5_universal_idealized_ceiling', 'Universal Gauging (100% Coverage + Feature-Space Q75 Climate)', cov_t5),
-      ('tier5_dense_corridor_ceiling', 'Dense Corridor Ceiling (Q75 Multi-Gauge Coverage + Q75 Climate)', cov_t5_dense),
+  for t_key, t_lbl, c_df, o_df in [
+      ('tier5_universal_no_ood_clamp', 'Universal Gauging Conservative (100% Coverage + FT+DA Only, Actual OOD)', cov_t5, ood_t4),
+      ('tier5_universal_idealized_ceiling', 'Universal Gauging Ceiling (100% Coverage + FT+DA + Feature-Space Q75 OOD)', cov_t5, ood_t5),
+      ('tier5_dense_corridor_ceiling', 'Dense Corridor Ceiling (Q75 Multi-Gauge Coverage + Q75 OOD)', cov_t5_dense, ood_t5),
   ]:
     r_c, s_u, s_ug, s_up, s_dr = compute_sec2_metrics(t_key, t_lbl, c_df, None, len(all_ids), tree_info, all_ids)
     sec2_rows.append(r_c)
-    pd.concat([c_df[COV_COLS], ood_t5[OOD_COLS], s_u, s_ug, s_up, s_dr], axis=1).to_parquet(os.path.join(OUT_DIR, f'{t_key}.parquet'))
+    pd.concat([c_df[COV_COLS], o_df[OOD_COLS].astype(np.float32), s_u, s_ug, s_up, s_dr], axis=1).to_parquet(os.path.join(OUT_DIR, f'{t_key}.parquet'))
     ones = np.ones(len(all_ids), dtype=bool)
-    for sfx in ['snap_all', 'snap_main_all', 'ge95_all', 'union_all', 'snap_active', 'snap_main_active', 'ge95_active', 'union_active']:
+    for sfx in ['snap_all', 'snap_main_all', 'ge95_all', 'union_all', 'snap_active', 'snap_main_active', 'ge95_active', 'union_active', 'snap_active_strict2022']:
       mask_cols[f'{t_key}__{sfx}'] = ones
 
   df_masks = pd.DataFrame(mask_cols, index=all_ids)

@@ -1,0 +1,8 @@
+section,metric,weight,measure,n_hydrofabrics,tier1_min_pct,tier1_max_pct,tier1_range,tier2_min_pct,tier2_max_pct,tier2_range,tier3_min_pct,tier3_max_pct,tier3_range
+0. Never Passes a Gauge,U_never,area,Global land area,6,66.5491,68.4353,66.5–68.4%,40.5882,43.5137,40.6–43.5%,31.576,35.0794,31.6–35.1%
+0. Never Passes a Gauge,U_never,runoff,Global river runoff (3 flow models),4,59.8256,65.9026,59.8–65.9%,32.8388,39.3628,32.8–39.4%,23.0825,31.3758,23.1–31.4%
+0. Never Passes a Gauge,U_never,population,Global population,6,78.3102,79.1513,78.3–79.2%,42.8718,44.5531,42.9–44.6%,27.9014,30.417,27.9–30.4%
+1. Fractional Watershed Ungaugedness,U_net_Eq4,area,Global land area,6,91.6568,96.7951,91.7–96.8%,83.7077,93.6694,83.7–93.7%,79.7141,92.1437,79.7–92.1%
+1. Fractional Watershed Ungaugedness,U_net_Eq4,runoff,Global river runoff (3 flow models),4,89.7912,95.5623,89.8–95.6%,80.1898,90.6673,80.2–90.7%,75.6548,87.8865,75.7–87.9%
+1. Fractional Watershed Ungaugedness,U_net_Eq4,population,Global population,6,88.1365,95.0334,88.1–95.0%,72.2643,88.1533,72.3–88.2%,61.0578,83.3951,61.1–83.4%
+1. Fractional Watershed Ungaugedness,U_net_1d,Q_ds,"Global river discharge (1D flow-volume weighted, 3 flow models)",3,44.811,53.4781,44.8–53.5%,15.6851,21.558,15.7–21.6%,9.4616,11.7152,9.5–11.7%

@@ -60,7 +60,8 @@ import stage_c_skill_predictor  # noqa: F401 (needed for joblib unpickling)
 warnings.filterwarnings('ignore')
 
 CANON_DIR = os.environ.get('GEO_BIAS_DATA_DIR', './data')
-ROUND2_DIR = os.path.join(CANON_DIR, 'round2')
+ROUND_SUBDIR = os.environ.get('GEO_BIAS_ROUND_SUBDIR', 'round2')
+ROUND2_DIR = os.path.join(CANON_DIR, ROUND_SUBDIR)
 META_DIR = os.path.join(ROUND2_DIR, 'meta_models')
 MODELS_DIR = os.path.join(META_DIR, 'models')
 INFER_PARQUET = os.path.join(META_DIR, 'hybas_inference_95_float32.parquet')
@@ -196,7 +197,7 @@ def short_feature_label_unique(feat: str) -> str:
       'lka_pc_use': 'Lake area extent (%)',
       'lkv_mc_usu': 'Total lake volume (Mm³)',
       'rev_mc_usu': 'Total reservoir volume (Mm³)',
-      'ria_ha_usu': 'Total reservoir area (ha)',
+      'ria_ha_usu': 'Total river area (ha)',
       'riv_tc_usu': 'Total river channel volume (10³ m³)',
       'ire_pc_use': 'Irrigated area extent (%)',
       'pop_ct_usu': 'Watershed population count',
@@ -241,7 +242,6 @@ def short_feature_label_unique(feat: str) -> str:
 
 # Worker globals (initialized once per spawned process)
 _W_MODELS = None
-_W_KNN_TORCH = None
 _W_BG_DATA = None
 _W_BG_WEIGHTS = None
 _W_F_BG_ALL = None
@@ -254,29 +254,31 @@ _W_STRAT_IDS = None
 _W_SHARD_DIR = None
 _W_THREADS = 1
 _W_PAIRS_PER_BG = 1
+_W_WITH_PERM95 = False
 
 
 def _set_model_threads(mod, n_threads: int):
   impl = mod.impl
+  if hasattr(impl, 'set_n_threads'):
+    impl.set_n_threads(n_threads)
+    return
   impl.n_threads = n_threads
-  if hasattr(impl, 'model') and impl.model is not None:
-    for est in impl.model.estimators_:
-      if hasattr(est, 'set_params'):
-        for pkey in ('n_jobs', 'nthread'):
-          if pkey in est.get_params():
-            try:
-              est.set_params(**{pkey: n_threads})
-            except Exception:
-              pass
-      if hasattr(est, 'get_booster'):
-        try:
-          est.get_booster().set_param({'nthread': n_threads})
-        except Exception:
-          pass
-  if hasattr(impl, 'ensemble') and impl.ensemble is not None:
-    for est in impl.ensemble.estimators_:
-      if hasattr(est, 'named_steps') and 'extratreesregressor' in est.named_steps:
-        est.named_steps['extratreesregressor'].n_jobs = n_threads
+  for attr in ('model', 'ensemble'):
+    stk = getattr(impl, attr, None)
+    if stk is not None and hasattr(stk, 'estimators_'):
+      for est in stk.estimators_:
+        if hasattr(est, 'set_params'):
+          for pkey in ('n_jobs', 'nthread'):
+            if pkey in est.get_params():
+              try:
+                est.set_params(**{pkey: n_threads})
+              except Exception:
+                pass
+        if hasattr(est, 'get_booster'):
+          try:
+            est.get_booster().set_param({'nthread': n_threads})
+          except Exception:
+            pass
 
 
 def _build_exact_group_shapley_matrix(n_cats: int) -> np.ndarray:
@@ -296,19 +298,26 @@ def _build_exact_group_shapley_matrix(n_cats: int) -> np.ndarray:
 
 
 def _init_spawn_worker(
-    models_dir, bg_data, bg_weights, raw_cols, x_strat_vals, x_strat_ids, shard_dir, n_threads, n_pairs_per_bg
+    models_dir,
+    bg_data,
+    bg_weights,
+    raw_cols,
+    x_strat_vals,
+    x_strat_ids,
+    shard_dir,
+    n_threads,
+    n_pairs_per_bg,
+    with_perm95,
 ):
-  """Spawned worker init (100% OpenMP/Torch safe): loads models, precomputes tensors & f(bg)."""
-  global _W_MODELS, _W_KNN_TORCH, _W_BG_DATA, _W_BG_WEIGHTS, _W_F_BG_ALL, _W_F_EMPTY
+  """Spawned worker init (100% OpenMP safe): loads models, precomputes tensors & f(bg)."""
+  global _W_MODELS, _W_BG_DATA, _W_BG_WEIGHTS, _W_F_BG_ALL, _W_F_EMPTY
   global _W_CAT_FEAT_IDXS, _W_GRP_WEIGHT_MAT, _W_COLS, _W_STRAT_VALS, _W_STRAT_IDS
-  global _W_SHARD_DIR, _W_THREADS, _W_PAIRS_PER_BG
+  global _W_SHARD_DIR, _W_THREADS, _W_PAIRS_PER_BG, _W_WITH_PERM95
 
   os.environ['OMP_NUM_THREADS'] = str(n_threads)
   os.environ['OPENBLAS_NUM_THREADS'] = str(n_threads)
   os.environ['MKL_NUM_THREADS'] = str(n_threads)
   os.environ['NUMEXPR_NUM_THREADS'] = str(n_threads)
-  import torch
-  torch.set_num_threads(int(n_threads))
 
   _W_COLS = list(raw_cols)
   _W_BG_DATA = np.ascontiguousarray(bg_data, dtype=np.float64)
@@ -318,6 +327,7 @@ def _init_spawn_worker(
   _W_SHARD_DIR = shard_dir
   _W_THREADS = int(n_threads)
   _W_PAIRS_PER_BG = int(n_pairs_per_bg)
+  _W_WITH_PERM95 = bool(with_perm95)
 
   fmap_uni = {f: UNIFIED_CAT_LABELS[FEATURE_CLASSIFICATION[f]] for f in _W_COLS}
   _W_CAT_FEAT_IDXS = [
@@ -327,53 +337,15 @@ def _init_spawn_worker(
   _W_GRP_WEIGHT_MAT = _build_exact_group_shapley_matrix(len(CATS_SORTED))  # (7, 128)
 
   _W_MODELS = []
-  _W_KNN_TORCH = {}
   for m_name in ALL_12_METRICS:
     p = os.path.join(models_dir, f'base__{m_name}.joblib')
     mod = joblib.load(p)
     _set_model_threads(mod, n_threads)
     _W_MODELS.append((m_name, mod))
-    if m_name not in CLASSIC_2:
-      knn_pipe = mod.impl.ensemble.estimators_[2]
-      knn_reg = knn_pipe.named_steps['kneighborsregressor']
-      fit_X = np.ascontiguousarray(knn_reg._fit_X, dtype=np.float32)
-      fit_X_T = np.ascontiguousarray(fit_X.T, dtype=np.float32)
-      r2_np = np.ascontiguousarray((fit_X * fit_X).sum(axis=1), dtype=np.float32)
-      fit_y = np.ascontiguousarray(np.asarray(knn_reg._y, dtype=np.float64).ravel())
-      _W_KNN_TORCH[m_name] = (
-          torch.from_numpy(fit_X_T),
-          torch.from_numpy(r2_np).unsqueeze(0),
-          torch.from_numpy(fit_y),
-          int(knn_reg.n_neighbors),
-      )
 
   # Precompute f(B_b) for all K_bg=100 global background centroids ONCE per worker!
   _W_F_BG_ALL = _predict_all_12(_W_BG_DATA)  # (K_bg, 12)
   _W_F_EMPTY = (_W_BG_WEIGHTS[:, None] * _W_F_BG_ALL).sum(axis=0)  # (12,)
-
-
-def _fast_knn_predict_precomp(m_name: str, knn_pipe, X_aligned: pd.DataFrame) -> np.ndarray:
-  import torch
-  X_knn = np.ascontiguousarray(knn_pipe[:-1].transform(X_aligned), dtype=np.float32)
-  t_ref_T, r2_row, t_fit_y, k_n = _W_KNN_TORCH[m_name]
-  n_q = len(X_knn)
-  preds = np.empty(n_q, dtype=np.float64)
-  step_sz = 1024
-  with torch.no_grad():
-    for s in range(0, n_q, step_sz):
-      e = min(n_q, s + step_sz)
-      t_q = torch.from_numpy(X_knn[s:e])
-      q2 = (t_q * t_q).sum(dim=1, keepdim=True)
-      d2 = torch.addmm(r2_row, t_q, t_ref_T, beta=1.0, alpha=-2.0).add_(q2).clamp_(min=0.0)
-      vals, idx = torch.topk(d2, k=k_n, dim=1, largest=False, sorted=True)
-      dists = torch.sqrt(vals).to(torch.float64)
-      zm = dists <= 1e-15
-      az = zm.any(dim=1, keepdim=True)
-      inv_d = torch.where(zm, torch.zeros_like(dists), 1.0 / torch.where(zm, torch.ones_like(dists), dists))
-      nbr_w = torch.where(az, zm.to(torch.float64), inv_d)
-      nbr_w /= nbr_w.sum(dim=1, keepdim=True)
-      preds[s:e] = (t_fit_y[idx] * nbr_w).sum(dim=1).numpy()
-  return preds
 
 
 def _predict_all_12(X) -> np.ndarray:
@@ -392,20 +364,14 @@ def _predict_all_12(X) -> np.ndarray:
       out_cols.append(impl.predict_from_engineered(X_al))
     else:
       X_al = X_rp_base.reindex(columns=impl.feature_columns, fill_value=0)
-      hgbr, et, knn = impl.ensemble.estimators_
-      p_hgbr = hgbr.predict(X_al)
-      with joblib.parallel_backend('threading', n_jobs=_W_THREADS):
-        p_et = et.predict(X_al)
-      p_knn = _fast_knn_predict_precomp(m_name, knn, X_al)
-      preds = impl.ensemble.final_estimator_.predict(np.column_stack([p_hgbr, p_et, p_knn]))
-      out_cols.append(np.clip(preds, *impl.clip_bounds))
+      out_cols.append(impl.predict_from_preprocessed(X_al))
   return np.column_stack(out_cols)
 
 
 def _run_one_basin(idx: int) -> tuple[int, float, float, float, bool]:
-  """Computes BOTH Exact 2^7 Group Shapley AND Exact-BG Antithetic Permutation SHAP in 1 fused batch."""
+  """Computes Exact 2^7 Group Shapley (and optional Antithetic Permutation SHAP) in 1 batch."""
   out_npz = os.path.join(_W_SHARD_DIR, f'basin_{idx:04d}.npz')
-  if os.path.exists(out_npz) and os.path.getsize(out_npz) > 500:
+  if os.path.exists(out_npz) and os.path.getsize(out_npz) > 200:
     return idx, 0.0, 0.0, 0.0, True
 
   t0 = time.time()
@@ -417,9 +383,9 @@ def _run_one_basin(idx: int) -> tuple[int, float, float, float, bool]:
   n_grp_rows = n_grp_mid * K  # 12,600
   n_inner = M - 1           # 94
   n_p = _W_PAIRS_PER_BG     # 1
-  n_perm_rows = K * n_p * 2 * n_inner  # 18,800
+  n_perm_rows = (K * n_p * 2 * n_inner) if _W_WITH_PERM95 else 0
 
-  # Single fused evaluation matrix: [group mid rows | perm path rows | x_vec]
+  # Single fused evaluation matrix: [group mid rows | optional perm path rows | x_vec]
   X_eval = np.empty((n_grp_rows + n_perm_rows + 1, M), dtype=np.float64)
 
   # 1. Fill Exact 2^7 Group Shapley intermediate coalitions (masks 1..126)
@@ -432,33 +398,35 @@ def _run_one_basin(idx: int) -> tuple[int, float, float, float, bool]:
         blk[:, f_idxs] = x_vec[f_idxs]
     X_eval[s : s + K] = blk
 
-  # 2. Fill Exact-Background Antithetic Permutation SHAP trajectories (all K=100 centroids)
-  rng = np.random.default_rng(42 + idx)
-  perms = np.empty((K, n_p, M), dtype=np.int32)
-  row = n_grp_rows
-  for b in range(K):
-    b_vec = _W_BG_DATA[b]
-    for p in range(n_p):
-      perm = rng.permutation(M)
-      perms[b, p] = perm
-      cur = b_vec.copy()
-      for step in range(n_inner):
-        fi = perm[step]
-        cur[fi] = x_vec[fi]
-        X_eval[row] = cur
-        row += 1
-      cur = b_vec.copy()
-      for step in range(n_inner):
-        fi = perm[M - 1 - step]
-        cur[fi] = x_vec[fi]
-        X_eval[row] = cur
-        row += 1
+  # 2. Optional Antithetic Permutation SHAP trajectories
+  perms = None
+  if _W_WITH_PERM95:
+    rng = np.random.default_rng(42 + idx)
+    perms = np.empty((K, n_p, M), dtype=np.int32)
+    row = n_grp_rows
+    for b in range(K):
+      b_vec = _W_BG_DATA[b]
+      for p in range(n_p):
+        perm = rng.permutation(M)
+        perms[b, p] = perm
+        cur = b_vec.copy()
+        for step in range(n_inner):
+          fi = perm[step]
+          cur[fi] = x_vec[fi]
+          X_eval[row] = cur
+          row += 1
+        cur = b_vec.copy()
+        for step in range(n_inner):
+          fi = perm[M - 1 - step]
+          cur[fi] = x_vec[fi]
+          X_eval[row] = cur
+          row += 1
 
-  # 3. Terminal point x_vec (shared by both!)
+  # 3. Terminal point x_vec (shared!)
   X_eval[-1] = x_vec
 
   # Single fused 12-model inference call!
-  preds = _predict_all_12(X_eval)  # (31,401, 12)
+  preds = _predict_all_12(X_eval)
   f_x = preds[-1]  # (12,)
 
   # Decode Exact 2^7 Group Shapley -> (12, 7)
@@ -470,33 +438,34 @@ def _run_one_basin(idx: int) -> tuple[int, float, float, float, bool]:
   grp_mat = (_W_GRP_WEIGHT_MAT @ v).T  # (12, 7)
   grp_eff_err = float(np.max(np.abs(grp_mat.sum(axis=1) - (f_x - _W_F_EMPTY))))
 
-  # Decode Exact-Background Antithetic Permutation SHAP -> (12, 95)
-  p_paths = preds[n_grp_rows:-1].reshape(K, n_p, 2, n_inner, len(ALL_12_METRICS))
-  perm_mat = np.zeros((len(ALL_12_METRICS), M), dtype=np.float64)
-  for b in range(K):
-    wb = _W_BG_WEIGHTS[b] / (2.0 * n_p)
-    f_b = _W_F_BG_ALL[b]
-    for p in range(n_p):
-      perm = perms[b, p]
-      seq_f = np.vstack([f_b[None, :], p_paths[b, p, 0], f_x[None, :]])
-      perm_mat[:, perm] += wb * np.diff(seq_f, axis=0).T
-      seq_r = np.vstack([f_b[None, :], p_paths[b, p, 1], f_x[None, :]])
-      perm_mat[:, perm[::-1]] += wb * np.diff(seq_r, axis=0).T
-  perm_eff_err = float(np.max(np.abs(perm_mat.sum(axis=1) - (f_x - _W_F_EMPTY))))
-
-  np.savez_compressed(
-      out_npz,
+  save_kwargs = dict(
       idx=idx,
       basin_id=str(_W_STRAT_IDS[idx]),
       grp_mat=grp_mat.astype(np.float32),
-      perm_mat=perm_mat.astype(np.float32),
       grp_eff_err=np.float64(grp_eff_err),
-      perm_eff_err=np.float64(perm_eff_err),
   )
+  perm_eff_err = 0.0
+  if _W_WITH_PERM95:
+    p_paths = preds[n_grp_rows:-1].reshape(K, n_p, 2, n_inner, len(ALL_12_METRICS))
+    perm_mat = np.zeros((len(ALL_12_METRICS), M), dtype=np.float64)
+    for b in range(K):
+      wb = _W_BG_WEIGHTS[b] / (2.0 * n_p)
+      f_b = _W_F_BG_ALL[b]
+      for p in range(n_p):
+        perm = perms[b, p]
+        seq_f = np.vstack([f_b[None, :], p_paths[b, p, 0], f_x[None, :]])
+        perm_mat[:, perm] += wb * np.diff(seq_f, axis=0).T
+        seq_r = np.vstack([f_b[None, :], p_paths[b, p, 1], f_x[None, :]])
+        perm_mat[:, perm[::-1]] += wb * np.diff(seq_r, axis=0).T
+    perm_eff_err = float(np.max(np.abs(perm_mat.sum(axis=1) - (f_x - _W_F_EMPTY))))
+    save_kwargs['perm_mat'] = perm_mat.astype(np.float32)
+    save_kwargs['perm_eff_err'] = np.float64(perm_eff_err)
+
+  np.savez_compressed(out_npz, **save_kwargs)
   return idx, time.time() - t0, grp_eff_err, perm_eff_err, False
 
 
-def aggregate_outputs(x_strat: pd.DataFrame, features_95: list[str]):
+def aggregate_outputs(x_strat: pd.DataFrame, features_95: list[str], with_perm95: bool = False):
   strat_ids = x_strat.index.tolist()
   n_b = len(strat_ids)
   n_m = len(ALL_12_METRICS)
@@ -504,9 +473,10 @@ def aggregate_outputs(x_strat: pd.DataFrame, features_95: list[str]):
   n_f = len(features_95)
 
   grp_all = np.zeros((n_b, n_m, n_c), dtype=np.float64)
-  perm_all = np.zeros((n_b, n_m, n_f), dtype=np.float64)
+  perm_all = np.zeros((n_b, n_m, n_f), dtype=np.float64) if with_perm95 else None
   max_grp_err = 0.0
   max_perm_err = 0.0
+  has_perm = with_perm95
   missing = []
   for idx in range(n_b):
     p = os.path.join(SHARD_DIR, f'basin_{idx:04d}.npz')
@@ -515,9 +485,12 @@ def aggregate_outputs(x_strat: pd.DataFrame, features_95: list[str]):
       continue
     d = np.load(p, allow_pickle=True)
     grp_all[idx] = d['grp_mat']
-    perm_all[idx] = d['perm_mat']
     max_grp_err = max(max_grp_err, float(d['grp_eff_err']))
-    max_perm_err = max(max_perm_err, float(d['perm_eff_err']))
+    if has_perm and 'perm_mat' in d:
+      perm_all[idx] = d['perm_mat']
+      max_perm_err = max(max_perm_err, float(d['perm_eff_err']))
+    elif has_perm:
+      has_perm = False
 
   if missing:
     raise FileNotFoundError(f'Missing {len(missing)} Shapley basin shards: {missing[:10]}')
@@ -538,11 +511,6 @@ def aggregate_outputs(x_strat: pd.DataFrame, features_95: list[str]):
   cat_basin_rows = []
 
   for mi, m in enumerate(ALL_12_METRICS):
-    # Save exact 95-feature antithetic permutation Shapley scores per metric
-    df_p = pd.DataFrame(perm_all[:, mi, :], index=strat_ids, columns=features_95)
-    df_p.to_parquet(os.path.join(scores_dir, f'permshap_{m}_r2.parquet'))
-    feat_means[m] = df_p.abs().mean()
-
     # Save exact 2^7 group Shapley scores per metric
     df_g = pd.DataFrame(grp_all[:, mi, :], index=strat_ids, columns=CATS_SORTED)
     df_g.to_parquet(os.path.join(scores_dir, f'exact_groupshap_{m}_r2.parquet'))
@@ -584,25 +552,28 @@ def aggregate_outputs(x_strat: pd.DataFrame, features_95: list[str]):
           })
       )
 
-    # Cross-check: category signed-sum aggregated from 95-feature Antithetic Permutation SHAP
-    p_cat_abs = df_p.T.groupby(fmap_uni).sum().T.reindex(columns=CATS_SORTED).abs()
-    perm_cat_mean_dict[m] = p_cat_abs.mean()
-    p_tot_mean = float(p_cat_abs.mean().sum())
-    for cat in CATS_SORTED:
-      vals = p_cat_abs[cat].values
-      q25, q50, q75 = np.percentile(vals, [25, 50, 75])
-      mn = float(np.mean(vals))
-      perm_cat_long_rows.append({
-          'metric': m,
-          'category': cat,
-          'mean_abs_shap': mn,
-          'median_abs_shap': float(q50),
-          'q25_abs_shap': float(q25),
-          'q75_abs_shap': float(q75),
-          'pct_of_mean_sum': 100.0 * mn / p_tot_mean if p_tot_mean > 0 else 0.0,
-      })
+    if has_perm:
+      df_p = pd.DataFrame(perm_all[:, mi, :], index=strat_ids, columns=features_95)
+      df_p.to_parquet(os.path.join(scores_dir, f'permshap_{m}_r2.parquet'))
+      feat_means[m] = df_p.abs().mean()
+      p_cat_abs = df_p.T.groupby(fmap_uni).sum().T.reindex(columns=CATS_SORTED).abs()
+      perm_cat_mean_dict[m] = p_cat_abs.mean()
+      p_tot_mean = float(p_cat_abs.mean().sum())
+      for cat in CATS_SORTED:
+        vals = p_cat_abs[cat].values
+        q25, q50, q75 = np.percentile(vals, [25, 50, 75])
+        mn = float(np.mean(vals))
+        perm_cat_long_rows.append({
+            'metric': m,
+            'category': cat,
+            'mean_abs_shap': mn,
+            'median_abs_shap': float(q50),
+            'q25_abs_shap': float(q25),
+            'q75_abs_shap': float(q75),
+            'pct_of_mean_sum': 100.0 * mn / p_tot_mean if p_tot_mean > 0 else 0.0,
+        })
 
-  # Write primary category files (used directly by Stage F Fig 4)
+  # Write primary category files (used directly by Fig. 6)
   df_cat_summary = pd.DataFrame(cat_long_rows)
   df_cat_summary.to_csv(os.path.join(OUT_DIR, 'shap_category_summary_r2.csv'), index=False)
 
@@ -614,68 +585,63 @@ def aggregate_outputs(x_strat: pd.DataFrame, features_95: list[str]):
   df_cat_basin = pd.concat(cat_basin_rows, ignore_index=True)
   df_cat_basin.to_parquet(os.path.join(OUT_DIR, 'shap_category_per_basin_r2.parquet'), index=False)
 
-  # Write 95-feature category cross-check files
-  df_p_cat_sum = pd.DataFrame(perm_cat_long_rows)
-  df_p_cat_sum.to_csv(os.path.join(OUT_DIR, 'shap_perm95_category_summary_r2.csv'), index=False)
-  df_p_cat_mean = pd.DataFrame(perm_cat_mean_dict)
-  df_p_cat_pct = df_p_cat_mean.div(df_p_cat_mean.sum(axis=0), axis=1) * 100.0
-  df_p_cat_pct.to_csv(os.path.join(OUT_DIR, 'shap_perm95_category_pct_r2.csv'))
-
-  # Write 95-feature & Top-35 individual feature rankings (used by Stage F Fig S7)
-  df_feats = pd.DataFrame(feat_means)
-  df_feats.insert(0, 'category', [fmap_uni[f] for f in df_feats.index])
-  df_feats.insert(1, 'label', [short_feature_label_unique(f) for f in df_feats.index])
-  assert len(set(df_feats['label'])) == len(df_feats), 'Duplicate labels detected!'
-  df_norm = df_feats[ALL_12_METRICS].div(df_feats[ALL_12_METRICS].max(axis=0), axis=1)
-  df_feats['max_abs_shap'] = df_feats[ALL_12_METRICS].max(axis=1)
-  df_feats['mean_norm_importance'] = df_norm.mean(axis=1)
-  df_feats.sort_values('mean_norm_importance', ascending=False).to_csv(
-      os.path.join(OUT_DIR, 'shap_all95_features_r2.csv')
-  )
-  df_feats.sort_values('mean_norm_importance', ascending=False).head(35).to_csv(
-      os.path.join(OUT_DIR, 'shap_top35_features_r2.csv')
-  )
-
-  # Save formal method cross-check diagnostics JSON
-  diff_pct = (df_cat_pct - df_p_cat_pct).abs()
   crosscheck = {
       'n_medoids': n_b,
       'k_bg': 100,
       'n_metrics': n_m,
       'n_features': n_f,
       'n_categories': n_c,
+      'ria_ha_usu_category': fmap_uni['ria_ha_usu'],
       'max_exact_group_efficiency_error': max_grp_err,
-      'max_antithetic_perm_efficiency_error': max_perm_err,
-      'exact_group_vs_perm95_pct_spearman_r': float(
-          spearmanr(df_cat_pct.values.ravel(), df_p_cat_pct.values.ravel()).statistic
-      ),
-      'exact_group_vs_perm95_pct_mean_abs_diff_pp': float(diff_pct.values.mean()),
-      'exact_group_vs_perm95_pct_max_abs_diff_pp': float(diff_pct.values.max()),
       'mean_across_12_metrics_exact_group_pct': df_cat_pct.mean(axis=1).round(2).to_dict(),
-      'mean_across_12_metrics_perm95_pct': df_p_cat_pct.mean(axis=1).round(2).to_dict(),
   }
+
+  if has_perm:
+    df_p_cat_sum = pd.DataFrame(perm_cat_long_rows)
+    df_p_cat_sum.to_csv(os.path.join(OUT_DIR, 'shap_perm95_category_summary_r2.csv'), index=False)
+    df_p_cat_mean = pd.DataFrame(perm_cat_mean_dict)
+    df_p_cat_pct = df_p_cat_mean.div(df_p_cat_mean.sum(axis=0), axis=1) * 100.0
+    df_p_cat_pct.to_csv(os.path.join(OUT_DIR, 'shap_perm95_category_pct_r2.csv'))
+
+    df_feats = pd.DataFrame(feat_means)
+    df_feats.insert(0, 'category', [fmap_uni[f] for f in df_feats.index])
+    df_feats.insert(1, 'label', [short_feature_label_unique(f) for f in df_feats.index])
+    assert len(set(df_feats['label'])) == len(df_feats), 'Duplicate labels detected!'
+    df_norm = df_feats[ALL_12_METRICS].div(df_feats[ALL_12_METRICS].max(axis=0), axis=1)
+    df_feats['max_abs_shap'] = df_feats[ALL_12_METRICS].max(axis=1)
+    df_feats['mean_norm_importance'] = df_norm.mean(axis=1)
+    df_feats.sort_values('mean_norm_importance', ascending=False).to_csv(
+        os.path.join(OUT_DIR, 'shap_all95_features_r2.csv')
+    )
+    diff_pct = (df_cat_pct - df_p_cat_pct).abs()
+    crosscheck.update({
+        'max_antithetic_perm_efficiency_error': max_perm_err,
+        'exact_group_vs_perm95_pct_spearman_r': float(
+            spearmanr(df_cat_pct.values.ravel(), df_p_cat_pct.values.ravel()).statistic
+        ),
+        'exact_group_vs_perm95_pct_mean_abs_diff_pp': float(diff_pct.values.mean()),
+        'exact_group_vs_perm95_pct_max_abs_diff_pp': float(diff_pct.values.max()),
+        'mean_across_12_metrics_perm95_pct': df_p_cat_pct.mean(axis=1).round(2).to_dict(),
+    })
+
   with open(os.path.join(OUT_DIR, 'shap_method_crosscheck_r2.json'), 'w') as f:
     json.dump(crosscheck, f, indent=2)
 
-  print(f'\nAggregated Round-2 Global Dual-Exact Shapley outputs cleanly to {OUT_DIR}!', flush=True)
-  print(f'  Max efficiency errors: ExactGroup={max_grp_err:.2e}, AntiPerm={max_perm_err:.2e}')
-  print(
-      f'  ExactGroup vs Perm95 category % agreement: r_s={crosscheck["exact_group_vs_perm95_pct_spearman_r"]:.4f}, '
-      f'mean_diff={crosscheck["exact_group_vs_perm95_pct_mean_abs_diff_pp"]:.2f}pp, '
-      f'max_diff={crosscheck["exact_group_vs_perm95_pct_max_abs_diff_pp"]:.2f}pp'
-  )
+  print(f'\nAggregated Global Exact 2^7 Group Shapley outputs cleanly to {OUT_DIR}!', flush=True)
+  print(f'  Max efficiency error (ExactGroup): {max_grp_err:.2e} | ria_ha_usu -> {fmap_uni["ria_ha_usu"]}')
   print('\n=== Exact 2^7 Group Shapley Category % Share Across 12 Metrics ===')
   print(df_cat_pct.round(2).to_string())
 
 
 def main():
   n_cpus = os.cpu_count() or 8
-  default_workers = min(8, max(1, n_cpus // 4))
-  default_threads = max(1, n_cpus // default_workers)
+  default_workers = min(16, max(1, n_cpus // 4))
+  default_threads = max(1, min(2, n_cpus // max(1, default_workers)))
   parser = argparse.ArgumentParser()
   parser.add_argument('--sample-size', type=int, default=1000)
   parser.add_argument('--k-bg', type=int, default=100)
   parser.add_argument('--pairs-per-bg', type=int, default=1)
+  parser.add_argument('--with-perm95', action='store_true', help='Also compute optional 95-feature antithetic permutation SHAP')
   parser.add_argument('--workers', type=int, default=default_workers)
   parser.add_argument('--threads', type=int, default=default_threads)
   parser.add_argument('--limit', type=int, default=0, help='Optional limit for smoke testing (0 = all)')
@@ -697,17 +663,17 @@ def main():
     n_b = len(x_strat) if args.limit <= 0 else min(len(x_strat), args.limit)
     x_vals = x_strat.to_numpy(dtype=np.float64)
     x_ids = x_strat.index.astype(str).tolist()
+    rows_per_b = 126 * len(bg_data) + (len(bg_data) * args.pairs_per_bg * 2 * (len(features_95) - 1) if args.with_perm95 else 0) + 1
     t0 = time.time()
     print(
-        f'Launching Global Dual-Exact Shapley (Exact 2^7 Group + Exact-BG Antithetic Perm): '
-        f'{n_b} medoids x 12 metrics (K_bg={len(bg_data)}, 31,401 rows/basin) '
+        f'Launching Global Exact 2^7 Group Shapley (with_perm95={args.with_perm95}): '
+        f'{n_b} medoids x 12 metrics (K_bg={len(bg_data)}, {rows_per_b:,} rows/basin) '
         f'across {args.workers} spawned workers ({args.threads} thr)...',
         flush=True,
     )
     ctx = mp.get_context('spawn')
     done = 0
     computed = 0
-    t_first_done = None
     with ProcessPoolExecutor(
         max_workers=args.workers,
         mp_context=ctx,
@@ -722,6 +688,7 @@ def main():
             SHARD_DIR,
             args.threads,
             args.pairs_per_bg,
+            args.with_perm95,
         ),
     ) as pool:
       futs = [pool.submit(_run_one_basin, i) for i in range(n_b)]
@@ -730,20 +697,18 @@ def main():
         done += 1
         if not skipped:
           computed += 1
-          if t_first_done is None:
-            t_first_done = time.time()
         if done == 1 or done == args.workers or done % 25 == 0 or done == n_b:
           el = time.time() - t0
           rate = done / max(1e-6, el) * 60.0
           eta_m = (n_b - done) / max(1e-6, rate)
           print(
-              f'  [{done:4d}/{n_b}] last={idx:04d} ({dt:.1f}s, g_err={g_err:.1e}, p_err={p_err:.1e}, skip={skipped}) '
+              f'  [{done:4d}/{n_b}] last={idx:04d} ({dt:.1f}s, g_err={g_err:.1e}, skip={skipped}) '
               f'| elapsed={el/60:.1f}m | {rate:.2f} basins/min | ETA={eta_m:.1f}m',
               flush=True,
           )
 
   if args.limit <= 0:
-    aggregate_outputs(x_strat, features_95)
+    aggregate_outputs(x_strat, features_95, with_perm95=args.with_perm95)
 
 
 if __name__ == '__main__':

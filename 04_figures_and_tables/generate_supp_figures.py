@@ -1,19 +1,25 @@
 #!/usr/bin/env python3
-"""Generate supplementary publication figures (Figs. S1–S5 non-Fathom; optional S6–S8 if Fathom present).
+"""Generate citation-ordered supplementary figures (Figs. S1–S6 public; optional S7–S8 if Fathom present).
 
-Produces:
-  - Fig_S1_delta_nse_network_vs_local.png: Harmonized 2016–2023 ΔNSE across coverage bins
-    (plus writes sec3_cv_diagnostics_r2.json).
-  - Fig_S2_top35_permutation_shap.png: Top-35 unique predictors 200-path antithetic
-    permutation SHAP heatmap across 12 metrics.
-  - Fig_S3_conceptual_ungaugedness.png: Copies pre-rendered Latvia conceptual schematic
-    from results/figures/Fig_S3_conceptual_ungaugedness.png into output directory.
-  - Fig_S4_ood_sextiles_recall.png: 3x3 OOD sextile boxplots of 5-year 2-day causal recall.
-  - Fig_S5_global_predicted_skill.png: Global predicted skill distributions across
-    1,034,083 watersheds (from Table_S3_4regimes_r2.csv / Table_S1_4regimes_r2.csv).
-  - Fig_S6_exposure_and_warnings.png, Fig_S7_data_bias_gap.png,
-    Fig_S8_national_gauge_siting.png (OPTIONAL — skipped cleanly when licensed Fathom v3
-    exposure counterfactual / S1.6 files are absent).
+Produces 8 supplementary figures natively authored at Science full-page width (184 mm = 7.244 in)
+with every rendered font >= 6.0 pt:
+  - Fig_S1_gauge_status_histograms.png: Operational & temporal status of 121,819 stream gauges
+    across tiers plus exact histograms of record end year, record length, and latitude.
+  - Fig_S2_conceptual_ungaugedness.png: Copies pre-rendered conceptual river-network schematic
+    from results/figures/Fig_S3_conceptual_ungaugedness.png (or Fig_S2_conceptual_ungaugedness.png).
+  - Fig_S3_alerting_coverage_map.png: Global map of national flood-alerting & WMO CAP coverage
+    (60 established national alerting systems vs. 114 CAP-gap countries; Greenland excluded).
+  - Fig_S4_delta_nse_network_vs_local.png: Harmonized 2016–2023 ΔNSE across upstream/downstream
+    coverage bins (plus writes sec3_cv_diagnostics_r2.json).
+  - Fig_S5_ood_sextiles_recall.png: 3x3 OOD sextile boxplots of 5-year 2-day causal recall.
+  - Fig_S6_global_predicted_skill.png: Global predicted skill distributions across 1,034,083
+    watersheds (from Table_S3_4regimes_r2.csv).
+  - Fig_S7_precision_recall_curves.png (OPTIONAL — licensed Fathom v3): (a) Flood Precision vs.
+    Recall curves across return periods (1y–10y) and 6 gauge-access stages using P_50 directly
+    on 50–100 yr exposure; (b) Sensitivity of CAP-gap effectively warned exposure across
+    warning-to-action regimes (alpha = 1, CSI/R, Bayesian P, INFORM Coping Capacity, and false-alarm volume).
+  - Fig_S8_national_gauge_siting.png (OPTIONAL — licensed Fathom v3): National N = 1..20 strategic
+    gauge-siting maps and Top-15 CAP-gap country trajectories (fixed legend placement, >= 10 cm).
 """
 
 from __future__ import annotations
@@ -39,42 +45,36 @@ os.environ.setdefault('GEO_BIAS_OUTPUT_DIR', str(CANON_DIR))
 import geopandas as gpd
 import matplotlib
 matplotlib.use('Agg')
-import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
-import matplotlib.patheffects as pe
+from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from scipy.stats import spearmanr, wilcoxon
+from scipy.stats import wilcoxon
 import seaborn as sns
 
-from utils import file_paths
+from utils import cap_utils, file_paths
 
 warnings.filterwarnings('ignore')
 
-NATURE_W = 183.0 / 25.4
+SCIENCE_W = 184.0 / 25.4
 SAVE_DPI = 350
 
-R2_DIR = CANON_DIR / 'round2'
-METRICS_R2_DIR = R2_DIR / 'hydro_model_metrics'
+COL_T1 = '#0072B2'   # Blue: Recent data (>=2016) / Alerting system / Standardized open
+COL_T2 = '#009E73'   # Green: Portal-listed active (undated) / Public discharge
+COL_T3 = '#D55E00'   # Vermilion: Apparently inactive / CAP-gap / All discoverable
+COL_UNK = '#64748B'  # Slate: Unknown / undated
+
+ROUND_SUBDIR = os.environ.get('GEO_BIAS_ROUND_SUBDIR', 'round2')
+R2_DIR = CANON_DIR / ROUND_SUBDIR
+METRICS_R2_DIR = CANON_DIR / 'round2' / 'hydro_model_metrics'
 CF_DIR = R2_DIR / 'counterfactuals'
 S16_DIR = R2_DIR / 's16_gauge_placement'
-SHAP_DIR = R2_DIR / 'shap'
 DEFAULT_OUT_DIR = R2_DIR / 'figures'
 
-ALL_12_METRICS = [
-    'NSE', 'KGE',
-    '1.01-year-2.0-window-precision', '2.0-year-2.0-window-precision',
-    '5.0-year-2.0-window-precision', '10.0-year-2.0-window-precision',
-    '20.0-year-2.0-window-precision',
-    '1.01-year-2.0-window-recall', '2.0-year-2.0-window-recall',
-    '5.0-year-2.0-window-recall', '10.0-year-2.0-window-recall',
-    '20.0-year-2.0-window-recall',
-]
 
-
-def _set_pub_rc(font_size: float = 7.4) -> None:
+def _set_pub_rc(font_size: float = 6.6) -> None:
   sns.set_theme(style='whitegrid', palette='colorblind')
   plt.rcParams.update({
       'figure.dpi': SAVE_DPI,
@@ -87,6 +87,7 @@ def _set_pub_rc(font_size: float = 7.4) -> None:
       'axes.labelsize': font_size,
       'axes.labelweight': 'bold',
       'axes.linewidth': 0.6,
+      'axes.unicode_minus': False,
       'figure.facecolor': 'white',
       'axes.facecolor': 'white',
       'savefig.facecolor': 'white',
@@ -98,7 +99,7 @@ def load_r2_metric_series(exp_name: str, metric: str, rename_to: str | None = No
   if not p_r2.exists():
     p_r2 = METRICS_R2_DIR / exp_name / f'{metric}.csv'
   if not p_r2.exists():
-    raise FileNotFoundError(f'Missing Round-2 metric CSV for {exp_name}/{metric} under {METRICS_R2_DIR}')
+    raise FileNotFoundError(f'Missing OHN metric CSV for {exp_name}/{metric} under {METRICS_R2_DIR}')
   df = pd.read_csv(p_r2, index_col=0)
   col = '1' if '1' in df.columns else ('lead_1' if 'lead_1' in df.columns else df.columns[0])
   s = pd.to_numeric(df[col], errors='coerce')
@@ -107,27 +108,254 @@ def load_r2_metric_series(exp_name: str, metric: str, rename_to: str | None = No
   return s
 
 
-def _fmt_sci_tex(p: float) -> str:
-  if p <= 0 or np.isnan(p):
-    return '< 10^{-300}'
-  if p >= 0.001:
-    return f'{p:.3f}'
-  exp = int(np.floor(np.log10(p)))
-  mant = p / (10 ** exp)
-  return f'{mant:.1f} \\times 10^{{{exp}}}'
+def norm_hybas_id(s: pd.Series | pd.Index) -> np.ndarray:
+  s2 = pd.Series(s).astype(str).str.replace(r'\.0$', '', regex=True)
+  return np.where(s2.str.startswith('hybas_'), s2, 'hybas_' + s2)
 
 
 # ==============================================================================
-# FIGURE S1 & FIGURE S4: ΔNSE (2016–2023) & OOD Sextiles (5-yr 2-day Recall)
+# FIGURE S1: Operational & Temporal Status Histograms (121,819 Gauges)
 # ==============================================================================
-def build_fig_s1_and_s4(out_dir: Path, build_s1: bool = True, build_s4: bool = True) -> None:
-  print('[Fig S1 / S4] Computing CV diagnostics and rendering Fig. S1 & Fig. S4...', flush=True)
-  _set_pub_rc(7.4)
+def build_fig_s1(out_dir: Path) -> Path:
+  print('[Fig S1] Rendering gauge operational & temporal status histograms...', flush=True)
+  _set_pub_rc(6.5)
+  g = pd.read_parquet(CANON_DIR / 'attributes' / 'global_gauges_deduplicated.parquet')
+  has_caravan = g['all_source_datasets'].str.contains('caravan', case=False, na=False)
+  has_estreams = g['all_source_datasets'].str.contains('estream', case=False, na=False)
+  g['tier1'] = has_caravan | has_estreams
+  g['tier2'] = (
+      g['best_data_access_policy'].isin({'open_public_api_or_bulk', 'open_academic_compilation'})
+      & g['best_observation_type'].isin({'daily_discharge', 'monthly_discharge'})
+  )
+
+  vr = g['verified_record_end_year']
+  ar = g['active_reason']
+  g['status_4'] = np.where(
+      vr.notna() & (vr >= 2016), 'Recent data (>=2016)',
+      np.where(
+          (vr.isna()) & (ar == '3_portal_status_active'), 'Portal active (undated)',
+          np.where(
+              (vr.notna() & (vr < 2016))
+              | ar.isin(['5_portal_status_inactive', '6_end_year_lt_2016'])
+              | ((ar == '3_portal_status_active') & (vr < 2016)),
+              'Apparently inactive',
+              'Unknown / undated',
+          ),
+      ),
+  )
+
+  def _step_hist(ax, vals, bins, color, label, lw=1.35, alpha_fill=0.14):
+    w = np.full(len(vals), 100.0 / len(vals), dtype=float)
+    ax.hist(vals, bins=bins, weights=w, histtype='stepfilled', color=color, alpha=alpha_fill, edgecolor='none', zorder=2)
+    ax.hist(vals, bins=bins, weights=w, histtype='step', color=color, linewidth=lw, label=label, zorder=4)
+
+  fig, axes = plt.subplots(
+      2, 2, figsize=(SCIENCE_W, 5.45), dpi=SAVE_DPI,
+      gridspec_kw={'wspace': 0.28, 'hspace': 0.44, 'left': 0.12, 'right': 0.985, 'top': 0.875, 'bottom': 0.095},
+  )
+
+  # (a) Gauge status across data-access tiers
+  ax_a = axes[0, 0]
+  tiers = [
+      ('All Discoverable\n(121,819)', np.ones(len(g), dtype=bool)),
+      ('Public Discharge\n(93,827)', g['tier2'].values),
+      ('Standardized Open\n(34,577)', g['tier1'].values),
+  ]
+  cats = [
+      ('Recent data (>=2016)', COL_T1, 'Recent data (≥2016)'),
+      ('Portal active (undated)', COL_T2, 'Portal-listed active (undated)'),
+      ('Apparently inactive', COL_T3, 'Apparently inactive (≤2015 / portal)'),
+      ('Unknown / undated', COL_UNK, 'Unknown (no end date / status)'),
+  ]
+  y_pos = np.arange(len(tiers))
+  lefts = np.zeros(len(tiers))
+  handles_a = []
+  for key, col, lbl in cats:
+    pcts = [int((g[mask]['status_4'] == key).sum()) / len(g[mask]) * 100.0 for _, mask in tiers]
+    bars = ax_a.barh(y_pos, pcts, left=lefts, height=0.56, color=col, alpha=0.90, edgecolor='white', linewidth=0.6, label=lbl, zorder=3)
+    handles_a.append(bars)
+    for yi, (l, p) in enumerate(zip(lefts, pcts)):
+      if p >= 11.5:
+        ax_a.text(l + p / 2.0, yi, f'{p:.1f}%', ha='center', va='center', fontsize=6.1, fontweight='bold', color='white', zorder=4)
+    lefts += np.array(pcts)
+
+  ax_a.set_yticks(y_pos)
+  ax_a.set_yticklabels([t[0] for t in tiers], fontsize=6.3, fontweight='bold')
+  ax_a.set_xlim(0, 100)
+  ax_a.tick_params(axis='x', labelsize=6.2)
+  ax_a.set_xlabel('Share of gauges in tier (%)', fontsize=6.7, fontweight='bold')
+  ax_a.set_title('(a) Gauge status across data-access tiers', fontsize=7.2, fontweight='bold', loc='left', pad=5)
+  ax_a.grid(True, axis='x', linestyle='--', alpha=0.35, color='#CBD5E1', linewidth=0.5)
+  sns.despine(ax=ax_a)
+
+  # (b) Record end year (1-yr bins, 1940–2026)
+  ax_b = axes[0, 1]
+  bins_end = np.arange(1939.5, 2027.5, 1.0)
+  for mask, col, tier_lbl, lw, af in [
+      (np.ones(len(g), dtype=bool), COL_T3, 'All discoverable', 1.35, 0.10),
+      (g['tier2'].values, COL_T2, 'Public discharge', 1.25, 0.08),
+      (g['tier1'].values, COL_T1, 'Standardized open', 1.25, 0.12),
+  ]:
+    vals_all = g.loc[mask, 'verified_record_end_year'].dropna().values
+    vals_win = vals_all[(vals_all >= 1940) & (vals_all <= 2026)]
+    w = np.full(len(vals_win), 100.0 / len(vals_all), dtype=float)
+    ax_b.hist(vals_win, bins=bins_end, weights=w, histtype='stepfilled', color=col, alpha=af, edgecolor='none', zorder=2)
+    ax_b.hist(vals_win, bins=bins_end, weights=w, histtype='step', color=col, linewidth=lw, label=f'{tier_lbl} ({len(vals_all):,})', zorder=4)
+
+  ax_b.axvline(2015.5, color='#0F172A', linestyle='--', linewidth=0.95, zorder=5)
+  ax_b.axvspan(2015.5, 2029.0, color='#E0F2FE', alpha=0.35, zorder=1)
+  ax_b.text(2013.5, 0.63, '≤2015\n(28,783)', transform=ax_b.get_xaxis_transform(), ha='right', va='top', fontsize=6.0, fontweight='bold', color='#9A3412')
+  ax_b.text(2016.5, 0.96, '≥2016\n(45,353)', transform=ax_b.get_xaxis_transform(), ha='left', va='top', fontsize=6.0, fontweight='bold', color='#075985')
+  ax_b.text(
+      0.03, 0.35, '47,683 gauges (39.1%)\nhave no verified end date',
+      transform=ax_b.transAxes, ha='left', va='center', fontsize=6.0,
+      bbox=dict(boxstyle='round,pad=0.20', facecolor='#F8FAFC', edgecolor='#CBD5E1', alpha=0.95),
+  )
+  ax_b.set_xlim(1939.5, 2029.5)
+  ax_b.set_ylim(0, 26.5)
+  ax_b.set_xlabel('Verified record end year (1-yr bins)', fontsize=6.7, fontweight='bold')
+  ax_b.set_ylabel('Share of dated gauges (%)', fontsize=6.7, fontweight='bold')
+  ax_b.set_title('(b) Record end year', fontsize=7.2, fontweight='bold', loc='left', pad=5)
+  ax_b.tick_params(labelsize=6.2)
+  ax_b.legend(loc='upper left', frameon=True, facecolor='white', edgecolor='#CBD5E1', fontsize=6.0, framealpha=0.95, borderpad=0.25)
+  ax_b.grid(True, linestyle='--', alpha=0.35, color='#CBD5E1', linewidth=0.5)
+  sns.despine(ax=ax_b)
+
+  # (c) Record length by active status (5-yr bins)
+  ax_c = axes[1, 0]
+  bins_len = np.arange(0, 130, 5)
+  rl_act = g.loc[g['status_4'] == 'Recent data (>=2016)', 'record_length_years'].dropna().values
+  rl_inact = g.loc[g['status_4'] == 'Apparently inactive', 'record_length_years'].dropna().values
+  rl_act_c = rl_act[(rl_act >= 0) & (rl_act <= 125)]
+  rl_inact_c = rl_inact[(rl_inact >= 0) & (rl_inact <= 125)]
+  w_act = np.full(len(rl_act_c), 100.0 / len(rl_act), dtype=float)
+  w_in = np.full(len(rl_inact_c), 100.0 / len(rl_inact), dtype=float)
+  ax_c.hist(rl_act_c, bins=bins_len, weights=w_act, histtype='stepfilled', color=COL_T1, alpha=0.16, edgecolor='none', zorder=2)
+  ax_c.hist(rl_act_c, bins=bins_len, weights=w_act, histtype='step', color=COL_T1, linewidth=1.4, label=f'≥2016 (N={len(rl_act):,}; med {np.median(rl_act):.0f} yr)', zorder=4)
+  ax_c.hist(rl_inact_c, bins=bins_len, weights=w_in, histtype='stepfilled', color=COL_T3, alpha=0.16, edgecolor='none', zorder=2)
+  ax_c.hist(rl_inact_c, bins=bins_len, weights=w_in, histtype='step', color=COL_T3, linewidth=1.4, label=f'≤2015 (N={len(rl_inact):,}; med {np.median(rl_inact):.0f} yr)', zorder=4)
+  ax_c.axvline(np.median(rl_act), color=COL_T1, linestyle='--', linewidth=1.0, zorder=5)
+  ax_c.axvline(np.median(rl_inact), color=COL_T3, linestyle='--', linewidth=1.0, zorder=5)
+  ax_c.set_xlim(0, 125)
+  ax_c.set_ylim(0, 21.0)
+  ax_c.set_xlabel('Verified record length (years; 5-yr bins)', fontsize=6.7, fontweight='bold')
+  ax_c.set_ylabel('Share of group (%)', fontsize=6.7, fontweight='bold')
+  ax_c.set_title('(c) Record length by active status', fontsize=7.2, fontweight='bold', loc='left', pad=5)
+  ax_c.tick_params(labelsize=6.2)
+  ax_c.legend(loc='upper right', frameon=True, facecolor='white', edgecolor='#CBD5E1', fontsize=6.0, framealpha=0.95, borderpad=0.25)
+  ax_c.grid(True, linestyle='--', alpha=0.35, color='#CBD5E1', linewidth=0.5)
+  sns.despine(ax=ax_c)
+
+  # (d) Latitudinal histogram of gauge status
+  ax_d = axes[1, 1]
+  bins_lat = np.arange(-56, 76, 4)
+  m_active_all = g['status_4'].isin(['Recent data (>=2016)', 'Portal active (undated)'])
+  m_inactive = g['status_4'] == 'Apparently inactive'
+  m_unknown = g['status_4'] == 'Unknown / undated'
+  for mask, col, lbl in [
+      (m_active_all, COL_T1, f'Recent / active ({int(m_active_all.sum()):,}; 41.5%)'),
+      (m_inactive, COL_T3, f'Inactive ({int(m_inactive.sum()):,}; 24.8%)'),
+      (m_unknown, COL_UNK, f'Unknown ({int(m_unknown.sum()):,}; 33.7%)'),
+  ]:
+    _step_hist(ax_d, g.loc[mask, 'latitude'].dropna().values, bins_lat, col, lbl, lw=1.35, alpha_fill=0.12)
+
+  ax_d.axvline(0, color='#94A3B8', linestyle=':', linewidth=0.8, zorder=1)
+  ax_d.set_xlim(-56, 76)
+  ax_d.set_ylim(0, 16.5)
+  ax_d.set_xlabel('Station latitude (°N; 4° bins)', fontsize=6.7, fontweight='bold')
+  ax_d.set_ylabel('Share of group (%)', fontsize=6.7, fontweight='bold')
+  ax_d.set_title('(d) Latitudinal distribution of gauge status', fontsize=7.2, fontweight='bold', loc='left', pad=5)
+  ax_d.tick_params(labelsize=6.2)
+  ax_d.legend(loc='upper left', frameon=True, facecolor='white', edgecolor='#CBD5E1', fontsize=6.0, framealpha=0.95, borderpad=0.25)
+  ax_d.grid(True, linestyle='--', alpha=0.35, color='#CBD5E1', linewidth=0.5)
+  sns.despine(ax=ax_d)
+
+  fig.legend(
+      handles_a, [c[2] for c in cats],
+      loc='upper center', bbox_to_anchor=(0.54, 0.990), ncol=2,
+      frameon=True, facecolor='white', edgecolor='#CBD5E1', framealpha=0.98, fontsize=6.3, borderpad=0.30,
+  )
+
+  out_path = out_dir / 'Fig_S1_gauge_status_histograms.png'
+  fig.savefig(out_path, dpi=SAVE_DPI, bbox_inches='tight', pad_inches=0.05)
+  plt.close(fig)
+  print(f'  Saved {out_path} ({out_path.stat().st_size / 1e6:.2f} MB)', flush=True)
+  return out_path
+
+
+# ==============================================================================
+# FIGURE S2: Conceptual Schematic of River-Network Ungaugedness (Copy)
+# ==============================================================================
+def copy_fig_s2(out_dir: Path) -> Path:
+  candidates = [
+      REPO_DIR / 'results' / 'figures' / 'Fig_S2_conceptual_ungaugedness.png',
+      REPO_DIR / 'results' / 'figures' / 'Fig_S3_conceptual_ungaugedness.png',
+  ]
+  src = next((p for p in candidates if p.exists()), None)
+  dst = out_dir / 'Fig_S2_conceptual_ungaugedness.png'
+  if src is not None:
+    if src.resolve() != dst.resolve():
+      shutil.copy2(src, dst)
+    print(f'  Verified/copied {dst} ({dst.stat().st_size / 1e6:.2f} MB)', flush=True)
+  else:
+    print(f'  [Fig S2] WARNING: Schematic not found in {candidates}', flush=True)
+  return dst
+
+
+# ==============================================================================
+# FIGURE S3: Global Map of National Flood-Alerting & WMO CAP Coverage (60 vs 114)
+# ==============================================================================
+def build_fig_s3(out_dir: Path) -> Path:
+  print('[Fig S3] Rendering global national flood-alerting & CAP-gap coverage map...', flush=True)
+  _set_pub_rc(6.8)
+  w = gpd.read_file(file_paths.NATURAL_EARTH_PATH)
+  w = w.dropna(subset=[w.geometry.name])
+  w = w[w.is_valid & (~w.is_empty) & (w['name'] != 'Antarctica')].copy()
+  w['map_name'] = w['name'].replace(file_paths.country_name_map)
+
+  df_map = pd.read_csv(file_paths.HYBAS_MAPPING_PATH)
+  ctrys = sorted(set(df_map['country_name'].dropna().astype(str).replace(file_paths.country_name_map)))
+  ctrys = [c for c in ctrys if c != 'Greenland']
+  status_map = {c: bool(cap_utils.has_effective_flood_warning_system(c)) for c in ctrys}
+  n_sys = sum(1 for v in status_map.values() if v)
+  n_gap = sum(1 for v in status_map.values() if not v)
+
+  w['warn_grp'] = w['map_name'].map(status_map)
+  fig, ax = plt.subplots(1, 1, figsize=(SCIENCE_W, 3.65), dpi=SAVE_DPI)
+  w[w['warn_grp'].isna()].plot(ax=ax, color='#E2E8F0', edgecolor='#94A3B8', linewidth=0.25, zorder=1)
+  w[w['warn_grp'] == True].plot(ax=ax, color=COL_T1, edgecolor='#0F172A', linewidth=0.28, alpha=0.88, zorder=2)
+  w[w['warn_grp'] == False].plot(ax=ax, color=COL_T3, edgecolor='#0F172A', linewidth=0.28, alpha=0.88, zorder=2)
+  ax.set_xlim(-178, 180)
+  ax.set_ylim(-58, 84)
+  ax.set_axis_off()
+  ax.set_title(f'National flood-alerting and WMO CAP coverage across {len(status_map)} countries (Greenland excluded)', fontsize=7.6, fontweight='bold', loc='left', pad=6)
+  ax.legend(
+      handles=[
+          Patch(facecolor=COL_T1, edgecolor='#0F172A', linewidth=0.45, label=f'Established national alerting system (N = {n_sys})'),
+          Patch(facecolor=COL_T3, edgecolor='#0F172A', linewidth=0.45, label=f'CAP-gap country without confirmed system (N = {n_gap})'),
+          Patch(facecolor='#E2E8F0', edgecolor='#94A3B8', linewidth=0.45, label='Excluded / unmapped (incl. Greenland)'),
+      ],
+      loc='lower left', frameon=True, facecolor='white', edgecolor='#CBD5E1', fontsize=6.4, framealpha=0.96, borderpad=0.35,
+  )
+
+  out_path = out_dir / 'Fig_S3_alerting_coverage_map.png'
+  fig.savefig(out_path, dpi=SAVE_DPI, bbox_inches='tight', pad_inches=0.05)
+  plt.close(fig)
+  print(f'  Saved {out_path} ({out_path.stat().st_size / 1e6:.2f} MB)', flush=True)
+  return out_path
+
+
+# ==============================================================================
+# FIGURE S4 & FIGURE S5: ΔNSE (2016–2023) & OOD Sextiles (5-yr 2-day Recall)
+# ==============================================================================
+def build_fig_s4_and_s5(out_dir: Path, build_s4: bool = True, build_s5: bool = True) -> None:
+  print('[Fig S4 / S5] Computing CV diagnostics and rendering Fig. S4 & Fig. S5...', flush=True)
+  _set_pub_rc(6.8)
   file_paths.init('NSE')
 
   cv_json: dict = {}
 
-  if build_s1:
+  if build_s4:
     feat = pd.read_csv(file_paths.TRAIN_ML_FEATURES_PATH).set_index('gauge_id')
     feat.index = feat.index.astype(str)
     g_nse = load_r2_metric_series('gauged', 'NSE', 'gauged_NSE')
@@ -156,15 +384,16 @@ def build_fig_s1_and_s4(out_dir: Path, build_s1: bool = True, build_s4: bool = T
         'max_downstream_coverage': 'Max downstream coverage',
     })
 
-    fig_s1, axes = plt.subplots(2, 1, figsize=(NATURE_W, NATURE_W * (295.69 / 468.0)), sharex=True, dpi=SAVE_DPI)
+    fig_s4, axes = plt.subplots(2, 1, figsize=(SCIENCE_W, 4.75), sharex=True, dpi=SAVE_DPI)
     sns.boxplot(data=melted, x='Coverage_Bin', y='delta_sep_rand', hue='Coverage Metric', palette=['#0072B2', '#E69F00', '#009E73'], showfliers=False, whis=[10, 90], linewidth=0.55, ax=axes[0])
     med_rs = float(df_sub['delta_sep_rand'].median())
     axes[0].axhline(med_rs, color='#882255', ls='--', lw=1.0, label=f'Overall median ΔNSE ({med_rs:+.3f})')
     axes[0].axhline(0.0, color='gray', lw=0.65, zorder=0)
-    axes[0].set_ylabel('ΔNSE (Random − Separated)', fontsize=7.0, fontweight='bold')
-    axes[0].set_title(f'(a) River-network information transfer in ungauged CV (2016–2023; N = {len(df_sub):,})', fontsize=7.8, fontweight='bold', loc='left', pad=3)
-    axes[0].set_ylim(-0.18, 0.50)
-    axes[0].legend(loc='upper right', fontsize=5.8, frameon=True, framealpha=0.96, ncol=2)
+    axes[0].set_ylabel('ΔNSE (Random − Separated)', fontsize=6.9, fontweight='bold')
+    axes[0].set_title(f'(a) River-network information transfer in ungauged CV (2016–2023; N = {len(df_sub):,})', fontsize=7.4, fontweight='bold', loc='left', pad=4)
+    axes[0].set_ylim(-0.18, 0.52)
+    axes[0].tick_params(labelsize=6.3)
+    axes[0].legend(loc='upper right', fontsize=6.0, frameon=True, framealpha=0.96, ncol=2)
     axes[0].set_xlabel('')
     sns.despine(ax=axes[0])
 
@@ -172,18 +401,19 @@ def build_fig_s1_and_s4(out_dir: Path, build_s1: bool = True, build_s4: bool = T
     med_gr = float(df_sub['delta_gauged_rand'].median())
     axes[1].axhline(med_gr, color='#882255', ls='--', lw=1.0, label=f'Overall median ΔNSE ({med_gr:+.3f})')
     axes[1].axhline(0.0, color='gray', lw=0.65, zorder=0)
-    axes[1].set_ylabel('ΔNSE (Gauged − Random)', fontsize=7.0, fontweight='bold')
-    axes[1].set_title(f'(b) Local at-site gauge calibration gain (2016–2023; N = {len(df_sub):,})', fontsize=7.8, fontweight='bold', loc='left', pad=3)
-    axes[1].set_ylim(-0.12, 0.215)
-    axes[1].legend(loc='upper right', fontsize=5.8, frameon=True, framealpha=0.96, ncol=2)
-    axes[1].set_xlabel('Drainage area coverage fraction bin', fontsize=7.0, fontweight='bold')
+    axes[1].set_ylabel('ΔNSE (Gauged − Random)', fontsize=6.9, fontweight='bold')
+    axes[1].set_title(f'(b) Local at-site gauge calibration gain (2016–2023; N = {len(df_sub):,})', fontsize=7.4, fontweight='bold', loc='left', pad=4)
+    axes[1].set_ylim(-0.12, 0.225)
+    axes[1].tick_params(labelsize=6.3)
+    axes[1].legend(loc='upper right', fontsize=6.0, frameon=True, framealpha=0.96, ncol=2)
+    axes[1].set_xlabel('Drainage area coverage fraction bin', fontsize=6.9, fontweight='bold')
     sns.despine(ax=axes[1])
 
-    fig_s1.tight_layout()
-    out_s1 = out_dir / 'Fig_S1_delta_nse_network_vs_local.png'
-    fig_s1.savefig(out_s1, dpi=SAVE_DPI, bbox_inches='tight', pad_inches=0.03)
-    plt.close(fig_s1)
-    print(f'  Saved {out_s1} ({out_s1.stat().st_size / 1e6:.2f} MB)', flush=True)
+    fig_s4.tight_layout()
+    out_s4 = out_dir / 'Fig_S4_delta_nse_network_vs_local.png'
+    fig_s4.savefig(out_s4, dpi=SAVE_DPI, bbox_inches='tight', pad_inches=0.04)
+    plt.close(fig_s4)
+    print(f'  Saved {out_s4} ({out_s4.stat().st_size / 1e6:.2f} MB)', flush=True)
 
     cv_json['nse_2016_2023_full'] = {
         'n': int(len(df_nse)),
@@ -202,7 +432,7 @@ def build_fig_s1_and_s4(out_dir: Path, build_s1: bool = True, build_s4: bool = T
         'paired_gauged_minus_rand_med': med_gr,
     }
 
-  if build_s4:
+  if build_s5:
     rand_anom = pd.read_csv(file_paths.RANDOM_ANOMALIES_PATH).set_index('gauge_id')
     sep_anom = pd.read_csv(file_paths.SEPARATED_ANOMALIES_PATH).set_index('gauge_id')
     rand_anom.index = rand_anom.index.astype(str)
@@ -217,9 +447,9 @@ def build_fig_s1_and_s4(out_dir: Path, build_s1: bool = True, build_s4: bool = T
     anom_cols = ['anomaly_score_if', 'anomaly_score_ocsvm', 'anomaly_score_lof']
     anom_titles = ['Isolation Forest', 'One-Class SVM', 'Local Outlier Factor']
     ltrs = [['(a)', '(b)', '(c)'], ['(d)', '(e)', '(f)'], ['(g)', '(h)', '(i)']]
-    sextile_lbls = ['Q1\n(OOD)', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6\n(In-dist)']
+    sextile_lbls = ['Q1\n(OOD)', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6\n(In)']
 
-    fig_s4, axes_s4 = plt.subplots(3, 3, figsize=(NATURE_W, NATURE_W * (375.99 / 468.0)), sharey=True, dpi=SAVE_DPI)
+    fig_s5, axes_s5 = plt.subplots(3, 3, figsize=(SCIENCE_W, 5.95), sharey=True, dpi=SAVE_DPI)
     ood_stats = {}
     for i, (acol, atitle) in enumerate(zip(anom_cols, anom_titles)):
       df_top[f'{acol}_bin'] = pd.qcut(df_top[acol], q=6, labels=sextile_lbls, duplicates='drop')
@@ -236,20 +466,20 @@ def build_fig_s1_and_s4(out_dir: Path, build_s1: bool = True, build_s4: bool = T
           (df_bot, 'separated_rec5', 'Oranges_r', '#e65100', '5-yr recall (Separated)', f'{ltrs[1][i]} Separated: {atitle}'),
           (df_top, 'gauged_rec5', 'Greens_r', '#1b5e20', '5-yr recall (Gauged)', f'{ltrs[2][i]} Gauged: {atitle}'),
       ]):
-        ax = axes_s4[row_i, i]
+        ax = axes_s5[row_i, i]
         sns.boxplot(data=df_u, x=f'{acol}_bin', y=ycol, hue=f'{acol}_bin', palette=pal, dodge=False, width=0.58, legend=False, showfliers=False, whis=[10, 90], linewidth=0.55, ax=ax)
         ax.axhline(df_u[ycol].median(), color=hcol, ls='--', lw=0.9)
-        ax.set_xlabel(f'{atitle} sextile' if row_i == 2 else '', fontsize=6.6, fontweight='bold')
-        ax.set_title(ttl, fontsize=7.2, fontweight='bold', loc='left', pad=2)
-        ax.set_ylabel(ylab if i == 0 else '', fontsize=6.8, fontweight='bold')
-        ax.tick_params(axis='x', labelsize=5.8)
+        ax.set_xlabel(f'{atitle} sextile' if row_i == 2 else '', fontsize=6.5, fontweight='bold')
+        ax.set_title(ttl, fontsize=6.9, fontweight='bold', loc='left', pad=2.5)
+        ax.set_ylabel(ylab if i == 0 else '', fontsize=6.7, fontweight='bold')
+        ax.tick_params(axis='both', labelsize=6.0)
         sns.despine(ax=ax)
 
-    fig_s4.tight_layout()
-    out_s4 = out_dir / 'Fig_S4_ood_sextiles_recall.png'
-    fig_s4.savefig(out_s4, dpi=SAVE_DPI, bbox_inches='tight', pad_inches=0.03)
-    plt.close(fig_s4)
-    print(f'  Saved {out_s4} ({out_s4.stat().st_size / 1e6:.2f} MB)', flush=True)
+    fig_s5.tight_layout()
+    out_s5 = out_dir / 'Fig_S5_ood_sextiles_recall.png'
+    fig_s5.savefig(out_s5, dpi=SAVE_DPI, bbox_inches='tight', pad_inches=0.04)
+    plt.close(fig_s5)
+    print(f'  Saved {out_s5} ({out_s5.stat().st_size / 1e6:.2f} MB)', flush=True)
     cv_json['ood_sextiles_5yr_recall'] = ood_stats
 
   if cv_json:
@@ -267,93 +497,18 @@ def build_fig_s1_and_s4(out_dir: Path, build_s1: bool = True, build_s4: bool = T
 
 
 # ==============================================================================
-# FIGURE S2: Top-35 Individual Features Permutation SHAP Heatmap
+# FIGURE S6: Global Predicted Skill Boxplots across 1,034,083 Watersheds
 # ==============================================================================
-def build_fig_s2(out_dir: Path) -> Path:
-  print('[Fig S2] Rendering Top-35 permutation SHAP heatmap...', flush=True)
-  _set_pub_rc(7.0)
-
-  short_cat = {
-      'Climate & Hydrology': 'Climate/Hydrol.',
-      'Land Cover': 'Land Cover',
-      'Climatic Similarity (OOD)': 'Clim. Sim. (OOD)',
-      'Topography': 'Topography',
-      'Soil & Geology': 'Soil & Geol.',
-      'Anthropogenic': 'Anthropogenic',
-      'River-Network Gauge Cov.': 'Gauge Cov.',
-  }
-  metric_labels = {
-      'NSE': 'NSE', 'KGE': 'KGE',
-      '1.01-year-2.0-window-precision': 'Prec. (1y)', '2.0-year-2.0-window-precision': 'Prec. (2y)',
-      '5.0-year-2.0-window-precision': 'Prec. (5y)', '10.0-year-2.0-window-precision': 'Prec. (10y)',
-      '20.0-year-2.0-window-precision': 'Prec. (20y)',
-      '1.01-year-2.0-window-recall': 'Recall (1y)', '2.0-year-2.0-window-recall': 'Recall (2y)',
-      '5.0-year-2.0-window-recall': 'Recall (5y)', '10.0-year-2.0-window-recall': 'Recall (10y)',
-      '20.0-year-2.0-window-recall': 'Recall (20y)',
-  }
-
-  df_t35 = pd.read_csv(SHAP_DIR / 'shap_top35_features_r2.csv', index_col=0)
-  mat_raw = df_t35[ALL_12_METRICS].copy()
-  mat_norm = mat_raw.div(mat_raw.max(axis=0), axis=1) * 100.0
-  short_cols = [metric_labels[m] for m in ALL_12_METRICS]
-  mat_norm.columns = short_cols
-  annot_txt = pd.DataFrame(
-      np.vectorize(lambda v: f'{v:.3f}' if v >= 0.01 else f'{v:.4f}')(mat_raw.values),
-      index=mat_raw.index,
-      columns=short_cols,
-  )
-
-  fig, ax = plt.subplots(figsize=(NATURE_W, NATURE_W * (417.0 / 468.0)), dpi=SAVE_DPI)
-  sns.heatmap(
-      mat_norm, ax=ax, cmap='viridis', vmin=0.0, vmax=100.0,
-      annot=annot_txt, fmt='', annot_kws={'size': 4.4},
-      linewidths=0.30,
-      cbar_kws={'label': 'Relative Importance (% of per-metric maximum Mean |SHAP|)', 'shrink': 0.72, 'pad': 0.02},
-  )
-  y_lbls = [f"{r['label']} ({short_cat.get(r['category'], r['category'])})" for _, r in df_t35.iterrows()]
-  ax.set_yticks(np.arange(len(df_t35)) + 0.5)
-  ax.set_yticklabels(y_lbls, rotation=0, fontsize=5.1)
-  ax.set_xticklabels(short_cols, rotation=32, ha='right', fontsize=5.8, fontweight='bold')
-  ax.set_title('Global Permutation SHAP Feature Importance (Top 35 Unique Predictors Across 12 Metrics)', fontsize=7.4, fontweight='bold', pad=7)
-  ax.set_xlabel('Hydrological Evaluation Metric (cells show raw Mean |SHAP|)', fontsize=6.6, fontweight='bold')
-  ax.set_ylabel('Watershed Predictor [code] (Category)', fontsize=6.6, fontweight='bold')
-  fig.tight_layout()
-
-  out_path = out_dir / 'Fig_S2_top35_permutation_shap.png'
-  fig.savefig(out_path, dpi=SAVE_DPI, bbox_inches='tight', pad_inches=0.03)
-  plt.close(fig)
-  print(f'  Saved {out_path} ({out_path.stat().st_size / 1e6:.2f} MB)', flush=True)
-  return out_path
-
-
-# ==============================================================================
-# FIGURE S3: Conceptual Schematic (Copy archived reference PNG)
-# ==============================================================================
-def copy_fig_s3(out_dir: Path) -> Path:
-  src = REPO_DIR / 'results' / 'figures' / 'Fig_S3_conceptual_ungaugedness.png'
-  dst = out_dir / 'Fig_S3_conceptual_ungaugedness.png'
-  if src.exists():
-    if src.resolve() != dst.resolve():
-      shutil.copy2(src, dst)
-    print(f'  Verified/copied {dst} ({dst.stat().st_size / 1e6:.2f} MB)', flush=True)
-  else:
-    print(f'  [Fig S3] WARNING: Schematic not found at {src}', flush=True)
-  return dst
-
-
-# ==============================================================================
-# FIGURE S5: Global Predicted Skill Boxplots across 1,034,083 Watersheds
-# ==============================================================================
-def build_fig_s5(out_dir: Path) -> Path:
-  print('[Fig S5] Rendering global predicted skill boxplots (1,034,083 watersheds)...', flush=True)
-  _set_pub_rc(7.3)
+def build_fig_s6(out_dir: Path) -> Path:
+  print('[Fig S6] Rendering global predicted skill boxplots (1,034,083 watersheds)...', flush=True)
+  _set_pub_rc(6.8)
   p_ts = CF_DIR / 'Table_S3_4regimes_r2.csv'
   if not p_ts.exists():
     p_ts = CF_DIR / 'Table_S1_4regimes_r2.csv'
   df_ts = pd.read_csv(p_ts)
   df_base = df_ts[df_ts['regime'] == 'base'].set_index('metric')
 
-  metrics_f5 = [
+  metrics_f6 = [
       ('NSE', 'NSE'), ('KGE', 'KGE'),
       ('1.01-year-2.0-window-recall', 'Recall (1y)'), ('2.0-year-2.0-window-recall', 'Recall (2y)'),
       ('5.0-year-2.0-window-recall', 'Recall (5y)'), ('10.0-year-2.0-window-recall', 'Recall (10y)'),
@@ -363,7 +518,7 @@ def build_fig_s5(out_dir: Path) -> Path:
       ('20.0-year-2.0-window-precision', 'Precision (20y)'),
   ]
   box_stats = []
-  for m_id, m_lbl in metrics_f5:
+  for m_id, m_lbl in metrics_f6:
     r = df_base.loc[m_id]
     box_stats.append({
         'label': m_lbl,
@@ -375,7 +530,7 @@ def build_fig_s5(out_dir: Path) -> Path:
         'fliers': [],
     })
 
-  fig, ax = plt.subplots(figsize=(NATURE_W, NATURE_W * (245.12 / 468.0)), dpi=SAVE_DPI)
+  fig, ax = plt.subplots(figsize=(SCIENCE_W, 3.95), dpi=SAVE_DPI)
   bp = ax.bxp(list(reversed(box_stats)), vert=False, patch_artist=True, showfliers=False, widths=0.62)
   cols = ['#CC79A7'] * 5 + ['#009E73'] * 5 + ['#0072B2'] * 2
   for p, c in zip(bp['boxes'], cols):
@@ -390,293 +545,311 @@ def build_fig_s5(out_dir: Path) -> Path:
     w_l.set_linewidth(0.6)
   ax.axvline(0.0, color='#616161', ls='--', lw=0.7)
   xmin = min(-0.44, min(b['whislo'] for b in box_stats) - 0.05)
-  xmax = max(0.70, max(b['whishi'] for b in box_stats) + 0.05)
+  xmax = max(0.72, max(b['whishi'] for b in box_stats) + 0.05)
   ax.set_xlim([xmin, xmax])
-  ax.set_xlabel('Predicted hydrological skill across 1,034,083 global watersheds', fontsize=7.4, fontweight='bold')
-  ax.set_title('Global watershed forecast skill distributions (post-2016 Caravan training set)', fontsize=8.0, fontweight='bold', loc='left', pad=4)
+  ax.tick_params(labelsize=6.4)
+  ax.set_xlabel('Predicted hydrological skill across 1,034,083 global watersheds', fontsize=7.0, fontweight='bold')
+  ax.set_title('Global watershed forecast skill distributions (post-2016 Caravan training set)', fontsize=7.5, fontweight='bold', loc='left', pad=4)
   handles = [
       Patch(facecolor='#0072B2', edgecolor='black', alpha=0.84, label='Continuous (NSE, KGE; 2016–2023)'),
       Patch(facecolor='#009E73', edgecolor='black', alpha=0.84, label='Flood recall (7-day causal)'),
       Patch(facecolor='#CC79A7', edgecolor='black', alpha=0.84, label='Flood precision (7-day causal)'),
   ]
-  ax.legend(handles=handles, loc='lower left', frameon=True, framealpha=0.95, fontsize=5.6, handlelength=1.1, borderpad=0.25, labelspacing=0.25)
+  ax.legend(handles=handles, loc='lower left', frameon=True, framealpha=0.95, fontsize=6.1, handlelength=1.1, borderpad=0.30, labelspacing=0.22)
   ax.grid(axis='x', linestyle='--', alpha=0.45)
   sns.despine(ax=ax)
   fig.tight_layout()
 
-  out_path = out_dir / 'Fig_S5_global_predicted_skill.png'
-  fig.savefig(out_path, dpi=SAVE_DPI, bbox_inches='tight', pad_inches=0.03)
+  out_path = out_dir / 'Fig_S6_global_predicted_skill.png'
+  fig.savefig(out_path, dpi=SAVE_DPI, bbox_inches='tight', pad_inches=0.04)
   plt.close(fig)
   print(f'  Saved {out_path} ({out_path.stat().st_size / 1e6:.2f} MB)', flush=True)
   return out_path
 
 
 # ==============================================================================
-# OPTIONAL FATHOM SUPPLEMENTARY FIGURES (Figs. S6, S7, S8)
+# FIGURE S7 (OPTIONAL — Fathom v3): Precision-Recall Curves (P_50 Direct) &
+#                                   Warning-to-Action Regime Sensitivity (A1)
 # ==============================================================================
-def build_optional_fathom_supp_figs(out_dir: Path, targets: set[str]) -> None:
-  basin_pq = CF_DIR / 'basin_level_exposure_counterfactuals_r2.parquet'
-  t3_csv = CF_DIR / 'Table_S3_175territories_r2.csv'
+def build_fig_s7_optional(out_dir: Path) -> Path | None:
+  pf_csv = CF_DIR / 'precision_f1_csi_alpha_sensitivity_r2.csv'
+  mm_csv = CF_DIR / 'multi_mechanism_tiered_exposure_r2.csv'
+  if not (pf_csv.exists() and mm_csv.exists()):
+    print(f'[Fig S7] SKIPPED: Licensed Fathom v3 precision/alpha sensitivity outputs not found in {CF_DIR}.', flush=True)
+    return None
+
+  print('[Fig S7] Rendering Precision-Recall curves (P_50 direct) & A1 action-regime sensitivity...', flush=True)
+  _set_pub_rc(6.5)
+  pf = pd.read_csv(pf_csv)
+  mm = pd.read_csv(mm_csv).set_index(['tier_key', 'mechanism'])
+  pf1 = pf[pf['alpha'] == 1.0].set_index(['tier_key', 'mechanism'])
+
+  e_cap = float(mm.loc[('tier1a_active_post2016_ccby_8811', '000_global_train_joint'), 'E_total_nosys115'])
+  e_glob = float(mm.loc[('tier1a_active_post2016_ccby_8811', '000_global_train_joint'), 'E_total_global'])
+
+  # Empirical Caravan 1y–10y Precision vs. Recall (ungauged vs locally adapted FT+DA)
+  caravan_ung, caravan_adp = [], []
+  for rp, lbl in [('1.01', '1y'), ('2.0', '2y'), ('5.0', '5y'), ('10.0', '10y')]:
+    r_u = pd.concat([load_r2_metric_series(d, f'{rp}-year-2.0-window-recall') for d in ('random', 'separated')], ignore_index=True).dropna().median() * 100.0
+    p_u = pd.concat([load_r2_metric_series(d, f'{rp}-year-2.0-window-precision') for d in ('random', 'separated')], ignore_index=True).dropna().median() * 100.0
+    r_a = pd.concat([load_r2_metric_series(d, f'{rp}-year-2.0-window-recall') for d in ('random_ft_da', 'separated_ft_da')], ignore_index=True).dropna().median() * 100.0
+    p_a = pd.concat([load_r2_metric_series(d, f'{rp}-year-2.0-window-precision') for d in ('random_ft_da', 'separated_ft_da')], ignore_index=True).dropna().median() * 100.0
+    caravan_ung.append((lbl, float(r_u), float(p_u)))
+    caravan_adp.append((lbl, float(r_a), float(p_a)))
+
+  far_cap_col = 'exp_weighted_far_p50direct_nosys115_pct' if 'exp_weighted_far_p50direct_nosys115_pct' in pf1.columns else 'exp_weighted_far_nosys115_pct'
+  far_glb_col = 'exp_weighted_far_p50direct_global_pct' if 'exp_weighted_far_p50direct_global_pct' in pf1.columns else 'exp_weighted_far_global_pct'
+
+  stage_defs = [
+      ('Today', 'tier1a_active_post2016_ccby_8811', '000_global_train_joint'),
+      ('34.6k', 'tier_caravan_estreams_34577', '111_all_three_combined_snap'),
+      ('93.8k', 'tier_public_discharge_93827', '111_all_three_combined_snap'),
+      ('121.8k', 'tier4_all_publicly_knowable_121819', '111_all_three_combined_snap'),
+  ]
+  if ('tier5_universal_no_ood_clamp', '111_all_three_combined_snap') in pf1.index:
+    stage_defs.append(('Univ. (local)', 'tier5_universal_no_ood_clamp', '111_all_three_combined_snap'))
+  stage_defs.append(('Univ. (upper)', 'tier5_universal_idealized_ceiling', '111_all_three_combined_snap'))
+
+  cap_stages, glob_stages = [], []
+  for lbl, tk, mech in stage_defs:
+    row = pf1.loc[(tk, mech)]
+    cap_stages.append((lbl, float(row['warned_recall_nosys115']) / e_cap * 100.0, 100.0 - float(row[far_cap_col])))
+    glob_stages.append((lbl, float(row['warned_recall_global']) / e_glob * 100.0, 100.0 - float(row[far_glb_col])))
+
+  fig = plt.figure(figsize=(SCIENCE_W, 3.85), dpi=SAVE_DPI)
+  gs = gridspec.GridSpec(1, 2, width_ratios=[1.12, 1.00], wspace=0.30, left=0.075, right=0.985, top=0.91, bottom=0.14)
+
+  # --- (a) Precision vs. Recall curves ---
+  ax_a = fig.add_subplot(gs[0, 0])
+  r_grid = np.linspace(15.0, 80.5, 350)
+  for f1_val, lbl_pos in [(20.0, (79.0, 11.4)), (30.0, (79.0, 18.6)), (40.0, (79.0, 27.1)), (50.0, (79.0, 37.2))]:
+    mask_r = (2.0 * r_grid - f1_val) > 2.0
+    p_iso = (f1_val * r_grid[mask_r]) / (2.0 * r_grid[mask_r] - f1_val)
+    valid = (p_iso >= 8.0) & (p_iso <= 56.0)
+    ax_a.plot(r_grid[mask_r][valid], p_iso[valid], color='#CBD5E1', lw=0.75, ls=':', zorder=1)
+    ax_a.text(lbl_pos[0], lbl_pos[1], f'F1={f1_val/100:.1f}', fontsize=6.0, style='italic', color='#64748B', ha='right', va='bottom', zorder=2)
+
+  cu_x, cu_y = [pt[1] for pt in caravan_ung], [pt[2] for pt in caravan_ung]
+  ax_a.plot(cu_x, cu_y, color='#64748B', lw=1.2, ls='--', zorder=3)
+  ax_a.scatter(cu_x, cu_y, s=22, marker='D', facecolor='white', edgecolor='#334155', lw=0.9, zorder=5)
+  for lbl, rx, py in caravan_ung:
+    if lbl == '10y':
+      ax_a.text(rx - 1.3, py + 1.4, lbl, fontsize=6.1, fontweight='bold', color='#475569', ha='right', va='bottom', zorder=7)
+    else:
+      dx = +1.4 if lbl == '1y' else -1.4
+      ha = 'left' if dx > 0 else 'right'
+      ax_a.text(rx + dx, py + (0.6 if dx < 0 else -0.6), lbl, fontsize=6.1, fontweight='bold', color='#475569', ha=ha, va='center', zorder=7)
+
+  ca_x, ca_y = [pt[1] for pt in caravan_adp], [pt[2] for pt in caravan_adp]
+  ax_a.plot(ca_x, ca_y, color='#0F172A', lw=1.3, ls='--', zorder=4)
+  ax_a.scatter(ca_x, ca_y, s=24, marker='D', color='#0F172A', edgecolor='white', lw=0.5, zorder=6)
+  for lbl, rx, py in caravan_adp:
+    dx = -1.4 if lbl in ('1y', '2y') else +1.4
+    ha = 'left' if dx > 0 else 'right'
+    ax_a.text(rx + dx, py + 0.8, lbl, fontsize=6.1, fontweight='bold', color='#0F172A', ha=ha, va='bottom', zorder=7)
+
+  gl_x, gl_y = [pt[1] for pt in glob_stages], [pt[2] for pt in glob_stages]
+  ax_a.plot(gl_x, gl_y, color='#94A3B8', lw=1.1, ls='-', zorder=3)
+  ax_a.scatter([gl_x[0], gl_x[3], gl_x[-1]], [gl_y[0], gl_y[3], gl_y[-1]], s=18, marker='o', facecolor='white', edgecolor='#64748B', lw=0.9, zorder=4)
+
+  cp_x, cp_y = [pt[1] for pt in cap_stages], [pt[2] for pt in cap_stages]
+  ax_a.plot(cp_x, cp_y, color='#B45309', lw=1.7, ls='-', zorder=5)
+  ax_a.scatter(cp_x, cp_y, s=24, marker='o', color='#64748B', edgecolor='white', lw=0.45, zorder=6)
+  ax_a.scatter([cp_x[0]], [cp_y[0]], s=38, color='#2563EB', edgecolor='white', lw=0.6, zorder=7)
+  ax_a.scatter([cp_x[3]], [cp_y[3]], s=38, color='#0D9488', edgecolor='white', lw=0.6, zorder=7)
+  ax_a.scatter([cp_x[-1]], [cp_y[-1]], s=42, color='#D97706', edgecolor='white', lw=0.6, zorder=7)
+
+  ax_a.annotate('Today', xy=(cp_x[0], cp_y[0]), xytext=(cp_x[0] - 2.0, cp_y[0] - 5.2), ha='center', va='top', fontsize=6.1, fontweight='bold', color='#1D4ED8', arrowprops=dict(arrowstyle='-', color='#93C5FD', lw=0.7))
+  ax_a.annotate('121.8k', xy=(cp_x[3], cp_y[3]), xytext=(cp_x[3] - 6.5, cp_y[3] + 4.8), ha='center', va='bottom', fontsize=6.1, fontweight='bold', color='#0F766E', arrowprops=dict(arrowstyle='-', color='#5EEAD4', lw=0.7))
+  ax_a.annotate('Universal', xy=(cp_x[-1], cp_y[-1]), xytext=(cp_x[-1] + 2.0, cp_y[-1] - 7.8), ha='center', va='top', fontsize=6.1, fontweight='bold', color='#B45309', arrowprops=dict(arrowstyle='-', color='#FDBA74', lw=0.7))
+
+  pr_handles = [
+      Line2D([0], [0], color='#0F172A', lw=1.2, ls='--', marker='D', markersize=3.8, markerfacecolor='#0F172A', label='Adapted Caravan (1y–10y)'),
+      Line2D([0], [0], color='#64748B', lw=1.1, ls='--', marker='D', markersize=3.8, markerfacecolor='white', markeredgecolor='#334155', label='Ungauged Caravan (1y–10y)'),
+      Line2D([0], [0], color='#B45309', lw=1.6, ls='-', marker='o', markersize=4.2, markerfacecolor='#D97706', label='CAP-gap exposure (P50-direct)'),
+      Line2D([0], [0], color='#94A3B8', lw=1.1, ls='-', marker='o', markersize=3.8, markerfacecolor='white', markeredgecolor='#64748B', label='Global exposure (P50-direct)'),
+  ]
+  ax_a.legend(handles=pr_handles, loc='upper left', frameon=True, facecolor='white', edgecolor='#CBD5E1', framealpha=0.95, fontsize=6.0, borderpad=0.28)
+  ax_a.set_xlim(15.0, 81.0)
+  ax_a.set_ylim(7.5, 57.5)
+  ax_a.tick_params(labelsize=6.2)
+  ax_a.set_xlabel('Flood recall (% real floods caught)', fontsize=6.8, fontweight='bold')
+  ax_a.set_ylabel('Precision (% alerts true)', fontsize=6.8, fontweight='bold')
+  ax_a.set_title('(a) Precision vs. recall across thresholds & stages', fontsize=7.2, fontweight='bold', loc='left', pad=5)
+  ax_a.grid(True, linestyle='--', alpha=0.35)
+  sns.despine(ax=ax_a)
+
+  # --- (b) Sensitivity of CAP-gap share closed by 121.8k vs Universal across A1 regimes ---
+  ax_b = fig.add_subplot(gs[0, 1])
+  regimes = [
+      ('α = 1.0\n(Recall)', 'warned_recall_nosys115'),
+      ('α = CSI/R\n(FA-disc.)', 'warned_csi_nosys115'),
+      ('α = P\n(Bayesian)', 'warned_bayesian_pr_nosys115'),
+      ('INFORM\nCoping×Rec', 'warned_coping_recall_nosys115'),
+      ('INFORM\nCoping×CSI', 'warned_coping_csi_nosys115'),
+  ]
+  regimes = [(lbl, col) for lbl, col in regimes if col in pf1.columns]
+  yr = np.arange(len(regimes))[::-1]
+  t_base = ('tier1a_active_post2016_ccby_8811', '000_global_train_joint')
+  t_121 = ('tier4_all_publicly_knowable_121819', '111_all_three_combined_snap')
+  t_nood = ('tier5_universal_no_ood_clamp', '111_all_three_combined_snap')
+  t_ceil = ('tier5_universal_idealized_ceiling', '111_all_three_combined_snap')
+
+  sh_share_ceil, sh_share_nood = [], []
+  for _, col in regimes:
+    v0 = float(pf1.loc[t_base, col])
+    v121 = float(pf1.loc[t_121, col])
+    vc = float(pf1.loc[t_ceil, col])
+    vn = float(pf1.loc[t_nood, col]) if t_nood in pf1.index else vc
+    sh_share_ceil.append(100.0 * (v121 - v0) / max(vc - v0, 1.0))
+    sh_share_nood.append(100.0 * (v121 - v0) / max(vn - v0, 1.0))
+
+  h = 0.34
+  ax_b.barh(yr + h / 2, sh_share_ceil, height=h, color='#0D9488', edgecolor='white', lw=0.45, label='Share of upper-bound gap')
+  ax_b.barh(yr - h / 2, sh_share_nood, height=h, color='#D97706', edgecolor='white', lw=0.45, label='Share of local-gain gap')
+  for i in range(len(regimes)):
+    ax_b.text(sh_share_ceil[i] + 1.0, yr[i] + h / 2, f'{sh_share_ceil[i]:.0f}%', va='center', ha='left', fontsize=6.0, fontweight='bold', color='#0F766E')
+    ax_b.text(sh_share_nood[i] + 1.0, yr[i] - h / 2, f'{sh_share_nood[i]:.0f}%', va='center', ha='left', fontsize=6.0, fontweight='bold', color='#9A3412')
+
+  ax_b.set_yticks(yr)
+  ax_b.set_yticklabels([r[0] for r in regimes], fontsize=6.1, fontweight='bold')
+  ax_b.set_xlim(0, max(58.0, max(sh_share_ceil + sh_share_nood) + 14.0))
+  ax_b.set_ylim(-0.60, len(regimes) - 0.15)
+  ax_b.tick_params(axis='x', labelsize=6.2)
+  ax_b.set_xlabel('CAP-gap deficit closed by 121.8k existing gauges (%)', fontsize=6.6, fontweight='bold')
+  ax_b.set_title('(b) Directional invariance across action regimes', fontsize=7.2, fontweight='bold', loc='left', pad=5)
+  ax_b.legend(loc='upper right', frameon=True, facecolor='white', edgecolor='#CBD5E1', fontsize=6.0, borderpad=0.25)
+  ax_b.grid(axis='x', linestyle='--', alpha=0.35)
+  sns.despine(ax=ax_b)
+
+  out_path = out_dir / 'Fig_S7_precision_recall_curves.png'
+  fig.savefig(out_path, dpi=SAVE_DPI, bbox_inches='tight', pad_inches=0.05)
+  plt.close(fig)
+  print(f'  Saved {out_path} ({out_path.stat().st_size / 1e6:.2f} MB)', flush=True)
+  return out_path
+
+
+# ==============================================================================
+# FIGURE S8 (OPTIONAL — Fathom v3): National N = 1..20 Strategic Gauge Siting
+# ==============================================================================
+def build_fig_s8_optional(out_dir: Path) -> Path | None:
   s16_csv = S16_DIR / 'country_joint_n_gauge_r2.csv'
+  if not s16_csv.exists():
+    print(f'[Fig S8] SKIPPED: Licensed Fathom v3 national gauge-siting output not found at {s16_csv}.', flush=True)
+    return None
 
-  if targets & {'figs6', 'figs7'}:
-    if not (basin_pq.exists() and t3_csv.exists()):
-      print(
-          '[Fig S6 / S7] SKIPPED: Licensed Fathom v3 flood-exposure counterfactuals '
-          f'not present under {CF_DIR}.',
-          flush=True,
-      )
-    else:
-      world = gpd.read_file(file_paths.NATURAL_EARTH_PATH)
-      world = world[world['name'] != 'Antarctica'].copy()
-      world = world.dropna(subset=[world.geometry.name])
-      world = world[world.is_valid & (~world.is_empty)].copy()
-      world['map_name'] = world['name'].replace(file_paths.country_name_map)
-      df_b = pd.read_parquet(basin_pq)
-      df_c = pd.read_csv(t3_csv)
+  print('[Fig S8] Rendering national N = 1..20 strategic gauge siting figure (fixed layout)...', flush=True)
+  _set_pub_rc(6.3)
+  world = gpd.read_file(file_paths.NATURAL_EARTH_PATH)
+  world = world[world['name'] != 'Antarctica'].copy()
+  world['map_name'] = world['name'].replace(file_paths.country_name_map)
+  df_nat = pd.read_csv(s16_csv)
+  nat_idx = df_nat.set_index('Country')
+  n_gauges = [1, 5, 10, 20]
+  vmax_sh = max(2.0, float(np.nanpercentile(df_nat['N=20_Combined_Dom_PctBase'], 95)))
 
-      if 'figs6' in targets:
-        print('[Fig S6] Generating optional exposure & alerting coverage figure...', flush=True)
-        _set_pub_rc(7.3)
-        n_sys = int(df_c['has_system'].sum())
-        n_nosys = int((~df_c['has_system']).sum())
-        df_c_exp = df_c[df_c['E_total'] > 0].copy()
-        glb_tot = float(df_b['E_total'].sum())
-        glb_warn = float(df_b['warned_t1a'].sum())
-        rho_ze, p_ze = spearmanr(df_c_exp['zero_up_pct_t4'], df_c_exp['E_total'])
+  fig = plt.figure(figsize=(SCIENCE_W, 6.10), dpi=SAVE_DPI, facecolor='#ffffff')
+  gs_maps = gridspec.GridSpec(
+      2, 2, wspace=0.06, hspace=0.14,
+      left=0.040, right=0.985, top=0.930, bottom=0.495,
+  )
+  gs_bot = gridspec.GridSpec(
+      1, 2, wspace=0.24,
+      left=0.085, right=0.985, top=0.385, bottom=0.180,
+  )
+  axes_maps = [fig.add_subplot(gs_maps[0, 0]), fig.add_subplot(gs_maps[0, 1]), fig.add_subplot(gs_maps[1, 0]), fig.add_subplot(gs_maps[1, 1])]
+  ltrs = ['(a)', '(b)', '(c)', '(d)']
+  for i, N in enumerate(n_gauges):
+    ax = axes_maps[i]
+    w_p = world.copy()
+    col_pct = f'N={N}_Combined_Dom_PctBase'
+    w_p['val'] = w_p['map_name'].map(nat_idx[col_pct])
+    world.plot(ax=ax, facecolor='#ECEFF1', edgecolor='#B0BEC5', linewidth=0.20, aspect=None)
+    w_p.dropna(subset=['val']).plot(
+        column='val', cmap='viridis', ax=ax, vmin=0.0, vmax=vmax_sh,
+        legend=False,
+        edgecolor='#37474F', linewidth=0.15, aspect=None,
+    )
+    grl = world[world['map_name'] == 'Greenland']
+    if len(grl) > 0:
+      grl.plot(ax=ax, facecolor='#E2E8F0', edgecolor='#94A3B8', linewidth=0.20, zorder=3, aspect=None)
+    med_c = float(df_nat[col_pct].median())
+    tot_c = float(df_nat[f'N={N}_Combined_Dom'].sum()) / 1e6
+    ax.set_title(f'{ltrs[i]} N = {N} ({tot_c:.2f}M/yr; med {med_c:.1f}%)', fontsize=6.8, fontweight='bold', loc='left', pad=2.5)
+    ax.set_xlim([-180, 180])
+    ax.set_ylim([-58, 84])
+    ax.set_aspect(1.0)
+    ax.set_axis_off()
 
-        fig = plt.figure(figsize=(NATURE_W, NATURE_W * 0.72), dpi=SAVE_DPI, facecolor='#ffffff')
-        gs = gridspec.GridSpec(2, 2, height_ratios=[1.0, 1.05], hspace=0.28, wspace=0.14, left=0.105, right=0.985, top=0.94, bottom=0.095)
+  cax = fig.add_axes([0.27, 0.455, 0.48, 0.015])
+  sm = matplotlib.cm.ScalarMappable(cmap='viridis', norm=matplotlib.colors.Normalize(vmin=0.0, vmax=vmax_sh))
+  sm.set_array([])
+  cb = fig.colorbar(sm, cax=cax, orientation='horizontal', extend='max')
+  cb.ax.tick_params(labelsize=6.1, length=2.5, pad=1.5)
+  cb.set_label(f'Annual flood exposure reduced (%, capped at {vmax_sh:.0f}%)', fontsize=6.4, fontweight='bold', labelpad=2.0)
 
-        ax_a = fig.add_subplot(gs[0, 0])
-        w_map = world.copy()
-        w_map['has_cap'] = w_map['map_name'].map(df_c.set_index('country_name')['has_system'].to_dict())
-        world.plot(ax=ax_a, color='#ECEFF1', edgecolor='#B0BEC5', linewidth=0.20)
-        w_map[w_map['has_cap'] == True].plot(ax=ax_a, color='#0072B2', edgecolor='#263238', linewidth=0.18, alpha=0.86)
-        w_map[w_map['has_cap'] == False].plot(ax=ax_a, color='#D55E00', edgecolor='#263238', linewidth=0.18, alpha=0.84)
-        ax_a.set_xlim(-180, 180)
-        ax_a.set_ylim(-58, 84)
-        ax_a.set_axis_off()
-        ax_a.set_title('(a) National flood warning systems', fontsize=7.9, fontweight='bold', loc='left', pad=3)
-        ax_a.legend(
-            handles=[
-                Patch(facecolor='#0072B2', edgecolor='#263238', alpha=0.86, label=f'Confirmed system ({n_sys} territories)'),
-                Patch(facecolor='#D55E00', edgecolor='#263238', alpha=0.84, label=f'No confirmed system ({n_nosys} territories)'),
-            ],
-            loc='lower left', frameon=True, framealpha=0.94, fontsize=5.8,
-        )
+  # Bottom row (e) & (f): Top 15 CAP-gap countries by baseline flood exposure (>= 10 cm)
+  ax_e = fig.add_subplot(gs_bot[0, 0])
+  ax_f = fig.add_subplot(gs_bot[0, 1])
+  top15_df = df_nat[~df_nat['has_system']].sort_values('Baseline Exposure (people/yr)', ascending=False).head(15)
+  top15_names = top15_df['Country'].tolist()
+  cmap_15 = sns.color_palette('husl', len(top15_names))
+  ls_cyc = ['-', '--', '-.']
+  mk_cyc = ['o', 's', '^']
+  handles_15 = []
+  for i, cname in enumerate(top15_names):
+    r = nat_idx.loc[cname]
+    mc = int(r['Max_Evaluated_Candidates'])
+    y_abs, y_pct = [], []
+    for N in n_gauges:
+      if N > mc and N > 1:
+        y_abs.append(np.nan); y_pct.append(np.nan)
+      else:
+        y_abs.append(float(r[f'N={N}_Combined_Dom']))
+        y_pct.append(float(r[f'N={N}_Combined_Dom_PctBase']))
+    short_c = 'DR Congo' if cname == 'Congo DR' else ('Vietnam' if cname == 'Viet Nam' else cname)
+    lbl = f"{short_c} ({r['Baseline Exposure (people/yr)']/1e6:.2f}M)"
+    ln, = ax_e.plot(n_gauges, y_abs, marker=mk_cyc[i // 5], ls=ls_cyc[i % 3], color=cmap_15[i], lw=1.25, markersize=3.5, label=lbl)
+    ax_f.plot(n_gauges, y_pct, marker=mk_cyc[i // 5], ls=ls_cyc[i % 3], color=cmap_15[i], lw=1.25, markersize=3.5)
+    handles_15.append(ln)
 
-        pts = df_b.dropna(subset=['lat', 'lon'])
-        z_pts = pts[pts['E_total'] <= 0]
-        p_pts = pts[pts['E_total'] > 0].sort_values('E_total', ascending=True).copy()
-        p_pts['pct_warned'] = (100.0 * p_pts['warned_t1a'] / p_pts['E_total']).clip(0.0, 100.0)
-        cmap_exp = mcolors.LinearSegmentedColormap.from_list('YlGnBu_trunc', plt.get_cmap('YlGnBu')(np.linspace(0.24, 1.0, 256)))
-        vmax_e = max(1e3, float(np.nanpercentile(p_pts['E_total'].values, 99.5)))
-        vmin_e = max(0.1, vmax_e / 1e4)
+  ax_e.set_xticks(n_gauges)
+  ax_e.set_yscale('symlog', linthresh=100.0)
+  ax_e.set_ylim(bottom=0.0)
+  ax_e.tick_params(labelsize=6.1)
+  ax_e.set_xlabel('New active gauges installed per country (N)', fontsize=6.5, fontweight='bold')
+  ax_e.set_ylabel('Combined gain (persons/yr)', fontsize=6.5, fontweight='bold')
+  ax_e.set_title('(e) Top 15 CAP-gap countries (absolute, ≥ 10 cm)', fontsize=6.9, fontweight='bold', loc='left', pad=4)
+  ax_e.grid(True, which='both', ls='--', alpha=0.35)
+  sns.despine(ax=ax_e)
 
-        ax_b = fig.add_subplot(gs[0, 1])
-        world.plot(ax=ax_b, color='#F4F6F8', edgecolor='none', zorder=1)
-        ax_b.scatter(z_pts['lon'], z_pts['lat'], s=0.04, marker='.', color='#D8DFE6', linewidths=0, rasterized=True, zorder=2)
-        sc_b = ax_b.scatter(p_pts['lon'], p_pts['lat'], c=np.maximum(p_pts['E_total'].values, vmin_e), s=0.08, marker='.', cmap=cmap_exp, norm=mcolors.LogNorm(vmin=vmin_e, vmax=vmax_e), linewidths=0, rasterized=True, zorder=3)
-        world.boundary.plot(ax=ax_b, color='#455A64', linewidth=0.18, zorder=4)
-        cb_b = fig.colorbar(sc_b, ax=ax_b, orientation='horizontal', fraction=0.052, pad=0.02, shrink=0.84, extend='both')
-        cb_b.set_label(f'Flood exposure >10 cm (persons/yr; total {glb_tot/1e6:.2f}M/yr)', fontsize=6.1, fontweight='bold')
-        cb_b.ax.tick_params(labelsize=5.8)
-        ax_b.set_xlim(-180, 180)
-        ax_b.set_ylim(-58, 84)
-        ax_b.set_axis_off()
-        ax_b.set_title('(b) Expected annual flood exposure (defended)', fontsize=7.9, fontweight='bold', loc='left', pad=3)
+  ax_f.set_xticks(n_gauges)
+  ax_f.set_ylim(bottom=0.0)
+  ax_f.tick_params(labelsize=6.1)
+  ax_f.set_xlabel('New active gauges installed per country (N)', fontsize=6.5, fontweight='bold')
+  ax_f.set_ylabel('% annual exposure reduced', fontsize=6.5, fontweight='bold')
+  ax_f.set_title('(f) Top 15 CAP-gap countries (% reduced)', fontsize=6.9, fontweight='bold', loc='left', pad=4)
+  ax_f.grid(True, which='both', ls='--', alpha=0.35)
+  sns.despine(ax=ax_f)
 
-        ax_c = fig.add_subplot(gs[1, 0])
-        for hs, lbl, col, mk in [(True, 'Confirmed system', '#0072B2', 'o'), (False, 'No confirmed system', '#D55E00', '^')]:
-          s = df_c_exp[df_c_exp['has_system'] == hs]
-          ax_c.scatter(s['zero_up_pct_t4'], s['E_total'], s=15, color=col, marker=mk, alpha=0.78, edgecolor='black', linewidth=0.35, label=lbl)
-        xg = np.linspace(0, 100, 200)
-        slope, ic = np.polyfit(df_c_exp['zero_up_pct_t4'].values, np.log10(np.maximum(df_c_exp['E_total'].values, 1.0)), 1)
-        ax_c.plot(xg, 10 ** (ic + slope * xg), color='#263238', ls='--', lw=0.95)
-        halo = [pe.withStroke(linewidth=2.0, foreground='white')]
-        for cname, ltxt, dx, dy in [('India', 'India', 7, 3), ('Bangladesh', 'Bangladesh', -46, -15), ('China', 'China', -28, -16), ('Brazil', 'Brazil', -36, -12), ('Nigeria', 'Nigeria', 5, 7), ('United States of America', 'USA', -24, -14)]:
-          rc = df_c_exp[df_c_exp['country_name'] == cname]
-          if not rc.empty:
-            ax_c.annotate(ltxt, xy=(float(rc['zero_up_pct_t4'].iloc[0]), float(rc['E_total'].iloc[0])), xytext=(dx, dy), textcoords='offset points', fontsize=5.8, fontweight='bold', color='#263238', path_effects=halo, arrowprops=dict(arrowstyle='-', color='#546E7A', lw=0.45))
-        ax_c.set_yscale('log')
-        ax_c.set_xlim(-4, 108)
-        ax_c.set_ylim(max(1.0, df_c_exp['E_total'].min() * 0.5), df_c_exp['E_total'].max() * 12.0)
-        ax_c.text(0.03, 0.06, f'Spearman $r_s = {rho_ze:+.2f}$ ($p = {_fmt_sci_tex(p_ze)}$, $N = {len(df_c_exp)}$)', transform=ax_c.transAxes, fontsize=6.0, bbox=dict(boxstyle='round,pad=0.20', facecolor='#FFF8E1', edgecolor='#B0BEC5', alpha=0.94))
-        ax_c.legend(loc='upper left', frameon=True, framealpha=0.95, fontsize=5.8)
-        ax_c.set_xlabel('Watersheds with zero upstream gauges (%)', fontsize=6.7, fontweight='bold')
-        ax_c.set_ylabel('Flood exposure (persons/yr)', fontsize=6.9, fontweight='bold')
-        ax_c.set_title('(c) Zero upstream gauges vs. flood exposure', fontsize=7.9, fontweight='bold', loc='left', pad=3)
-        ax_c.grid(True, which='both', ls='--', alpha=0.38)
-        sns.despine(ax=ax_c)
+  # Clean multi-column legend strictly BELOW panels (e)-(f) — zero overlap with panel (f) title!
+  fig.legend(
+      handles=handles_15, loc='lower center', bbox_to_anchor=(0.53, 0.005), ncol=5,
+      frameon=True, facecolor='white', edgecolor='#CBD5E1', fontsize=6.0,
+      columnspacing=0.75, handlelength=1.4, handletextpad=0.30, borderpad=0.30,
+      title='Top 15 CAP-gap countries (total annual flood exposure ≥ 10 cm)', title_fontsize=6.2,
+  )
+  fig.suptitle('National exposure reduction from installing N = 1 to 20 active stream gauges per country', fontsize=7.6, fontweight='bold', y=0.975)
 
-        ax_d = fig.add_subplot(gs[1, 1])
-        world.plot(ax=ax_d, color='#F4F6F8', edgecolor='none', zorder=1)
-        ax_d.scatter(z_pts['lon'], z_pts['lat'], s=0.04, marker='.', color='#D8DFE6', linewidths=0, rasterized=True, zorder=2)
-        sc_d = ax_d.scatter(p_pts['lon'], p_pts['lat'], c=p_pts['pct_warned'].values, s=0.08, marker='.', cmap='viridis', vmin=10.0, vmax=55.0, linewidths=0, rasterized=True, zorder=3)
-        world.boundary.plot(ax=ax_d, color='#455A64', linewidth=0.18, zorder=4)
-        cb_d = fig.colorbar(sc_d, ax=ax_d, orientation='horizontal', fraction=0.052, pad=0.02, shrink=0.84, extend='both')
-        cb_d.set_label(f'Exposure warned at α = 1.0 (%; global {100*glb_warn/glb_tot:.1f}%, {glb_warn/1e6:.2f}M/yr)', fontsize=6.1, fontweight='bold')
-        cb_d.ax.tick_params(labelsize=5.8)
-        ax_d.set_xlim(-180, 180)
-        ax_d.set_ylim(-58, 84)
-        ax_d.set_axis_off()
-        ax_d.set_title('(d) Flood exposure warned by global model', fontsize=7.9, fontweight='bold', loc='left', pad=3)
-
-        out_s6 = out_dir / 'Fig_S6_exposure_and_warnings.png'
-        fig.savefig(out_s6, dpi=SAVE_DPI, bbox_inches='tight', pad_inches=0.05)
-        plt.close(fig)
-        print(f'  Saved {out_s6}', flush=True)
-
-      if 'figs7' in targets:
-        print('[Fig S7] Generating optional data-bias gap figure...', flush=True)
-        _set_pub_rc(7.3)
-        col_u000 = 'dnet__tier5_universal_idealized_ceiling__000_global_train_joint'
-        col_u111 = 'dnet__tier5_universal_idealized_ceiling__111_all_three_combined_snap'
-        df_cb = df_c[df_c['unwarned_t1a'] > 0].copy()
-        df_cb['bias_pct_unw'] = 100.0 * df_cb[col_u000] / df_cb['unwarned_t1a']
-        df_cb['comb_abs'] = np.maximum(df_cb[col_u111], 0.0)
-        halo = [pe.withStroke(linewidth=2.0, foreground='white')]
-
-        fig = plt.figure(figsize=(NATURE_W, NATURE_W * 0.48), dpi=SAVE_DPI, facecolor='#ffffff')
-        gs7 = gridspec.GridSpec(1, 2, width_ratios=[1.0, 1.0], wspace=0.25, left=0.075, right=0.985, top=0.89, bottom=0.16)
-
-        ax_a = fig.add_subplot(gs7[0, 0])
-        rho_a, p_a = spearmanr(df_cb['zero_up_pct_t4'], df_cb['bias_pct_unw'])
-        max_e_sqrt = max(1.0, float(np.sqrt(df_cb['E_total'].max())))
-        for hs, lbl, col, mk in [(True, 'Confirmed system', '#0072B2', 'o'), (False, 'No confirmed system', '#D55E00', '^')]:
-          s = df_cb[df_cb['has_system'] == hs]
-          sz = np.clip(90.0 * np.sqrt(s['E_total']) / max_e_sqrt, 10.0, 90.0)
-          ax_a.scatter(s['zero_up_pct_t4'], s['bias_pct_unw'], s=sz, color=col, marker=mk, alpha=0.76, edgecolor='black', linewidth=0.35, label=lbl)
-        sns.regplot(data=df_cb, x='zero_up_pct_t4', y='bias_pct_unw', scatter=False, ax=ax_a, color='#263238', line_kws={'ls': '--', 'lw': 0.95}, ci=95)
-        for cname, ltxt, dx, dy in [('India', 'India', -28, 16), ('Bangladesh', 'Bangladesh', -50, 6), ('Pakistan', 'Pakistan', -20, -24), ('China', 'China', -38, 4), ('Brazil', 'Brazil', -36, -16), ('Nigeria', 'Nigeria', -22, 34), ('United States of America', 'USA', -24, 12)]:
-          rc = df_cb[df_cb['country_name'] == cname]
-          if not rc.empty:
-            ax_a.annotate(ltxt, xy=(float(rc['zero_up_pct_t4'].iloc[0]), float(rc['bias_pct_unw'].iloc[0])), xytext=(dx, dy), textcoords='offset points', fontsize=5.7, fontweight='bold', color='#263238', path_effects=halo, arrowprops=dict(arrowstyle='-', color='#546E7A', lw=0.45))
-        ax_a.text(0.03, 0.88, f'$r_s = {rho_a:+.2f}$ ($p = {_fmt_sci_tex(p_a)}$)', transform=ax_a.transAxes, fontsize=6.0, bbox=dict(boxstyle='round,pad=0.20', facecolor='#FFF8E1', edgecolor='#B0BEC5', alpha=0.94))
-        ax_a.set_xlabel('Watersheds with zero upstream gauges (%)', fontsize=6.7, fontweight='bold')
-        ax_a.set_ylabel('Unwarned exposure closed by training (%)', fontsize=6.7, fontweight='bold')
-        ax_a.set_title('(a) Relative data-bias gap vs. ungauged network', fontsize=7.5, fontweight='bold', loc='left', pad=3)
-        ax_a.legend(loc='lower right', fontsize=5.7, frameon=True, framealpha=0.94)
-        ax_a.grid(True, ls='--', alpha=0.42)
-        sns.despine(ax=ax_a)
-
-        ax_b = fig.add_subplot(gs7[0, 1])
-        pos_b = df_cb[(df_cb['E_total'] > 0) & (df_cb['comb_abs'] > 0)].copy()
-        rho_b, p_b = spearmanr(pos_b['E_total'], pos_b['comb_abs'])
-        for hs, lbl, col, mk in [(True, 'Confirmed system', '#0072B2', 'o'), (False, 'No confirmed system', '#D55E00', '^')]:
-          s = pos_b[pos_b['has_system'] == hs]
-          ax_b.scatter(s['E_total'], s['comb_abs'], s=18, color=col, marker=mk, alpha=0.78, edgecolor='black', linewidth=0.35, label=lbl)
-        for cname, ltxt, dx, dy in [('India', 'India', -42, 10), ('Bangladesh', 'Bangladesh', -72, 12), ('China', 'China', -54, -2), ('Nigeria', 'Nigeria', -52, -16), ('Viet Nam', 'Viet Nam', 14, -18), ('Pakistan', 'Pakistan', 6, -38), ('United States of America', 'USA', -36, -6)]:
-          rc = pos_b[pos_b['country_name'] == cname]
-          if not rc.empty:
-            ax_b.annotate(ltxt, xy=(float(rc['E_total'].iloc[0]), float(rc['comb_abs'].iloc[0])), xytext=(dx, dy), textcoords='offset points', fontsize=5.6, fontweight='bold', color='#263238', path_effects=halo, arrowprops=dict(arrowstyle='-', color='#546E7A', lw=0.45))
-        ax_b.set_xscale('log')
-        ax_b.set_yscale('log')
-        ax_b.set_xlim(right=pos_b['E_total'].max() * 45.0)
-        ax_b.set_ylim(top=pos_b['comb_abs'].max() * 25.0)
-        ax_b.text(0.03, 0.88, f'$r_s = {rho_b:+.2f}$ ($p = {_fmt_sci_tex(p_b)}$)', transform=ax_b.transAxes, fontsize=6.0, bbox=dict(boxstyle='round,pad=0.20', facecolor='#FFF8E1', edgecolor='#B0BEC5', alpha=0.94))
-        ax_b.set_xlabel('Expected annual flood exposure (persons/yr)', fontsize=6.7, fontweight='bold')
-        ax_b.set_ylabel('Combined exposure gain (persons/yr)', fontsize=6.7, fontweight='bold')
-        ax_b.set_title('(b) Combined universal gain vs. annual exposure', fontsize=7.5, fontweight='bold', loc='left', pad=3)
-        ax_b.legend(loc='lower right', fontsize=5.7, frameon=True, framealpha=0.94)
-        ax_b.grid(True, which='both', ls='--', alpha=0.38)
-        sns.despine(ax=ax_b)
-
-        out_s7 = out_dir / 'Fig_S7_data_bias_gap.png'
-        fig.savefig(out_s7, dpi=SAVE_DPI, bbox_inches='tight', pad_inches=0.05)
-        plt.close(fig)
-        print(f'  Saved {out_s7}', flush=True)
-
-  if 'figs8' in targets:
-    if not s16_csv.exists():
-      print(
-          '[Fig S8] SKIPPED: Licensed Fathom v3 national gauge-siting output '
-          f'not present at {s16_csv}.',
-          flush=True,
-      )
-    else:
-      print('[Fig S8] Generating optional national N=1..20 gauge siting figure...', flush=True)
-      _set_pub_rc(6.8)
-      world = gpd.read_file(file_paths.NATURAL_EARTH_PATH)
-      world = world[world['name'] != 'Antarctica'].copy()
-      world['map_name'] = world['name'].replace(file_paths.country_name_map)
-      df_nat = pd.read_csv(s16_csv)
-      nat_idx = df_nat.set_index('Country')
-      n_gauges = [1, 5, 10, 20]
-      vmax_sh = max(2.0, float(np.nanpercentile(df_nat['N=20_Combined_Dom_PctBase'], 95)))
-      fig = plt.figure(figsize=(NATURE_W * 1.45, NATURE_W * 1.45 * (221.0 / 468.0)), dpi=SAVE_DPI, facecolor='#ffffff')
-      gs = gridspec.GridSpec(2, 3, width_ratios=[1.10, 1.10, 0.96], wspace=0.26, hspace=0.34, left=0.025, right=0.82, top=0.905, bottom=0.105)
-      axes_maps = [fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 1]), fig.add_subplot(gs[1, 0]), fig.add_subplot(gs[1, 1])]
-      ltrs = ['(a)', '(b)', '(c)', '(d)']
-      for i, N in enumerate(n_gauges):
-        ax = axes_maps[i]
-        w_p = world.copy()
-        col_pct = f'N={N}_Combined_Dom_PctBase'
-        w_p['val'] = w_p['map_name'].map(nat_idx[col_pct])
-        world.plot(ax=ax, facecolor='#ECEFF1', edgecolor='#B0BEC5', linewidth=0.25)
-        w_p.dropna(subset=['val']).plot(
-            column='val', cmap='viridis', ax=ax, vmin=0.0, vmax=vmax_sh,
-            legend=True,
-            legend_kwds={'label': f'% exposure reduced (N={N}; cap {vmax_sh:.1f}%)', 'orientation': 'horizontal', 'shrink': 0.72, 'pad': 0.02, 'extend': 'max'},
-            edgecolor='#37474F', linewidth=0.15,
-        )
-        med_c = float(df_nat[col_pct].median())
-        tot_c = float(df_nat[f'N={N}_Combined_Dom'].sum()) / 1e6
-        ax.set_title(f'{ltrs[i]} N = {N} ({tot_c:.2f}M/yr; med {med_c:.1f}%)', fontsize=7.0, fontweight='bold', loc='center', pad=3)
-        ax.set_xlim([-180, 180])
-        ax.set_ylim([-58, 84])
-        ax.set_axis_off()
-
-      # Right column (e)–(f): Top 15 CAP-gap countries by baseline flood exposure
-      ax_e = fig.add_subplot(gs[0, 2])
-      ax_f = fig.add_subplot(gs[1, 2])
-      top15_df = df_nat[~df_nat['has_system']].sort_values('Baseline Exposure (people/yr)', ascending=False).head(15)
-      top15_names = top15_df['Country'].tolist()
-      cmap_15 = sns.color_palette('husl', len(top15_names))
-      ls_cyc = ['-', '--', '-.']
-      mk_cyc = ['o', 's', '^']
-      for i, cname in enumerate(top15_names):
-        r = nat_idx.loc[cname]
-        mc = int(r['Max_Evaluated_Candidates'])
-        y_abs, y_pct = [], []
-        for N in n_gauges:
-          if N > mc and N > 1:
-            y_abs.append(np.nan)
-            y_pct.append(np.nan)
-          else:
-            y_abs.append(float(r[f'N={N}_Combined_Dom']))
-            y_pct.append(float(r[f'N={N}_Combined_Dom_PctBase']))
-        lbl = f"{cname} ({r['Baseline Exposure (people/yr)']/1e6:.2f}M/yr)"
-        ax_e.plot(n_gauges, y_abs, marker=mk_cyc[i // 5], ls=ls_cyc[i % 3], color=cmap_15[i], lw=1.4, markersize=4.0, label=lbl)
-        ax_f.plot(n_gauges, y_pct, marker=mk_cyc[i // 5], ls=ls_cyc[i % 3], color=cmap_15[i], lw=1.4, markersize=4.0, label=lbl)
-
-      ax_e.set_xticks(n_gauges)
-      ax_e.set_yscale('symlog', linthresh=100.0)
-      ax_e.set_ylim(bottom=0.0)
-      ax_e.set_ylabel('Combined gain (persons/yr)', fontsize=6.5, fontweight='bold')
-      ax_e.set_title('(e) Top 15 CAP-gap countries (absolute)', fontsize=6.9, fontweight='bold', loc='left', pad=2)
-      ax_e.grid(True, which='both', ls='--', alpha=0.35)
-      sns.despine(ax=ax_e)
-
-      ax_f.set_xticks(n_gauges)
-      ax_f.set_ylim(bottom=0.0)
-      ax_f.set_xlabel('New active gauges installed per country (N)', fontsize=6.6, fontweight='bold')
-      ax_f.set_ylabel('% annual exposure reduced', fontsize=6.5, fontweight='bold')
-      ax_f.set_title('(f) Top 15 CAP-gap (% reduced)', fontsize=6.9, fontweight='bold', loc='left', pad=2)
-      ax_f.grid(True, which='both', ls='--', alpha=0.35)
-      ax_f.legend(loc='center left', bbox_to_anchor=(1.05, 1.12), fontsize=5.4, frameon=True, title='Top 15 CAP-gap (EAE/yr)', title_fontsize=5.8)
-      sns.despine(ax=ax_f)
-
-      fig.suptitle('National River-Network Exposure Reduction from Installing N = 1 to 20 Active Streamflow Gauges per Country (1,034,083 Watersheds)', fontsize=8.4, fontweight='bold', y=0.975)
-      out_s8 = out_dir / 'Fig_S8_national_gauge_siting.png'
-      fig.savefig(out_s8, dpi=SAVE_DPI, bbox_inches='tight', pad_inches=0.05)
-      plt.close(fig)
-      print(f'  Saved {out_s8}', flush=True)
+  out_s8 = out_dir / 'Fig_S8_national_gauge_siting.png'
+  fig.savefig(out_s8, dpi=SAVE_DPI, bbox_inches='tight', pad_inches=0.05)
+  plt.close(fig)
+  print(f'  Saved {out_s8} ({out_s8.stat().st_size / 1e6:.2f} MB)', flush=True)
+  return out_s8
 
 
 def main() -> None:
-  parser = argparse.ArgumentParser(description='Generate supplementary figures (Figs. S1–S5; optional S6–S8).')
+  parser = argparse.ArgumentParser(description='Generate citation-ordered supplementary figures (Figs. S1–S6; optional S7–S8).')
   parser.add_argument('--only', type=str, default='all', help='Comma-separated subset: figs1,figs2,figs3,figs4,figs5,figs6,figs7,figs8')
   parser.add_argument('--out-dir', type=str, default=str(DEFAULT_OUT_DIR))
   args = parser.parse_args()
@@ -689,16 +862,20 @@ def main() -> None:
       else {t.strip().lower() for t in args.only.split(',')}
   )
 
-  if targets & {'figs1', 'figs4'}:
-    build_fig_s1_and_s4(out_dir, build_s1=('figs1' in targets), build_s4=('figs4' in targets))
+  if 'figs1' in targets:
+    build_fig_s1(out_dir)
   if 'figs2' in targets:
-    build_fig_s2(out_dir)
+    copy_fig_s2(out_dir)
   if 'figs3' in targets:
-    copy_fig_s3(out_dir)
-  if 'figs5' in targets:
-    build_fig_s5(out_dir)
-  if targets & {'figs6', 'figs7', 'figs8'}:
-    build_optional_fathom_supp_figs(out_dir, targets)
+    build_fig_s3(out_dir)
+  if targets & {'figs4', 'figs5'}:
+    build_fig_s4_and_s5(out_dir, build_s4=('figs4' in targets), build_s5=('figs5' in targets))
+  if 'figs6' in targets:
+    build_fig_s6(out_dir)
+  if 'figs7' in targets:
+    build_fig_s7_optional(out_dir)
+  if 'figs8' in targets:
+    build_fig_s8_optional(out_dir)
 
   print('Supplementary figure generation complete!', flush=True)
 

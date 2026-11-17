@@ -1,6 +1,6 @@
-# Data Dictionary — Public Zenodo Archive (v3.0.1) & Upstream Hydrofabrics
+# Data Dictionary — Public Zenodo Archive (v3.1.0) & Upstream Hydrofabrics
 
-Companion archive DOI: **https://doi.org/10.5281/zenodo.21416986** (v3.0.1)
+Companion archive DOI: **https://doi.org/10.5281/zenodo.21416986** (v3.1.0)
 
 > **Proprietary Data Policy:** No Fathom Global 3.0 flood-hazard rasters and no Fathom-derived expected annual flood exposure (`eae_*`, `exposed_pop_*`) columns or tables are included in any archive below.
 
@@ -44,16 +44,16 @@ HydroSHEDS Level 12 topology, WorldPop 2020 basin population totals, Natural Ear
 
 ### Archive 3: `03_ohn_cv_metrics_and_splits.tar.gz`
 
-Out-of-sample evaluation metrics from the 300-model OpenHydroNet cross-validation experiments and the 10-fold CV split definitions.
+Out-of-sample evaluation metrics from the 210-model OpenHydroNet cross-validation experiments and the 10-fold CV split definitions.
 
 | Path (relative to `$GEO_BIAS_DATA_DIR`) | Contents |
 | --- | --- |
 | `round2/hydro_model_metrics/` | Per-gauge lead-time-1 evaluation CSVs across all **43 hydrological metrics** (8 harmonized 2016–2023 continuous hydrograph metrics, 32 return-period recall/precision metrics over 1986–2023, and 3 2-day F1 metrics) across all 3 CV splits (`gauged`, `random`, `separated`) and 4 modeling regimes (`base`, `_ft`, `_da`, `_ft_da`). |
 | `cross_validation_splits/` | Deterministic 10-fold gauge-grouped CV split assignments (`random`, `separated`, and `gauged` splits). |
 
-### Archive 4: `geographical-bias-paper-v3.0.1.zip`
+### Archive 4: `geographical-bias-paper-v3.1.0.zip`
 
-Frozen snapshot of the GitHub code repository at release tag `v3.0.1`.
+Frozen snapshot of the GitHub code repository at release tag `v3.1.0`.
 
 ---
 
@@ -75,7 +75,7 @@ Stage 1 (`01_hydrofabric_ungaugedness/scripts/01..04_download_*.py`) fetches fou
 The GitHub repository includes strictly non-Fathom reference summaries so readers can inspect headline outputs without running the full pipeline:
 
 - `results/hydrofabric_summary/master_cross_hydrofabric_summary_nonfathom.csv`: Cross-hydrofabric summary across all 17 runs and 4 gauge tiers (all Fathom exposure columns removed).
-- `results/meta_models/stage_c_cv_summary.csv` & `features_95.json`: 10-fold gauge-grouped CV $R^2$ for all 171 LightGBM meta-models and exact 95-feature list.
-- `results/tables/Table_S3_4regimes_skill.csv`: All 43 metrics × 4 regimes summary (`Table S3`).
-- `results/shap/shap_{category_pct,category_mean,top35_features}_r2.csv` & `shap_method_crosscheck_r2.json`: Exact $2^7$ Group Shapley and 200-path permutation SHAP attribution summaries (`Fig. 6`, `Fig. S2`).
-- `results/figures/Fig_S3_conceptual_ungaugedness.png`: Pre-rendered conceptual Latvia watershed schematic (`Fig. S3`).
+- `results/meta_models/stage_c_cv_summary.csv` & `features_95.json`: Multi-level (`MAIN_BAS`, `Station`, `Climate`, `LOCO`) CV $R^2$ for all 171 strongly regularized stacked meta-models and exact 95-feature list.
+- `results/tables/Table_S1_gauge_status.csv`, `Table_S2_ungaugedness_ranges.csv` (non-Fathom rows only), `Table_S3_175territories.csv` (non-Fathom cols only) + `Table_S3_summary_stats.json`, `Table_S5_4regimes_skill.csv`, `Table_S6_features_95.csv`, and `Table_S7_ungaugedness_breakdown.csv`.
+- `results/shap/shap_{category_pct,category_mean}_r2.csv`: Exact $2^7 = 128$ Group Shapley attribution summaries (`Fig. 6`, with `ria_ha_usu` grouped in Topography).
+- `results/figures/Fig_S2_conceptual_ungaugedness.png`: Pre-rendered conceptual Latvia watershed schematic (`Fig. S2`).

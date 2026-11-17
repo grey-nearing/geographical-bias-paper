@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "geographical-bias-paper"
-version = "3.0.1"
+version = "3.1.0"
 description = "What Fraction of the World's Watersheds Are Ungauged? — Multi-hydrofabric ungaugedness, ML flood-forecast skill prediction, and SHAP attribution."
 readme = "README.md"
 license = {text = "Apache-2.0"}

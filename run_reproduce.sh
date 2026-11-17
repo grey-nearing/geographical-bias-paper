@@ -4,16 +4,17 @@
 #
 # Automatically adapts to the inputs staged locally in $GEO_BIAS_DATA_DIR:
 #   - PUBLIC MODE (default, when proprietary Fathom v3 exposure inputs are absent):
-#       Reproduces all 10 non-Fathom figures (Figs. 1–4, 6, S1–S5), all 6 public
-#       tables (Table 1 excl. Fathom rows, Tables S1–S5), and verifies >160
-#       manuscript values purely from public code and Zenodo 10.5281/zenodo.21416986.
+#       Reproduces all 10 non-Fathom figures (Figs. 1–3, 6, S1–S6), all 6 public
+#       supplementary tables (Tables S1–S3, S5–S7; Table S2 excl. Fathom rows,
+#       Table S3 excl. Fathom cols), and verifies manuscript values purely from
+#       public code and Zenodo 10.5281/zenodo.21416986.
 #   - FULL MODE (auto-enabled when licensed Fathom v3 exposure shards or parquet
 #       are staged locally; disable with --no-fathom):
-#       Reproduces EVERY figure (Figs. 1–6, S1–S8), EVERY table (Tables 1, 2, S1–S5),
-#       B=20 gauge-clustered bootstrap 95% CIs, and national N=1..20 gauge siting,
-#       verifying >195 quantitative manuscript checks.
+#       Reproduces EVERY figure (Figs. 1–6, S1–S8), EVERY table (Tables S1–S7,
+#       including Table S4 + action-regime sensitivity), B=200 stratified
+#       MAIN_BAS x climate block-bootstrap 95% CIs, and national N=1..20 gauge siting.
 #
-# Does NOT retrain the 300 OpenHydroNet LSTMs (starts from archived OHN CV evaluation
+# Does NOT retrain the 210 OpenHydroNet LSTMs (starts from archived OHN CV evaluation
 # CSVs in Zenodo `03_ohn_cv_metrics_and_splits.tar.gz`).
 #
 # Usage:
@@ -25,11 +26,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export GEO_BIAS_REPO_DIR="${GEO_BIAS_REPO_DIR:-$SCRIPT_DIR}"
 export GEO_BIAS_DATA_DIR="${GEO_BIAS_DATA_DIR:-$SCRIPT_DIR/data}"
+export GEO_BIAS_ROUND_SUBDIR="${GEO_BIAS_ROUND_SUBDIR:-round2}"
 export GEO_BIAS_THIRD_PARTY_DIR="${GEO_BIAS_THIRD_PARTY_DIR:-$GEO_BIAS_DATA_DIR}"
 export GEO_BIAS_OUTPUT_DIR="${GEO_BIAS_OUTPUT_DIR:-$GEO_BIAS_DATA_DIR}"
 export GLOBAL_UNGAUGEDNESS_DATA_DIR="${GLOBAL_UNGAUGEDNESS_DATA_DIR:-$SCRIPT_DIR/01_hydrofabric_ungaugedness/data}"
 export GLOBAL_UNGAUGEDNESS_RESULTS_DIR="${GLOBAL_UNGAUGEDNESS_RESULTS_DIR:-$SCRIPT_DIR/01_hydrofabric_ungaugedness/results}"
-export GEO_BIAS_EXPOSURE_SHARDS_DIR="${GEO_BIAS_EXPOSURE_SHARDS_DIR:-$GEO_BIAS_DATA_DIR/round2/exposure/shards}"
+export GEO_BIAS_EXPOSURE_SHARDS_DIR="${GEO_BIAS_EXPOSURE_SHARDS_DIR:-$GEO_BIAS_DATA_DIR/$GEO_BIAS_ROUND_SUBDIR/exposure/shards}"
 
 DOWNLOAD_ZENODO=0
 SKIP_STAGE1=0
@@ -60,13 +62,16 @@ META_WORKERS=$(( NCPU / THREADS_PER_WORKER ))
 if (( META_WORKERS < 1 )); then META_WORKERS=1; fi
 if (( META_WORKERS > 12 )); then META_WORKERS=12; fi
 
-BOOT_THREADS=4
-BOOT_WORKERS=$(( NCPU / BOOT_THREADS ))
+BOOT_THREADS=1
+BOOT_WORKERS=$(( NCPU * 3 / 4 ))
 if (( BOOT_WORKERS < 1 )); then BOOT_WORKERS=1; fi
-if (( BOOT_WORKERS > 7 )); then BOOT_WORKERS=7; fi
+if (( BOOT_WORKERS > 48 )); then BOOT_WORKERS=48; fi
 
 # Auto-detect locally staged licensed Fathom v3 exposure inputs (never hosted in public repos)
-EXP_PQ="$GEO_BIAS_DATA_DIR/round2/exposure/global_basin_exposure_defended_r2.parquet"
+EXP_PQ="$GEO_BIAS_DATA_DIR/$GEO_BIAS_ROUND_SUBDIR/exposure/global_basin_exposure_defended_r2.parquet"
+if [[ ! -f "$EXP_PQ" ]]; then
+  EXP_PQ="$GEO_BIAS_DATA_DIR/round2/exposure/global_basin_exposure_defended_r2.parquet"
+fi
 HAS_DEF_SHARDS=0
 HAS_UNDEF_SHARDS=0
 if compgen -G "$GEO_BIAS_EXPOSURE_SHARDS_DIR/global_basin_exposure_defended_all_rps_r2.csv-*" > /dev/null 2>&1; then
@@ -203,24 +208,24 @@ fi
 if (( SKIP_STAGE3 == 0 )); then
   echo ""
   if (( WITH_FATHOM == 1 )); then
-    echo "[Stage 3/4] Running ALL 13 tiers, scale invariance, 171 meta-models, Fathom counterfactuals + B=20 bootstrap + S1.6 siting, and SHAP..."
+    echo "[Stage 3/4] Running ALL tiers, scale invariance, 171 meta-models (v2_strongreg), Fathom counterfactuals + B=200 stratified block bootstrap + S1.6 siting, and Exact 2^7 Group Shapley..."
     python3 "$S3_DIR/stage_b1_tier_features_1034k.py" --threads "$NCPU"
     python3 "$S3_DIR/stage_b1a_scale_invariance_audit.py"
     python3 "$S3_DIR/stage_c_train_meta_models.py" --phase all --workers "$META_WORKERS" --threads "$THREADS_PER_WORKER"
     python3 "$S3_DIR/stage_d_counterfactuals_bootstrap_s16.py" \
       --part all \
       --threads "$NCPU" \
-      --n-boot 20 \
+      --n-boot 200 \
       --boot-workers "$BOOT_WORKERS" \
       --boot-threads "$BOOT_THREADS"
-    python3 "$S3_DIR/stage_e_global_kernelshap.py" --sample-size 1000 --k-bg 100 --pairs-per-bg 1
+    python3 "$S3_DIR/stage_e_global_kernelshap.py" --sample-size 1000 --k-bg 100
   else
-    echo "[Stage 3/4] Running core-tier features, scale invariance, 171 meta-models, Table S3 & SHAP (public non-Fathom mode)..."
+    echo "[Stage 3/4] Running core-tier features, scale invariance, 171 meta-models, Table S5 & Exact 2^7 Group Shapley (public non-Fathom mode)..."
     python3 "$S3_DIR/stage_b1_tier_features_1034k.py" --core-tiers-only --threads "$NCPU"
     python3 "$S3_DIR/stage_b1a_scale_invariance_audit.py"
     python3 "$S3_DIR/stage_c_train_meta_models.py" --phase all --workers "$META_WORKERS" --threads "$THREADS_PER_WORKER"
     python3 "$S3_DIR/stage_d_counterfactuals_bootstrap_s16.py" --part table_s3 --threads "$NCPU"
-    python3 "$S3_DIR/stage_e_global_kernelshap.py" --sample-size 1000 --k-bg 100 --pairs-per-bg 1
+    python3 "$S3_DIR/stage_e_global_kernelshap.py" --sample-size 1000 --k-bg 100
   fi
 else
   echo "[Stage 3/4] Skipped (--skip-stage3)."
@@ -231,12 +236,13 @@ fi
 # ------------------------------------------------------------------------------
 echo ""
 S4_DIR="$GEO_BIAS_REPO_DIR/04_figures_and_tables"
-FIG_OUT="$GEO_BIAS_DATA_DIR/round2/figures"
-TAB_OUT="$GEO_BIAS_DATA_DIR/round2/tables"
-VER_OUT="$GEO_BIAS_DATA_DIR/round2/verification"
+R_DIR="$GEO_BIAS_DATA_DIR/$GEO_BIAS_ROUND_SUBDIR"
+FIG_OUT="$R_DIR/figures"
+TAB_OUT="$R_DIR/tables"
+VER_OUT="$R_DIR/verification"
 
 if (( WITH_FATHOM == 1 )); then
-  echo "[Stage 4/4] Generating ALL figures (Figs. 1–6, S1–S8), ALL tables (Tables 1, 2, S1–S5), and verifying..."
+  echo "[Stage 4/4] Generating ALL figures (Figs. 1–6, S1–S8), ALL tables (Tables S1–S7), and verifying..."
   python3 "$S4_DIR/build_tables.py" --out-dir "$TAB_OUT"
   python3 "$S4_DIR/generate_supp_figures.py" --out-dir "$FIG_OUT" --only all
   python3 "$S4_DIR/generate_main_figures.py" --out-dir "$FIG_OUT" --only all
@@ -244,19 +250,20 @@ if (( WITH_FATHOM == 1 )); then
     --with-fathom \
     --fig-dir "$FIG_OUT" \
     --table-dir "$TAB_OUT" \
-    --shap-dir "$GEO_BIAS_DATA_DIR/round2/shap" \
-    --cf-dir "$GEO_BIAS_DATA_DIR/round2/counterfactuals" \
-    --s16-dir "$GEO_BIAS_DATA_DIR/round2/s16_gauge_placement" \
+    --shap-dir "$R_DIR/shap" \
+    --cf-dir "$R_DIR/counterfactuals" \
+    --s16-dir "$R_DIR/s16_gauge_placement" \
     --out-dir "$VER_OUT"
 else
-  echo "[Stage 4/4] Generating public figures (Figs. 1–4, 6, S1–S5), tables (Table 1, S1–S5), and verifying..."
+  echo "[Stage 4/4] Generating public figures (Figs. 1–3, 6, S1–S6), public tables (Tables S1–S3, S5–S7), and verifying..."
   python3 "$S4_DIR/build_tables.py" --out-dir "$TAB_OUT"
-  python3 "$S4_DIR/generate_supp_figures.py" --out-dir "$FIG_OUT" --only figs1,figs2,figs3,figs4,figs5
-  python3 "$S4_DIR/generate_main_figures.py" --out-dir "$FIG_OUT" --only fig1,fig2,fig3,fig4,fig6
+  python3 "$S4_DIR/generate_supp_figures.py" --out-dir "$FIG_OUT" --only figs1,figs2,figs3,figs4,figs5,figs6
+  python3 "$S4_DIR/generate_main_figures.py" --out-dir "$FIG_OUT" --only fig1,fig2,fig3,fig6
   python3 "$S4_DIR/verify_reproduction.py" \
     --fig-dir "$FIG_OUT" \
     --table-dir "$TAB_OUT" \
-    --shap-dir "$GEO_BIAS_DATA_DIR/round2/shap" \
+    --shap-dir "$R_DIR/shap" \
+    --cf-dir "$R_DIR/counterfactuals" \
     --out-dir "$VER_OUT"
 fi
 

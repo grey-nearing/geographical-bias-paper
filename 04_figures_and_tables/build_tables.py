@@ -1,22 +1,30 @@
 #!/usr/bin/env python3
-"""Build publication tables (Table 1 and Tables S1–S5; Fathom-free by default).
+"""Build publication tables (Supplementary Tables S1–S7; Fathom-free by default).
 
-Produces strictly non-Fathom outputs in `--out-dir` (default: `$GEO_BIAS_DATA_DIR/round2/tables`):
-  - Table_1_ungaugedness_ranges.csv: Multi-hydrofabric min–max ranges across six
-    fine-scale global river maps (U_never, U_net_Eq4, and 1D flow-weighted discharge).
-    Optional Fathom exposure rows are appended ONLY if `exposure_eae` exists in
-    `master_2d_metrics.parquet`.
+Produces strictly non-Fathom outputs in `--out-dir` (default: `$GEO_BIAS_DATA_DIR/round2/tables`),
+numbered strictly in order of first citation in the Science manuscript (0 standalone main tables):
   - Table_S1_gauge_status.csv: Mutually exclusive operational & temporal status
-    breakdown of 34,577 / 93,827 / 121,819 stream gauges under the uniform 2016 cutoff.
-  - Table_S2_175territories.csv (+ Table_S2_summary_stats.json): Country/territory-level
+    breakdown of 34,577 / 93,827 / 121,819 stream gauges under the uniform 2016 cutoff
+    plus observation-type breakdowns and strict >=2022 daily-discharge DA counts.
+  - Table_S2_ungaugedness_ranges.csv: Multi-hydrofabric min–max ranges across six
+    fine-scale global hydrofabrics (U_never, U_net_Eq4, and 1D flow-weighted discharge;
+    visualized in Fig. 2b). Optional Fathom exposure rows are appended ONLY if
+    `exposure_eae` exists in `master_2d_metrics.parquet`.
+  - Table_S3_175territories.csv (+ Table_S3_summary_stats.json): Country/territory-level
     HydroSHEDS L12 basin counts, alerting status, fractional land & population
-    ungaugedness (%), standardized open gauges inside borders, and INFORM 2026 scores.
+    ungaugedness (%), standardized open gauges inside borders, INFORM 2026 scores,
+    and spatially adjusted (Moran's I / Clifford–Richardson–Hémon–Dutilleul N_eff) stats.
     Optional Fathom exposure columns are merged ONLY if local Stage D exposure outputs exist.
-  - Table_S3_4regimes_skill.csv: Observed Caravan CV skill, meta-model CV R², and
-    1,034,083-basin predicted skill across all 43 hydrological metrics and 4 regimes.
-  - Table_S4_features_95.csv: Complete catalog of the 95 meta-model input features
-    grouped into the seven attribution categories.
-  - Table_S5_ungaugedness_breakdown.csv: Global, regional, Strahler stream-order
+  - Table_S4_forecast_skill_and_exposure.csv (OPTIONAL — licensed Fathom v3): Exposure
+    counterfactual breakdown across CAP-gap, alerting, and global domains under alpha = 1
+    (Recall) and alpha = CSI/R, direct FT+DA (no OOD clamp) vs. idealized OOD -> Q75 ceiling,
+    strict >=2022 daily-discharge DA, and 95% block-bootstrap + cross-domain UQ intervals
+    (visualized in Fig. 5; plus Table_S4_action_regime_sensitivity.csv for SM S1.4.1).
+  - Table_S5_4regimes_skill.csv: Observed Caravan CV skill, multi-level meta-model CV R²,
+    and 1,034,083-basin predicted skill across all 43 hydrological metrics and 4 regimes.
+  - Table_S6_features_95.csv: Complete catalog of the 95 meta-model input features
+    grouped into the seven attribution categories (with ria_ha_usu in Topography).
+  - Table_S7_ungaugedness_breakdown.csv: Global, regional, Strahler stream-order
     (1..8+ and 7+), and data-accessibility tier breakdown across 1,034,083 basins
     (135.01M km², 45,633 km³/yr annual runoff).
 """
@@ -59,11 +67,11 @@ import numpy as np
 import pandas as pd
 from scipy.stats import mannwhitneyu, spearmanr
 
-from utils import cap_utils, feature_utils, file_paths
+from utils import cap_utils, feature_utils, file_paths, spatial_stats
 
 warnings.filterwarnings('ignore')
 
-R2_DIR = CANON_DIR / 'round2'
+R2_DIR = CANON_DIR / os.environ.get('GEO_BIAS_ROUND_SUBDIR', 'round2')
 TIER_DIR = R2_DIR / 'tier_features'
 CF_DIR = R2_DIR / 'counterfactuals'
 META_DIR = R2_DIR / 'meta_models'
@@ -148,9 +156,13 @@ def _load_worldpop_pop(all_ids: list[str]) -> pd.Series:
   for p in candidates:
     if p.exists():
       wp = pd.read_parquet(p)
-      idc = 'HYBAS_ID' if 'HYBAS_ID' in wp.columns else wp.columns[0]
       popc = 'total_population' if 'total_population' in wp.columns else next(c for c in wp.columns if 'pop' in c.lower())
-      wp.index = _norm_hybas(wp[idc])
+      if 'HYBAS_ID' in wp.columns:
+        wp.index = _norm_hybas(wp['HYBAS_ID'])
+      elif 'hybas_id' in wp.columns:
+        wp.index = _norm_hybas(wp['hybas_id'])
+      else:
+        wp.index = _norm_hybas(wp.index)
       wp = wp[~wp.index.duplicated(keep='first')].reindex(all_ids)
       return pd.to_numeric(wp[popc], errors='coerce').fillna(0.0)
   raise FileNotFoundError(
@@ -160,10 +172,10 @@ def _load_worldpop_pop(all_ids: list[str]) -> pd.Series:
 
 
 # ==============================================================================
-# TABLE 1: Multi-Hydrofabric Global Hydrological Ungaugedness Ranges
+# TABLE S2 (old Table 1): Multi-Hydrofabric Global Hydrological Ungaugedness Ranges
 # ==============================================================================
-def build_table1(out_dir: Path) -> Path:
-  print('[Table 1] Building multi-hydrofabric ungaugedness ranges...', flush=True)
+def build_table_s2(out_dir: Path) -> Path:
+  print('[Table S2] Building multi-hydrofabric ungaugedness ranges...', flush=True)
   m2d_p = HYDRO_RESULTS_DIR / 'master' / 'master_2d_metrics.parquet'
   m1d_p = HYDRO_RESULTS_DIR / 'master' / 'master_1d_metrics.parquet'
   if not m2d_p.exists() or not m1d_p.exists():
@@ -222,11 +234,11 @@ def build_table1(out_dir: Path) -> Path:
   if has_exposure:
     _add_2d_row('0. Never Passes a Gauge', 'U_never', 'exposure_eae', 'Annual flood exposure (optional licensed Fathom)', FINE_6_FABRICS)
 
-  _add_2d_row('1. Fractional Watershed Coverage', 'U_net_Eq4', 'area', 'Global land area', FINE_6_FABRICS)
-  _add_2d_row('1. Fractional Watershed Coverage', 'U_net_Eq4', 'runoff', 'Global river runoff (3 flow models)', FLOW_4_FABRICS)
-  _add_2d_row('1. Fractional Watershed Coverage', 'U_net_Eq4', 'population', 'Global population', FINE_6_FABRICS)
+  _add_2d_row('1. Fractional Watershed Ungaugedness', 'U_net_Eq4', 'area', 'Global land area', FINE_6_FABRICS)
+  _add_2d_row('1. Fractional Watershed Ungaugedness', 'U_net_Eq4', 'runoff', 'Global river runoff (3 flow models)', FLOW_4_FABRICS)
+  _add_2d_row('1. Fractional Watershed Ungaugedness', 'U_net_Eq4', 'population', 'Global population', FINE_6_FABRICS)
   if has_exposure:
-    _add_2d_row('1. Fractional Watershed Coverage', 'U_net_Eq4', 'exposure_eae', 'Annual flood exposure (optional licensed Fathom)', FINE_6_FABRICS)
+    _add_2d_row('1. Fractional Watershed Ungaugedness', 'U_net_Eq4', 'exposure_eae', 'Annual flood exposure (optional licensed Fathom)', FINE_6_FABRICS)
 
   # 1D flow-volume weighted discharge row
   sub_1d = m1d[
@@ -238,7 +250,7 @@ def build_table1(out_dir: Path) -> Path:
       & (m1d['stratum'] == 'all_cutoff_free')
   ]
   rec_1d: dict[str, object] = {
-      'section': '1. Fractional Watershed Coverage',
+      'section': '1. Fractional Watershed Ungaugedness',
       'metric': 'U_net_1d',
       'weight': 'Q_ds',
       'measure': 'Global river discharge (1D flow-volume weighted, 3 flow models)',
@@ -253,25 +265,25 @@ def build_table1(out_dir: Path) -> Path:
   rows.append(rec_1d)
 
   df_out = pd.DataFrame(rows)
-  out_path = out_dir / 'Table_1_ungaugedness_ranges.csv'
+  out_path = out_dir / 'Table_S2_ungaugedness_ranges.csv'
   df_out.to_csv(out_path, index=False)
   print(f'  Saved {out_path} ({len(df_out)} rows; Fathom exposure rows included={has_exposure})', flush=True)
   return out_path
 
 
 # ==============================================================================
-# TABLE 2 (OPTIONAL — Requires Licensed Fathom v3 Counterfactual Outputs)
+# TABLE S4 (old Table 2, OPTIONAL — Requires Licensed Fathom v3 Counterfactual Outputs)
 # ==============================================================================
-def build_table2(out_dir: Path) -> Path | None:
+def build_table_s4(out_dir: Path) -> Path | None:
   sum_csv = CF_DIR / 'multi_mechanism_tiered_exposure_r2.csv'
   if not sum_csv.exists():
     print(
-        f'[Table 2] SKIPPED: Licensed Fathom v3 counterfactual summary not found at {sum_csv}.',
+        f'[Table S4] SKIPPED: Licensed Fathom v3 counterfactual summary not found at {sum_csv}.',
         flush=True,
     )
     return None
 
-  print('[Table 2] Building optional Fathom v3 forecast-skill & exposure counterfactual table...', flush=True)
+  print('[Table S4] Building optional Fathom v3 forecast-skill & exposure counterfactual table...', flush=True)
   df = pd.read_csv(sum_csv)
   boot_csv = CF_DIR / 'bootstrap_table1_fig3_ci95_r2.csv'
   df_ci = pd.read_csv(boot_csv) if boot_csv.exists() else None
@@ -285,22 +297,27 @@ def build_table2(out_dir: Path) -> Path | None:
     return (float(sub.iloc[0]['boot_p025']) / 1e6, float(sub.iloc[0]['boot_p975']) / 1e6)
 
   tier_specs = [
-      ('tier1a_active_post2016_ccby_8811', 'Baseline: Post-2016 Caravan (8,811 / 8,075 stations)'),
+      ('tier1a_active_post2016_ccby_8811', 'Baseline: Post-2016 Caravan (8,811 records / 8,072 phys stations)'),
       ('tier_caravan_estreams_34577', 'Tier 1: Standardized Open Compilations (34,577)'),
       ('tier_public_discharge_93827', 'Tier 2: Confirmed Public Discharge Records (93,827)'),
       ('tier4_all_publicly_knowable_121819', 'Tier 3: All Publicly Discoverable Gauges (121,819)'),
-      ('tier5_universal_idealized_ceiling', 'Universal Gauging Ceiling (1,034,083 watersheds)'),
+      ('tier5_universal_no_ood_clamp', 'Universal Gauging — Direct Local FT+DA (no OOD clamp)'),
+      ('tier5_universal_idealized_ceiling', 'Universal Gauging — Idealized Global-Training Ceiling (OOD -> Q75)'),
   ]
   mech_specs = [
       ('000_global_train_joint', '000_train', 'Global training alone'),
       ('010_ft_only_snap', '010_ft_only', 'Local fine-tuning (FT) alone'),
       ('001_da_only_snap', '001_da_only', 'Real-time data assimilation (DA) alone'),
       ('111_all_three_combined_snap', '111_combined', 'Combined (global training + FT + DA)'),
+      ('001_da_only_snap_strict2022', '001_da_only_strict2022', 'Real-time DA alone (strict >=2022 daily discharge)'),
+      ('111_all_three_combined_snap_strict2022', '111_combined_strict2022', 'Combined (strict >=2022 daily discharge DA)'),
   ]
 
   rows = []
   for tk, t_lbl in tier_specs:
     for mk, b_mk, m_lbl in mech_specs:
+      if 'strict2022' in mk and tk != 'tier4_all_publicly_knowable_121819':
+        continue
       sub = df[(df['tier_key'] == tk) & (df['mechanism'] == mk)]
       if sub.empty:
         continue
@@ -310,11 +327,22 @@ def build_table2(out_dir: Path) -> Path | None:
         dc_lo, dc_hi = (0.0, 0.0)
         wg_lo, wg_hi = _ci('baseline_warned_global', 'level')
         wc_lo, wc_hi = _ci('baseline_warned_nosys115', 'level')
+        dg_csi_lo, dg_csi_hi = (0.0, 0.0)
+        dc_csi_lo, dc_csi_hi = (0.0, 0.0)
+        wg_csi_lo, wg_csi_hi = _ci('baseline_warned_csi_global', 'level')
+        wc_csi_lo, wc_csi_hi = _ci('baseline_warned_csi_nosys115', 'level')
       else:
         dg_lo, dg_hi = _ci(f'{tk}__{b_mk}', 'delta_global')
         dc_lo, dc_hi = _ci(f'{tk}__{b_mk}', 'delta_nosys115')
         wg_lo, wg_hi = _ci(f'{tk}__{b_mk}', 'warned_global')
         wc_lo, wc_hi = _ci(f'{tk}__{b_mk}', 'warned_nosys115')
+        dg_csi_lo, dg_csi_hi = _ci(f'{tk}__{b_mk}', 'delta_csi_global')
+        dc_csi_lo, dc_csi_hi = _ci(f'{tk}__{b_mk}', 'delta_csi_nosys115')
+        wg_csi_lo, wg_csi_hi = _ci(f'{tk}__{b_mk}', 'warned_csi_global')
+        wc_csi_lo, wc_csi_hi = _ci(f'{tk}__{b_mk}', 'warned_csi_nosys115')
+
+      def _gval(col: str, div: float = 1.0) -> float:
+        return round(float(r[col]) / div, 4) if col in r and pd.notna(r[col]) else np.nan
 
       rows.append({
           'tier_key': tk,
@@ -324,6 +352,7 @@ def build_table2(out_dir: Path) -> Path | None:
           'n_snap_all': int(r['n_snap_all']),
           'n_snap_active': int(r['n_snap_active']),
           'r5_med_pct': round(float(r['r5_med_pct']), 4),
+          'p5_med_pct': _gval('p5_med_pct'),
           'NSE_med': round(float(r['NSE_med']), 4),
           'E_total_global_M_yr': round(float(r['E_total_global']) / 1e6, 4),
           'E_total_sys60_M_yr': round(float(r['E_total_sys60']) / 1e6, 4),
@@ -345,12 +374,36 @@ def build_table2(out_dir: Path) -> Path | None:
           'pct_unw_closed_nosys115': round(float(r['pct_unw_closed_net_nosys115']), 4),
           'warned_sys60_M_yr': round(float(r['warned_sys60']) / 1e6, 4),
           'delta_net_sys60_M_yr': round(float(r['delta_net_sys60']) / 1e6, 4),
+          'warned_csi_global_M_yr': _gval('warned_csi_global', 1e6),
+          'warned_csi_global_ci95_lo_M_yr': round(wg_csi_lo, 4) if np.isfinite(wg_csi_lo) else np.nan,
+          'warned_csi_global_ci95_hi_M_yr': round(wg_csi_hi, 4) if np.isfinite(wg_csi_hi) else np.nan,
+          'delta_net_csi_global_M_yr': _gval('delta_net_csi_global', 1e6),
+          'delta_net_csi_global_ci95_lo_M_yr': round(dg_csi_lo, 4) if np.isfinite(dg_csi_lo) else np.nan,
+          'delta_net_csi_global_ci95_hi_M_yr': round(dg_csi_hi, 4) if np.isfinite(dg_csi_hi) else np.nan,
+          'warned_csi_nosys115_M_yr': _gval('warned_csi_nosys115', 1e6),
+          'warned_csi_nosys115_ci95_lo_M_yr': round(wc_csi_lo, 4) if np.isfinite(wc_csi_lo) else np.nan,
+          'warned_csi_nosys115_ci95_hi_M_yr': round(wc_csi_hi, 4) if np.isfinite(wc_csi_hi) else np.nan,
+          'delta_net_csi_nosys115_M_yr': _gval('delta_net_csi_nosys115', 1e6),
+          'delta_net_csi_nosys115_ci95_lo_M_yr': round(dc_csi_lo, 4) if np.isfinite(dc_csi_lo) else np.nan,
+          'delta_net_csi_nosys115_ci95_hi_M_yr': round(dc_csi_hi, 4) if np.isfinite(dc_csi_hi) else np.nan,
+          'warned_csi_sys60_M_yr': _gval('warned_csi_sys60', 1e6),
+          'delta_net_csi_sys60_M_yr': _gval('delta_net_csi_sys60', 1e6),
       })
 
   df_out = pd.DataFrame(rows)
-  out_path = out_dir / 'Table_2_forecast_skill_and_exposure.csv'
+  out_path = out_dir / 'Table_S4_forecast_skill_and_exposure.csv'
   df_out.to_csv(out_path, index=False)
   print(f'  Saved {out_path} ({len(df_out)} rows; bootstrap CIs included={df_ci is not None})', flush=True)
+
+  # Also export action-regime sensitivity table (SM S1.4.1) if generated by Stage D
+  act_csv = CF_DIR / 'action_regime_sensitivity_r3.csv'
+  if not act_csv.exists():
+    act_csv = CF_DIR / 'precision_f1_csi_alpha_sensitivity_r2.csv'
+  if act_csv.exists():
+    df_act = pd.read_csv(act_csv)
+    act_out = out_dir / 'Table_S4_action_regime_sensitivity.csv'
+    df_act.to_csv(act_out, index=False)
+    print(f'  Saved {act_out} ({len(df_act)} rows)', flush=True)
   return out_path
 
 
@@ -377,7 +430,11 @@ def build_table_s1(out_dir: Path) -> Path:
   def _masks(df: pd.DataFrame) -> dict[str, pd.Series]:
     ar = df['active_reason'].astype(str)
     vy = pd.to_numeric(df['verified_record_end_year'], errors='coerce')
+    obs = df['best_observation_type'].astype(str)
     c_ver_ge16 = ar.isin({'1_cv8811_verified_active', '2_end_year_ge_2016'})
+    c_ver_ge16_daily = c_ver_ge16 & (obs == 'daily_discharge')
+    c_ver_ge16_attr = c_ver_ge16 & obs.isin({'catchment_attributes_and_boundaries', 'flow_indices_only'})
+    c_ver_ge16_stage_mo = c_ver_ge16 & obs.isin({'stage_or_fluviometric', 'monthly_discharge'})
     c_port_act_nodate = (ar == '3_portal_status_active') & vy.isna()
     c_ver_le15 = ar == '6_end_year_lt_2016'
     c_port_inact = ar == '5_portal_status_inactive'
@@ -387,12 +444,19 @@ def build_table_s1(out_dir: Path) -> Path:
     c_active_group = c_ver_ge16 | c_port_act_nodate
     c_hist_group = c_ver_le15 | c_port_inact | c_port_act_le15
     c_unclass_group = c_live_undated | c_static_undated
+    c_sec3 = df['is_active_opt1'].astype(bool)
+    c_sec3_daily = c_sec3 & (obs == 'daily_discharge')
+    c_sec3_stage = c_sec3 & (obs == 'stage_or_fluviometric')
+    c_strict_2022 = vy.notna() & (vy >= 2022) & (obs == 'daily_discharge')
     # Sanity check: mutually exclusive and collectively exhaustive
     total_check = c_active_group.astype(int) + c_hist_group.astype(int) + c_unclass_group.astype(int)
     assert (total_check == 1).all(), 'Status categories are not mutually exclusive & exhaustive!'
     return {
         'active_total': c_active_group,
         'verified_ge_2016': c_ver_ge16,
+        'verified_ge_2016_daily_discharge': c_ver_ge16_daily,
+        'verified_ge_2016_attributes_or_indices': c_ver_ge16_attr,
+        'verified_ge_2016_stage_or_monthly': c_ver_ge16_stage_mo,
         'portal_active_no_end_year': c_port_act_nodate,
         'historical_or_inactive_total': c_hist_group,
         'verified_le_2015': c_ver_le15,
@@ -402,12 +466,18 @@ def build_table_s1(out_dir: Path) -> Path:
         'live_portal_undated': c_live_undated,
         'static_archive_undated': c_static_undated,
         'total_distinct_gauges': pd.Series(True, index=df.index),
-        'section3_assimilation_total': df['is_active_opt1'].astype(bool),
+        'section3_assimilation_total': c_sec3,
+        'section3_assimilation_daily_discharge': c_sec3_daily,
+        'section3_assimilation_stage_only': c_sec3_stage,
+        'strict_ge_2022_daily_discharge': c_strict_2022,
     }
 
   row_specs = [
       ('active_total', 'Active or recently active', True),
-      ('verified_ge_2016', 'Verified streamflow record from 2016 onward', False),
+      ('verified_ge_2016', 'Verified record from 2016 onward (all observation types)', False),
+      ('verified_ge_2016_daily_discharge', '  - Daily streamflow discharge (>=2016)', False),
+      ('verified_ge_2016_attributes_or_indices', '  - Catchment attributes or summary flow indices (>=2016)', False),
+      ('verified_ge_2016_stage_or_monthly', '  - Stage/fluviometric or monthly discharge (>=2016)', False),
       ('portal_active_no_end_year', 'Portal-listed active (no verified end year)', False),
       ('historical_or_inactive_total', 'Confirmed historical or inactive', True),
       ('verified_le_2015', 'Verified record ending in 2015 or earlier', False),
@@ -417,7 +487,10 @@ def build_table_s1(out_dir: Path) -> Path:
       ('live_portal_undated', 'Listed on live national portal without record end date', False),
       ('static_archive_undated', 'Static inventory or archive without dates or status', False),
       ('total_distinct_gauges', 'Total distinct physical gauges', True),
-      ('section3_assimilation_total', 'Active + undated live-portal gauges (Section 3 assimilation)', True),
+      ('section3_assimilation_total', 'Active + undated live-portal gauges (primary DA upper bound)', True),
+      ('section3_assimilation_daily_discharge', '  - Confirmed daily discharge inside DA set', False),
+      ('section3_assimilation_stage_only', '  - Stage-only / fluviometric stations inside DA set', False),
+      ('strict_ge_2022_daily_discharge', 'Strict daily-discharge >=2022 sensitivity subset (DA lower bound)', True),
   ]
 
   tier_masks = {k: _masks(df) for k, df in tiers}
@@ -443,10 +516,10 @@ def build_table_s1(out_dir: Path) -> Path:
 
 
 # ==============================================================================
-# TABLE S2: Country- and Territory-Level Summary (175 Territories; Non-Fathom)
+# TABLE S3 (old Table S2): Country- and Territory-Level Summary (175 Territories; Non-Fathom)
 # ==============================================================================
-def build_table_s2(out_dir: Path) -> Path:
-  print('[Table S2] Building 175-territory ungaugedness, open gauges & INFORM table...', flush=True)
+def build_table_s3(out_dir: Path) -> Path:
+  print('[Table S3] Building 175-territory ungaugedness, open gauges & INFORM table...', flush=True)
   file_paths.init('5.0-year-2.0-window-recall')
 
   topo = _load_topology_and_runoff()
@@ -512,6 +585,14 @@ def build_table_s2(out_dir: Path) -> Path:
     nam_m = df_inf.dropna(subset=['COUNTRY_CLEAN', src_col]).drop_duplicates('COUNTRY_CLEAN').set_index('COUNTRY_CLEAN')[src_col]
     ctry[dst_col] = [iso_m.get(c2iso.get(c), nam_m.get(c, np.nan)) for c in ctry['country_name']]
 
+  # Natural Earth centroids for Clifford-Richardson-Hemon / Dutilleul spatial N_eff
+  w_diss = world[['map_name', 'geometry']].dissolve(by='map_name')
+  w_rep = w_diss.geometry.representative_point()
+  c2lat = dict(zip(w_diss.index, w_rep.y))
+  c2lon = dict(zip(w_diss.index, w_rep.x))
+  ctry['centroid_lat'] = ctry['country_name'].map(c2lat)
+  ctry['centroid_lon'] = ctry['country_name'].map(c2lon)
+
   out_cols = [
       'country_name',
       'n_basins',
@@ -522,6 +603,8 @@ def build_table_s2(out_dir: Path) -> Path:
       'open_gauges_in_borders',
       'inform_vulnerability',
       'inform_lack_of_coping_capacity',
+      'centroid_lat',
+      'centroid_lon',
   ]
   df_out = ctry[out_cols].sort_values('country_name').reset_index(drop=True)
 
@@ -535,10 +618,10 @@ def build_table_s2(out_dir: Path) -> Path:
       df_out = df_out.merge(df_f[['country_name'] + extra_cols], on='country_name', how='left')
       merged_fathom = True
 
-  out_path = out_dir / 'Table_S2_175territories.csv'
+  out_path = out_dir / 'Table_S3_175territories.csv'
   df_out.to_csv(out_path, index=False)
 
-  # Summary statistics matching Fig. 4 & Section 2 (174 non-Greenland countries)
+  # Summary statistics matching Fig. 3e-f & Section 2 (174 non-Greenland countries)
   no_grl = df_out[df_out['country_name'] != 'Greenland'].copy()
   w_df = no_grl[no_grl['has_system']]
   g_df = no_grl[~no_grl['has_system']]
@@ -547,6 +630,23 @@ def build_table_s2(out_dir: Path) -> Path:
   sub_inf = no_grl.dropna(subset=['inform_vulnerability', 'inform_lack_of_coping_capacity', 'pop_ung_pct'])
   rs_v, p_v = spearmanr(sub_inf['inform_vulnerability'], sub_inf['pop_ung_pct'])
   rs_c, p_c = spearmanr(sub_inf['inform_lack_of_coping_capacity'], sub_inf['pop_ung_pct'])
+
+  spatial_neff = {}
+  for x_col in ('inform_lack_of_coping_capacity', 'inform_vulnerability'):
+    for y_col in ('land_ung_pct', 'pop_ung_pct'):
+      spatial_neff[f'{x_col}__vs__{y_col}'] = spatial_stats.spatial_spearman_neff(
+          no_grl[x_col].values,
+          no_grl[y_col].values,
+          no_grl['centroid_lat'].values,
+          no_grl['centroid_lon'].values,
+          k=5,
+      )
+
+  # Merge optional Stage D Fathom spatial N_eff stats if present locally
+  opt_sp_p = CF_DIR / 'spatial_neff_stats_r3.json'
+  if opt_sp_p.exists():
+    with open(opt_sp_p) as f:
+      spatial_neff.update(json.load(f))
 
   summary = {
       'n_territories_total': int(len(df_out)),
@@ -566,9 +666,10 @@ def build_table_s2(out_dir: Path) -> Path:
       'inform_vuln_spearman_p': float(p_v),
       'inform_coping_spearman_r': float(rs_c),
       'inform_coping_spearman_p': float(p_c),
+      'spatial_neff': spatial_neff,
       'optional_fathom_columns_merged': merged_fathom,
   }
-  with open(out_dir / 'Table_S2_summary_stats.json', 'w') as f:
+  with open(out_dir / 'Table_S3_summary_stats.json', 'w') as f:
     json.dump(summary, f, indent=2)
 
   print(
@@ -580,10 +681,10 @@ def build_table_s2(out_dir: Path) -> Path:
 
 
 # ==============================================================================
-# TABLE S3: 43 Hydrological Skill Metrics Across 4 Modeling Regimes
+# TABLE S5 (old Table S3): 43 Hydrological Skill Metrics Across 4 Modeling Regimes
 # ==============================================================================
-def build_table_s3(out_dir: Path) -> Path:
-  print('[Table S3] Building 43-metric x 4-regime skill summary table...', flush=True)
+def build_table_s5(out_dir: Path) -> Path:
+  print('[Table S5] Building 43-metric x 4-regime skill summary table...', flush=True)
   src_candidates = [
       CF_DIR / 'Table_S3_4regimes_r2.csv',
       CF_DIR / 'Table_S1_4regimes_r2.csv',
@@ -600,17 +701,17 @@ def build_table_s3(out_dir: Path) -> Path:
   safe_cols = [c for c in df.columns if 'eae' not in c.lower() and 'exposure' not in c.lower() and 'fathom' not in c.lower()]
   df = df[safe_cols].copy()
 
-  out_path = out_dir / 'Table_S3_4regimes_skill.csv'
+  out_path = out_dir / 'Table_S5_4regimes_skill.csv'
   df.to_csv(out_path, index=False)
   print(f'  Saved {out_path} ({len(df)} rows, {df["metric"].nunique()} unique metrics)', flush=True)
   return out_path
 
 
 # ==============================================================================
-# TABLE S4: Complete 95 Meta-Model Input Features Catalog
+# TABLE S6 (old Table S4): Complete 95 Meta-Model Input Features Catalog
 # ==============================================================================
-def build_table_s4(out_dir: Path) -> Path:
-  print('[Table S4] Building 95-feature meta-model catalog...', flush=True)
+def build_table_s6(out_dir: Path) -> Path:
+  print('[Table S6] Building 95-feature meta-model catalog...', flush=True)
   feat_candidates = [
       META_DIR / 'features_95.json',
       REPO_DIR / 'results' / 'meta_models' / 'features_95.json',
@@ -651,14 +752,14 @@ def build_table_s4(out_dir: Path) -> Path:
     })
 
   df_out = pd.DataFrame(rows).sort_values(['_cat_rank', 'variable_symbol']).drop(columns=['_cat_rank']).reset_index(drop=True)
-  out_path = out_dir / 'Table_S4_features_95.csv'
+  out_path = out_dir / 'Table_S6_features_95.csv'
   df_out.to_csv(out_path, index=False)
   print(f'  Saved {out_path} ({len(df_out)} features across {df_out["category"].nunique()} categories)', flush=True)
   return out_path
 
 
 # ==============================================================================
-# TABLE S5: Global, Regional, Strahler Stream-Order & Tier Ungaugedness Breakdown
+# TABLE S7 (old Table S5): Global, Regional, Strahler Stream-Order & Tier Ungaugedness Breakdown
 # ==============================================================================
 def _compute_strahler_order(hybas_ids: np.ndarray, next_down: np.ndarray) -> np.ndarray:
   """Computes exact topological Strahler stream order over the HydroBASINS directed forest."""
@@ -702,8 +803,8 @@ def _compute_strahler_order(hybas_ids: np.ndarray, next_down: np.ndarray) -> np.
   return order
 
 
-def build_table_s5(out_dir: Path) -> Path:
-  print('[Table S5] Building global, regional, Strahler-order & tier ungaugedness breakdown...', flush=True)
+def build_table_s7(out_dir: Path) -> Path:
+  print('[Table S7] Building global, regional, Strahler-order & tier ungaugedness breakdown...', flush=True)
   topo = _load_topology_and_runoff()
   all_ids = _norm_hybas(topo['HYBAS_ID']).tolist()
   area_km2 = topo['area_m2'].values.astype(np.float64) / 1e6
@@ -812,7 +913,7 @@ def build_table_s5(out_dir: Path) -> Path:
     rows.append(_summarize('Part C: Data-Accessibility Tier', lbl, all_mask, df_t, f'{tk}__snap_all'))
 
   df_out = pd.DataFrame(rows)
-  out_path = out_dir / 'Table_S5_ungaugedness_breakdown.csv'
+  out_path = out_dir / 'Table_S7_ungaugedness_breakdown.csv'
   df_out.to_csv(out_path, index=False)
   print(
       f'  Saved {out_path} ({len(df_out)} rows; Global={global_area/1e6:.2f}M km², '
@@ -823,28 +924,28 @@ def build_table_s5(out_dir: Path) -> Path:
 
 
 def main() -> None:
-  parser = argparse.ArgumentParser(description='Build publication tables (Table 1, optional Table 2, and Tables S1–S5).')
+  parser = argparse.ArgumentParser(description='Build publication tables (Supplementary Tables S1–S7; optional Fathom Table S4).')
   parser.add_argument('--out-dir', type=str, default=str(DEFAULT_OUT_DIR))
   parser.add_argument(
       '--only',
       type=str,
       default='',
-      help='Optional comma-separated subset of tables: t1,t2,ts1,ts2,ts3,ts4,ts5',
+      help='Optional comma-separated subset of tables: ts1,ts2,ts3,ts4,ts5,ts6,ts7',
   )
   args = parser.parse_args()
 
   out_dir = Path(args.out_dir)
   out_dir.mkdir(parents=True, exist_ok=True)
-  selected = {x.strip().lower() for x in args.only.split(',') if x.strip()} if args.only else {'t1', 't2', 'ts1', 'ts2', 'ts3', 'ts4', 'ts5'}
+  selected = {x.strip().lower() for x in args.only.split(',') if x.strip()} if args.only else {'ts1', 'ts2', 'ts3', 'ts4', 'ts5', 'ts6', 'ts7'}
 
   builders = [
-      ('t1', build_table1),
-      ('t2', build_table2),
       ('ts1', build_table_s1),
       ('ts2', build_table_s2),
       ('ts3', build_table_s3),
       ('ts4', build_table_s4),
       ('ts5', build_table_s5),
+      ('ts6', build_table_s6),
+      ('ts7', build_table_s7),
   ]
   for key, fn in builders:
     if key in selected:

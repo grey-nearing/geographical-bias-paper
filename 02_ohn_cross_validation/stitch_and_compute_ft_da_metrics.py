@@ -467,11 +467,11 @@ def main() -> None:
       f'(1986-2023) using {args.workers} workers...',
       flush=True,
   )
-  ctx = mp.get_context('fork')
+  ctx = mp.get_context('spawn')
   with ctx.Pool(
       processes=args.workers,
       initializer=_init_worker,
-      initargs=(obs_path, gauged_path, random_path, basin_path),
+      initargs=(str(obs_path), str(gauged_path), str(random_path), str(basin_path)),
   ) as pool:
     for done_i, (b_idx, b_out) in enumerate(
         pool.imap_unordered(_process_basin, range(n_basins), chunksize=32), 1

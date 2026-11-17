@@ -404,7 +404,7 @@ def main() -> None:
         flush=True,
     )
     t_calc0 = time.time()
-    ctx = mp.get_context('fork')
+    ctx = mp.get_context('spawn')
     with ctx.Pool(
         processes=args.workers,
         initializer=_init_worker,

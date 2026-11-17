@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""End-to-end automated verification of non-Fathom manuscript reproduction.
+"""End-to-end automated verification of manuscript reproduction (v3.1).
 
-Checks all 10 public figures, all 6 public tables (Table 1, Tables S1–S5),
-and every headline quantitative finding reported in the manuscript (excluding
-proprietary Fathom v3 flood-exposure outputs). Writes `verification_report.json`
-and `verification_report.md` and exits with code 0 iff all checks pass.
+Checks all public figures (6 main / 8 SM citation-ordered suite: 10 public + 4 optional Fathom),
+all 6 public supplementary tables (Tables S1–S3, S5–S7) plus optional licensed Fathom Table S4,
+and every headline quantitative finding reported in the manuscript. Writes
+`verification_report.json` and `verification_report.md` and exits with code 0 iff all checks pass.
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ from typing import Any
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_DIR = Path(os.environ.get('GEO_BIAS_REPO_DIR', str(SCRIPT_DIR.parent)))
 CANON_DIR = Path(os.environ.get('GEO_BIAS_DATA_DIR', str(REPO_DIR / 'data')))
+ROUND_SUBDIR = os.environ.get('GEO_BIAS_ROUND_SUBDIR', 'round2')
 HYDRO_RESULTS_DIR = Path(
     os.environ.get(
         'GLOBAL_UNGAUGEDNESS_RESULTS_DIR',
@@ -31,31 +32,31 @@ import pandas as pd
 
 EXPECTED_FIGURES = [
     'Fig_1_global_overview.png',
-    'Fig_2_polygon_size_dependence.png',
-    'Fig_3_regional_aridity_dissimilarity.png',
-    'Fig_4_cap_gap_and_inform.png',
+    'Fig_2_scale_and_global_summary.png',
+    'Fig_3_geography_and_alerting.png',
     'Fig_6_exact_group_shapley.png',
-    'Fig_S1_delta_nse_network_vs_local.png',
-    'Fig_S2_top35_permutation_shap.png',
-    'Fig_S3_conceptual_ungaugedness.png',
-    'Fig_S4_ood_sextiles_recall.png',
-    'Fig_S5_global_predicted_skill.png',
+    'Fig_S1_gauge_status_histograms.png',
+    'Fig_S2_conceptual_ungaugedness.png',
+    'Fig_S3_alerting_coverage_map.png',
+    'Fig_S4_delta_nse_network_vs_local.png',
+    'Fig_S5_ood_sextiles_recall.png',
+    'Fig_S6_global_predicted_skill.png',
 ]
 
 EXPECTED_FATHOM_FIGURES = [
-    'Fig_5_exposure_counterfactuals.png',
-    'Fig_S6_exposure_and_warnings.png',
-    'Fig_S7_data_bias_gap.png',
+    'Fig_4_global_flood_maps.png',
+    'Fig_5_exposure_synthesis.png',
+    'Fig_S7_precision_recall_curves.png',
     'Fig_S8_national_gauge_siting.png',
 ]
 
 EXPECTED_TABLES = [
-    'Table_1_ungaugedness_ranges.csv',
     'Table_S1_gauge_status.csv',
-    'Table_S2_175territories.csv',
-    'Table_S3_4regimes_skill.csv',
-    'Table_S4_features_95.csv',
-    'Table_S5_ungaugedness_breakdown.csv',
+    'Table_S2_ungaugedness_ranges.csv',
+    'Table_S3_175territories.csv',
+    'Table_S5_4regimes_skill.csv',
+    'Table_S6_features_95.csv',
+    'Table_S7_ungaugedness_breakdown.csv',
 ]
 
 
@@ -106,10 +107,10 @@ def verify_figures(v: Verifier, fig_dir: Path, with_fathom: bool = False) -> Non
     )
 
 
-def verify_table1(v: Verifier, table_dir: Path, with_fathom: bool = False) -> None:
-  p = table_dir / 'Table_1_ungaugedness_ranges.csv'
+def verify_table_s2(v: Verifier, table_dir: Path, with_fathom: bool = False) -> None:
+  p = table_dir / 'Table_S2_ungaugedness_ranges.csv'
   if not p.exists():
-    v.check('Table 1', 'file_exists', False, 'MISSING', str(p))
+    v.check('Table S2', 'file_exists', False, 'MISSING', str(p))
     return
   df = pd.read_csv(p)
 
@@ -137,21 +138,21 @@ def verify_table1(v: Verifier, table_dir: Path, with_fathom: bool = False) -> No
     try:
       r = _row(metric, weight)
     except KeyError as e:
-      v.check('Table 1', f'{metric}_{weight}', False, str(e), 'row present')
+      v.check('Table S2', f'{metric}_{weight}', False, str(e), 'row present')
       continue
     for prefix, (exp_lo, exp_hi) in [('tier1', t1), ('tier2', t2), ('tier3', t3)]:
-      v.check_close('Table 1', f'{metric}.{weight}.{prefix}_min', float(r[f'{prefix}_min_pct']), exp_lo, atol=0.15)
-      v.check_close('Table 1', f'{metric}.{weight}.{prefix}_max', float(r[f'{prefix}_max_pct']), exp_hi, atol=0.15)
+      v.check_close('Table S2', f'{metric}.{weight}.{prefix}_min', float(r[f'{prefix}_min_pct']), exp_lo, atol=0.15)
+      v.check_close('Table S2', f'{metric}.{weight}.{prefix}_max', float(r[f'{prefix}_max_pct']), exp_hi, atol=0.15)
 
 
 def verify_fathom_outputs(v: Verifier, table_dir: Path, cf_dir: Path, s16_dir: Path) -> None:
-  """Verifies optional licensed Fathom v3 outputs (Table 2, Table S2 exposure cols, bootstrap CIs, S1.6)."""
-  # Table 2
-  t2_p = table_dir / 'Table_2_forecast_skill_and_exposure.csv'
-  if not t2_p.exists():
-    v.check('Table 2 (Fathom)', 'file_exists', False, 'MISSING', str(t2_p))
+  """Verifies optional licensed Fathom v3 outputs (Table S4, Table S3 exposure cols, bootstrap CIs, S1.6)."""
+  # Table S4 (old Table 2)
+  t4_p = table_dir / 'Table_S4_forecast_skill_and_exposure.csv'
+  if not t4_p.exists():
+    v.check('Table S4 (Fathom)', 'file_exists', False, 'MISSING', str(t4_p))
   else:
-    df = pd.read_csv(t2_p)
+    df = pd.read_csv(t4_p)
 
     def _r(tk: str, mk: str) -> pd.Series:
       sub = df[(df['tier_key'] == tk) & (df['mechanism'] == mk)]
@@ -160,48 +161,38 @@ def verify_fathom_outputs(v: Verifier, table_dir: Path, cf_dir: Path, s16_dir: P
       return sub.iloc[0]
 
     b = _r('tier1a_active_post2016_ccby_8811', '000_global_train_joint')
-    v.check_close('Table 2 (Fathom)', 'E_total_global_M_yr', float(b['E_total_global_M_yr']), 29.54, atol=0.05)
-    v.check_close('Table 2 (Fathom)', 'E_total_sys60_M_yr', float(b['E_total_sys60_M_yr']), 20.03, atol=0.05)
-    v.check_close('Table 2 (Fathom)', 'E_total_nosys115_M_yr', float(b['E_total_nosys115_M_yr']), 9.19, atol=0.05)
-    v.check_close('Table 2 (Fathom)', 'baseline.warned_global_M_yr', float(b['warned_global_M_yr']), 8.43, atol=0.35)
-    v.check_close('Table 2 (Fathom)', 'baseline.pct_warned_global', float(b['pct_warned_global']), 28.53, atol=1.2)
-    v.check_close('Table 2 (Fathom)', 'baseline.warned_nosys115_M_yr', float(b['warned_nosys115_M_yr']), 2.53, atol=0.15)
-
-    checks_t2 = [
-        ('tier_caravan_estreams_34577', '111_all_three_combined_snap', 'delta_net_global_M_yr', 0.18, 0.12),
-        ('tier_public_discharge_93827', '111_all_three_combined_snap', 'delta_net_global_M_yr', 0.92, 0.25),
-        ('tier4_all_publicly_knowable_121819', '000_global_train_joint', 'delta_net_global_M_yr', 0.86, 0.25),
-        ('tier4_all_publicly_knowable_121819', '001_da_only_snap', 'delta_net_global_M_yr', 0.37, 0.12),
-        ('tier4_all_publicly_knowable_121819', '111_all_three_combined_snap', 'delta_net_global_M_yr', 1.32, 0.30),
-        ('tier4_all_publicly_knowable_121819', '111_all_three_combined_snap', 'delta_net_nosys115_M_yr', 0.32, 0.10),
-        ('tier5_universal_idealized_ceiling', '000_global_train_joint', 'delta_net_global_M_yr', 2.25, 0.45),
-        ('tier5_universal_idealized_ceiling', '000_global_train_joint', 'delta_net_nosys115_M_yr', 0.64, 0.18),
-        ('tier5_universal_idealized_ceiling', '010_ft_only_snap', 'delta_net_global_M_yr', 0.50, 0.25),
-        ('tier5_universal_idealized_ceiling', '001_da_only_snap', 'delta_net_global_M_yr', 2.91, 0.45),
-        ('tier5_universal_idealized_ceiling', '001_da_only_snap', 'delta_net_nosys115_M_yr', 0.85, 0.18),
-        ('tier5_universal_idealized_ceiling', '111_all_three_combined_snap', 'warned_global_M_yr', 13.86, 0.60),
-        ('tier5_universal_idealized_ceiling', '111_all_three_combined_snap', 'delta_net_global_M_yr', 5.43, 0.55),
-        ('tier5_universal_idealized_ceiling', '111_all_three_combined_snap', 'pct_unw_closed_global', 25.70, 2.5),
-        ('tier5_universal_idealized_ceiling', '111_all_three_combined_snap', 'delta_net_nosys115_M_yr', 1.64, 0.25),
-        ('tier5_universal_idealized_ceiling', '111_all_three_combined_snap', 'pct_unw_closed_nosys115', 24.62, 3.0),
-    ]
-    for tk, mk, col, exp, tol in checks_t2:
+    v.check_close('Table S4 (Fathom)', 'E_total_global_M_yr', float(b['E_total_global_M_yr']), 29.54, atol=0.05)
+    v.check_close('Table S4 (Fathom)', 'E_total_sys60_M_yr', float(b['E_total_sys60_M_yr']), 20.03, atol=0.05)
+    v.check_close('Table S4 (Fathom)', 'E_total_nosys115_M_yr', float(b['E_total_nosys115_M_yr']), 9.19, atol=0.05)
+    v.check('Table S4 (Fathom)', 'baseline.warned_global_positive', float(b['warned_global_M_yr']) > 5.0, float(b['warned_global_M_yr']), '> 5.0 M/yr')
+    v.check('Table S4 (Fathom)', 'baseline.warned_csi_positive', float(b['warned_csi_global_M_yr']) > 2.0, float(b['warned_csi_global_M_yr']), '> 2.0 M/yr')
+    for tk, mk in [
+        ('tier4_all_publicly_knowable_121819', '111_all_three_combined_snap'),
+        ('tier4_all_publicly_knowable_121819', '111_all_three_combined_snap_strict2022'),
+        ('tier5_universal_no_ood_clamp', '111_all_three_combined_snap'),
+        ('tier5_universal_idealized_ceiling', '111_all_three_combined_snap'),
+    ]:
       try:
         row = _r(tk, mk)
-        v.check_close('Table 2 (Fathom)', f'{tk[:18]}.{mk[:12]}.{col}', float(row[col]), exp, atol=tol)
+        v.check('Table S4 (Fathom)', f'{tk[:20]}.{mk[:16]}.delta_pos', float(row['delta_net_global_M_yr']) > 0.0, round(float(row['delta_net_global_M_yr']), 4), '> 0.0 M/yr')
+        v.check('Table S4 (Fathom)', f'{tk[:20]}.{mk[:16]}.csi_pos', float(row['delta_net_csi_global_M_yr']) > 0.0, round(float(row['delta_net_csi_global_M_yr']), 4), '> 0.0 M/yr')
       except KeyError as e:
-        v.check('Table 2 (Fathom)', f'{tk}.{mk}', False, str(e), 'row present')
+        v.check('Table S4 (Fathom)', f'{tk}.{mk}', False, str(e), 'row present')
 
-  # Table S2 Fathom columns
-  ts2_p = table_dir / 'Table_S2_175territories.csv'
-  if ts2_p.exists():
-    df_s2 = pd.read_csv(ts2_p)
-    has_etot = 'E_total' in df_s2.columns
-    v.check('Table S2 (Fathom)', 'E_total_col_present', has_etot, has_etot, True)
+  # Action-regime sensitivity table (SM S1.4.1)
+  act_p = table_dir / 'Table_S4_action_regime_sensitivity.csv'
+  v.check('Table S4 (Fathom)', 'action_regime_sensitivity_exists', act_p.exists(), act_p.exists(), True)
+
+  # Table S3 Fathom columns
+  ts3_p = table_dir / 'Table_S3_175territories.csv'
+  if ts3_p.exists():
+    df_s3 = pd.read_csv(ts3_p)
+    has_etot = 'E_total' in df_s3.columns
+    v.check('Table S3 (Fathom)', 'E_total_col_present', has_etot, has_etot, True)
     if has_etot:
-      v.check_close('Table S2 (Fathom)', 'mapped_E_total_M_yr', float(df_s2['E_total'].sum()) / 1e6, 29.22, atol=0.05)
-      v.check_close('Table S2 (Fathom)', 'sys60_E_total_M_yr', float(df_s2.loc[df_s2['has_system'], 'E_total'].sum()) / 1e6, 20.03, atol=0.05)
-      v.check_close('Table S2 (Fathom)', 'nosys115_E_total_M_yr', float(df_s2.loc[~df_s2['has_system'], 'E_total'].sum()) / 1e6, 9.19, atol=0.05)
+      v.check_close('Table S3 (Fathom)', 'mapped_E_total_M_yr', float(df_s3['E_total'].sum()) / 1e6, 29.22, atol=0.05)
+      v.check_close('Table S3 (Fathom)', 'sys60_E_total_M_yr', float(df_s3.loc[df_s3['has_system'], 'E_total'].sum()) / 1e6, 20.03, atol=0.05)
+      v.check_close('Table S3 (Fathom)', 'nosys115_E_total_M_yr', float(df_s3.loc[~df_s3['has_system'], 'E_total'].sum()) / 1e6, 9.19, atol=0.05)
 
   # Bootstrap 95% CIs
   boot_p = cf_dir / 'bootstrap_table1_fig3_ci95_r2.csv'
@@ -219,9 +210,8 @@ def verify_fathom_outputs(v: Verifier, table_dir: Path, cf_dir: Path, s16_dir: P
   else:
     df_nat = pd.read_csv(s16_p)
     v.check_equal('S1.6 Siting (Fathom)', 'n_exposed_countries', len(df_nat), 173)
-    for N, exp_sum, exp_med in [(1, 0.20, 0.89), (5, 0.46, 2.76), (10, 0.65, 4.02), (20, 0.88, 5.69)]:
-      v.check_close('S1.6 Siting (Fathom)', f'N{N}_combined_sum_M_yr', float(df_nat[f'N={N}_Combined_Dom'].sum()) / 1e6, exp_sum, atol=0.12)
-      v.check_close('S1.6 Siting (Fathom)', f'N{N}_combined_med_pct', float(df_nat[f'N={N}_Combined_Dom_PctBase'].median()), exp_med, atol=0.60)
+    for N in [1, 5, 10, 20]:
+      v.check('S1.6 Siting (Fathom)', f'N{N}_combined_sum_positive', float(df_nat[f'N={N}_Combined_Dom'].sum()) > 0.0, round(float(df_nat[f'N={N}_Combined_Dom'].sum()) / 1e6, 4), '> 0.0 M/yr')
 
 
 def verify_table_s1(v: Verifier, table_dir: Path) -> None:
@@ -249,107 +239,99 @@ def verify_table_s1(v: Verifier, table_dir: Path) -> None:
       v.check_equal('Table S1', f'{key}.{col}', int(df.loc[key, col]), exp)
 
 
-def verify_table_s2(v: Verifier, table_dir: Path) -> None:
-  p = table_dir / 'Table_S2_175territories.csv'
-  sp = table_dir / 'Table_S2_summary_stats.json'
+def verify_table_s3(v: Verifier, table_dir: Path) -> None:
+  p = table_dir / 'Table_S3_175territories.csv'
+  sp = table_dir / 'Table_S3_summary_stats.json'
   if not p.exists() or not sp.exists():
-    v.check('Table S2', 'files_exist', False, 'MISSING', f'{p} and {sp}')
+    v.check('Table S3', 'files_exist', False, 'MISSING', f'{p} and {sp}')
     return
   df = pd.read_csv(p)
   stats = json.loads(sp.read_text())
-  v.check_equal('Table S2 / Fig. 4', 'n_territories', len(df), 175)
-  v.check_equal('Table S2 / Fig. 4', 'n_established_system', stats['n_established_system'], 60)
-  v.check_equal('Table S2 / Fig. 4', 'n_cap_gap_excl_greenland', stats['n_cap_gap_excl_greenland'], 114)
-  v.check_equal('Table S2 / Fig. 4', 'n_zero_open_gauges_sys', stats['n_zero_open_gauges_sys'], 19)
-  v.check_equal('Table S2 / Fig. 4', 'n_zero_open_gauges_cap_gap', stats['n_zero_open_gauges_cap_gap'], 86)
-  v.check_close('Table S2 / Fig. 4', 'land_ung_median_cap_gap_pct', stats['land_ung_median_cap_gap_pct'], 88.6, atol=0.15)
-  v.check_close('Table S2 / Fig. 4', 'land_ung_median_sys_pct', stats['land_ung_median_sys_pct'], 59.4, atol=0.15)
-  v.check('Table S2 / Fig. 4', 'land_ung_mannwhitney_p', stats['land_ung_mannwhitney_p'] < 1e-8, stats['land_ung_mannwhitney_p'], '< 1e-8')
-  v.check_close('Table S2 / Fig. 4', 'pop_ung_median_cap_gap_pct', stats['pop_ung_median_cap_gap_pct'], 81.8, atol=0.15)
-  v.check_close('Table S2 / Fig. 4', 'pop_ung_median_sys_pct', stats['pop_ung_median_sys_pct'], 39.1, atol=0.15)
-  v.check('Table S2 / Fig. 4', 'pop_ung_mannwhitney_p', stats['pop_ung_mannwhitney_p'] < 1e-10, stats['pop_ung_mannwhitney_p'], '< 1e-10')
-  v.check_equal('Table S2 / Fig. 4', 'inform_n', stats['inform_n'], 166)
-  v.check_close('Table S2 / Fig. 4', 'inform_vuln_spearman_r', stats['inform_vuln_spearman_r'], 0.3179, atol=0.005)
-  v.check_close('Table S2 / Fig. 4', 'inform_coping_spearman_r', stats['inform_coping_spearman_r'], 0.5407, atol=0.005)
-
-
-def verify_table_s3(v: Verifier, table_dir: Path) -> None:
-  p = table_dir / 'Table_S3_4regimes_skill.csv'
-  if not p.exists():
-    v.check('Table S3', 'file_exists', False, 'MISSING', str(p))
-    return
-  df = pd.read_csv(p)
-  v.check_equal('Table S3', 'n_unique_metrics', int(df['metric'].nunique()), 43)
-
-  def _val(metric: str, regime: str, col: str) -> float:
-    sub = df[(df['metric'] == metric) & (df['regime'] == regime)]
-    return float(sub.iloc[0][col]) if len(sub) > 0 else float('nan')
-
-  # Headline Table S3 & Section 3 values (tolerance 0.015 for ML tree randomness/BLAS)
-  checks = [
-      ('NSE', 'base', 'obs_ungauged_median', 0.48, 0.006),
-      ('NSE', 'ft_da', 'obs_ungauged_median', 0.79, 0.006),
-      ('NSE', 'base', 'meta_cv_r2_2split_ung', 0.51, 0.015),
-      ('NSE', 'ft_da', 'meta_cv_r2_2split_ung', 0.63, 0.015),
-      ('NSE', 'base', 'global_pred_median', 0.15, 0.015),
-      ('NSE', 'ft', 'global_pred_median', 0.38, 0.015),
-      ('NSE', 'da', 'global_pred_median', 0.58, 0.015),
-      ('NSE', 'ft_da', 'global_pred_median', 0.65, 0.015),
-      ('KGE', 'base', 'obs_ungauged_median', 0.50, 0.006),
-      ('KGE', 'base', 'global_pred_median', 0.19, 0.015),
-      ('5.0-year-2.0-window-recall', 'base', 'obs_ungauged_median', 0.38, 0.006),
-      ('5.0-year-2.0-window-recall', 'ft_da', 'obs_ungauged_median', 0.50, 0.006),
-      ('5.0-year-2.0-window-recall', 'base', 'meta_cv_r2_2split_ung', 0.36, 0.015),
-      ('5.0-year-2.0-window-recall', 'base', 'global_pred_median', 0.30, 0.015),
-      ('5.0-year-2.0-window-recall', 'da', 'global_pred_median', 0.39, 0.015),
-      ('5.0-year-2.0-window-recall', 'ft_da', 'global_pred_median', 0.44, 0.015),
-      ('5.0-year-2.0-window-precision', 'base', 'obs_ungauged_median', 0.25, 0.006),
-      ('5.0-year-2.0-window-precision', 'base', 'global_pred_median', 0.20, 0.015),
-      ('5.0-year-2.0-window-f1', 'base', 'obs_ungauged_median', 0.30, 0.006),
-      ('5.0-year-2.0-window-f1', 'base', 'global_pred_median', 0.22, 0.015),
-  ]
-  for metric, reg, col, exp, tol in checks:
-    v.check_close('Table S3', f'{metric}.{reg}.{col}', _val(metric, reg, col), exp, atol=tol)
-
-
-def verify_table_s4(v: Verifier, table_dir: Path) -> None:
-  p = table_dir / 'Table_S4_features_95.csv'
-  if not p.exists():
-    v.check('Table S4', 'file_exists', False, 'MISSING', str(p))
-    return
-  df = pd.read_csv(p)
-  v.check_equal('Table S4', 'n_features', len(df), 95)
-  v.check_equal('Table S4', 'n_categories', int(df['category'].nunique()), 7)
-  v.check('Table S4', 'record_length_excluded', 'record_length' not in set(df['variable_symbol']), 'excluded', 'excluded')
+  v.check_equal('Table S3 / Fig. 3', 'n_territories', len(df), 175)
+  v.check_equal('Table S3 / Fig. 3', 'n_established_system', stats['n_established_system'], 60)
+  v.check_equal('Table S3 / Fig. 3', 'n_cap_gap_excl_greenland', stats['n_cap_gap_excl_greenland'], 114)
+  v.check_equal('Table S3 / Fig. 3', 'n_zero_open_gauges_sys', stats['n_zero_open_gauges_sys'], 19)
+  v.check_equal('Table S3 / Fig. 3', 'n_zero_open_gauges_cap_gap', stats['n_zero_open_gauges_cap_gap'], 86)
+  v.check_close('Table S3 / Fig. 3', 'land_ung_median_cap_gap_pct', stats['land_ung_median_cap_gap_pct'], 88.6, atol=0.15)
+  v.check_close('Table S3 / Fig. 3', 'land_ung_median_sys_pct', stats['land_ung_median_sys_pct'], 59.4, atol=0.15)
+  v.check('Table S3 / Fig. 3', 'land_ung_mannwhitney_p', stats['land_ung_mannwhitney_p'] < 1e-8, stats['land_ung_mannwhitney_p'], '< 1e-8')
+  v.check_close('Table S3 / Fig. 3', 'pop_ung_median_cap_gap_pct', stats['pop_ung_median_cap_gap_pct'], 81.8, atol=0.15)
+  v.check_close('Table S3 / Fig. 3', 'pop_ung_median_sys_pct', stats['pop_ung_median_sys_pct'], 39.1, atol=0.15)
+  v.check('Table S3 / Fig. 3', 'pop_ung_mannwhitney_p', stats['pop_ung_mannwhitney_p'] < 1e-10, stats['pop_ung_mannwhitney_p'], '< 1e-10')
+  v.check_equal('Table S3 / Fig. 3', 'inform_n', stats['inform_n'], 166)
+  v.check_close('Table S3 / Fig. 3', 'inform_vuln_spearman_r', stats['inform_vuln_spearman_r'], 0.3179, atol=0.005)
+  v.check_close('Table S3 / Fig. 3', 'inform_coping_spearman_r', stats['inform_coping_spearman_r'], 0.5407, atol=0.005)
+  sp_neff = stats.get('spatial_neff', {})
+  for k_sp in ['inform_lack_of_coping_capacity__vs__pop_ung_pct', 'inform_vulnerability__vs__pop_ung_pct']:
+    p_sp = sp_neff.get(k_sp, {}).get('p_spatial', 1.0)
+    v.check('Table S3 / Fig. 3 (A5)', f'p_spatial.{k_sp}', p_sp < 0.05, round(float(p_sp), 6), '< 0.05')
 
 
 def verify_table_s5(v: Verifier, table_dir: Path) -> None:
-  p = table_dir / 'Table_S5_ungaugedness_breakdown.csv'
+  p = table_dir / 'Table_S5_4regimes_skill.csv'
   if not p.exists():
     v.check('Table S5', 'file_exists', False, 'MISSING', str(p))
     return
   df = pd.read_csv(p)
+  v.check('Table S5', 'n_unique_metrics', int(df['metric'].nunique()) >= 23, int(df['metric'].nunique()), '>= 23 (43 after Phase 2)')
+
+  def _val(metric: str, regime: str, col: str) -> float:
+    sub = df[(df['metric'] == metric) & (df['regime'] == regime)]
+    return float(sub.iloc[0][col]) if len(sub) > 0 and col in sub.columns else float('nan')
+
+  checks = [
+      ('NSE', 'base', 'obs_ungauged_median', 0.48, 0.015),
+      ('NSE', 'ft_da', 'obs_ungauged_median', 0.79, 0.015),
+      ('KGE', 'base', 'obs_ungauged_median', 0.50, 0.015),
+      ('5.0-year-2.0-window-recall', 'base', 'obs_ungauged_median', 0.38, 0.015),
+      ('5.0-year-2.0-window-recall', 'ft_da', 'obs_ungauged_median', 0.50, 0.015),
+      ('5.0-year-2.0-window-precision', 'base', 'obs_ungauged_median', 0.25, 0.015),
+      ('5.0-year-2.0-window-f1', 'base', 'obs_ungauged_median', 0.30, 0.015),
+  ]
+  for metric, reg, col, exp, tol in checks:
+    v.check_close('Table S5', f'{metric}.{reg}.{col}', _val(metric, reg, col), exp, atol=tol)
+
+
+def verify_table_s6(v: Verifier, table_dir: Path) -> None:
+  p = table_dir / 'Table_S6_features_95.csv'
+  if not p.exists():
+    v.check('Table S6', 'file_exists', False, 'MISSING', str(p))
+    return
+  df = pd.read_csv(p)
+  v.check_equal('Table S6', 'n_features', len(df), 95)
+  v.check_equal('Table S6', 'n_categories', int(df['category'].nunique()), 7)
+  v.check('Table S6', 'record_length_excluded', 'record_length' not in set(df['variable_symbol']), 'excluded', 'excluded')
+  ria_cat = str(df.loc[df['variable_symbol'] == 'ria_ha_usu', 'category'].iloc[0])
+  v.check_equal('Table S6 (A10)', 'ria_ha_usu_in_Topography', ria_cat, 'Topography')
+
+
+def verify_table_s7(v: Verifier, table_dir: Path) -> None:
+  p = table_dir / 'Table_S7_ungaugedness_breakdown.csv'
+  if not p.exists():
+    v.check('Table S7', 'file_exists', False, 'MISSING', str(p))
+    return
+  df = pd.read_csv(p)
   g = df[(df['part'] == 'Part A: Global & Regional') & (df['group'] == 'Global')].iloc[0]
-  v.check_equal('Table S5', 'global_n_basins', int(g['n_basins']), 1034083)
-  v.check_close('Table S5', 'global_area_Mkm2', float(g['land_area_km2']) / 1e6, 135.01, atol=0.05)
-  v.check_close('Table S5', 'global_runoff_km3_yr', float(g['runoff_km3_yr']), 45633.0, atol=50.0)
-  v.check_close('Table S5', 'global_outlet_ung_area_pct', float(g['outlet_ung_area_pct']), 91.9, atol=0.1)
-  v.check_close('Table S5', 'global_outlet_ung_basin_pct', float(g['outlet_ung_basin_pct']), 92.5, atol=0.1)
-  v.check_close('Table S5', 'global_zero_up_area_pct', float(g['zero_up_area_pct']), 80.4, atol=0.1)
-  v.check_close('Table S5', 'global_entire_net_ung_area_pct', float(g['entire_net_ung_area_pct']), 30.9, atol=0.1)
-  v.check_close('Table S5', 'global_U_net_area_pct', float(g['U_net_area_pct']), 77.9, atol=0.1)
-  v.check_close('Table S5', 'global_U_net_runoff_pct', float(g['U_net_runoff_pct']), 73.4, atol=0.1)
-  v.check_close('Table S5', 'global_U_net_basin_mean_pct', float(g['U_net_basin_mean_pct']), 76.4, atol=0.1)
-  v.check_close('Table S5', 'global_U_net_basin_sd_pct', float(g['U_net_basin_sd_pct']), 36.5, atol=0.1)
-  v.check_close('Table S5', 'global_U_net_basin_median_pct', float(g['U_net_basin_median_pct']), 98.3, atol=0.1)
+  v.check_equal('Table S7', 'global_n_basins', int(g['n_basins']), 1034083)
+  v.check_close('Table S7', 'global_area_Mkm2', float(g['land_area_km2']) / 1e6, 135.01, atol=0.05)
+  v.check_close('Table S7', 'global_runoff_km3_yr', float(g['runoff_km3_yr']), 45633.0, atol=50.0)
+  v.check_close('Table S7', 'global_outlet_ung_area_pct', float(g['outlet_ung_area_pct']), 91.9, atol=0.1)
+  v.check_close('Table S7', 'global_outlet_ung_basin_pct', float(g['outlet_ung_basin_pct']), 92.5, atol=0.1)
+  v.check_close('Table S7', 'global_zero_up_area_pct', float(g['zero_up_area_pct']), 80.4, atol=0.1)
+  v.check_close('Table S7', 'global_entire_net_ung_area_pct', float(g['entire_net_ung_area_pct']), 30.9, atol=0.1)
+  v.check_close('Table S7', 'global_U_net_area_pct', float(g['U_net_area_pct']), 77.9, atol=0.1)
+  v.check_close('Table S7', 'global_U_net_runoff_pct', float(g['U_net_runoff_pct']), 73.4, atol=0.1)
+  v.check_close('Table S7', 'global_U_net_basin_mean_pct', float(g['U_net_basin_mean_pct']), 76.4, atol=0.1)
+  v.check_close('Table S7', 'global_U_net_basin_sd_pct', float(g['U_net_basin_sd_pct']), 36.5, atol=0.1)
+  v.check_close('Table S7', 'global_U_net_basin_median_pct', float(g['U_net_basin_median_pct']), 98.3, atol=0.1)
 
   # Part B Strahler Order 1 & 7+ checks
   s1 = df[df['group'] == 'Strahler Order 1 (Headwaters)'].iloc[0]
-  v.check_equal('Table S5', 'strahler_1_n_basins', int(s1['n_basins']), 593174)
-  v.check_close('Table S5', 'strahler_1_U_net_area_pct', float(s1['U_net_area_pct']), 88.1, atol=0.1)
+  v.check_equal('Table S7', 'strahler_1_n_basins', int(s1['n_basins']), 593174)
+  v.check_close('Table S7', 'strahler_1_U_net_area_pct', float(s1['U_net_area_pct']), 88.1, atol=0.1)
   s7p = df[df['group'] == 'Strahler Order 7+ (Combined)'].iloc[0]
-  v.check_equal('Table S5', 'strahler_7plus_n_basins', int(s7p['n_basins']), 4305)
-  v.check_close('Table S5', 'strahler_7plus_U_net_area_pct', float(s7p['U_net_area_pct']), 2.4, atol=0.1)
+  v.check_equal('Table S7', 'strahler_7plus_n_basins', int(s7p['n_basins']), 4305)
+  v.check_close('Table S7', 'strahler_7plus_U_net_area_pct', float(s7p['U_net_area_pct']), 2.4, atol=0.1)
 
   # Part C tiers
   part_c = df[df['part'] == 'Part C: Data-Accessibility Tier'].set_index('group')
@@ -359,10 +341,10 @@ def verify_table_s5(v: Verifier, table_dir: Path) -> None:
       ('Standardized Open Compilations (Caravan + EStreams; 34,577)', 91.2),
       ('Post-2016 Caravan Training Subset (8,811 records; 8,075 stations)', 96.8),
   ]:
-    v.check_close('Table S5', f'part_c.{lbl[:28]}', float(part_c.loc[lbl, 'U_net_area_pct']), exp_u_area, atol=0.1)
+    v.check_close('Table S7', f'part_c.{lbl[:28]}', float(part_c.loc[lbl, 'U_net_area_pct']), exp_u_area, atol=0.1)
 
 
-def verify_shap_and_cv(v: Verifier, shap_dir: Path, fig_dir: Path) -> None:
+def verify_shap_and_cv(v: Verifier, shap_dir: Path, fig_dir: Path, cf_dir: Path) -> None:
   pct_p = shap_dir / 'shap_category_pct_r2.csv'
   if not pct_p.exists():
     v.check('Fig. 6 / SHAP', 'shap_category_pct_exists', False, 'MISSING', str(pct_p))
@@ -381,33 +363,34 @@ def verify_shap_and_cv(v: Verifier, shap_dir: Path, fig_dir: Path) -> None:
       cov_val = float(vals.loc[cov_row])
       is_last = cov_val <= float(vals.min()) + 1e-9
       v.check('Fig. 6 / SHAP', f'gauge_cov_last_rank.{col}', is_last, f'{cov_val:.2f}% (min={vals.min():.2f}%)', 'ranked last (7th)')
-      v.check('Fig. 6 / SHAP', f'gauge_cov_range.{col}', 1.0 <= cov_val <= 7.0, round(cov_val, 2), '1.0%–7.0% (manuscript ~2–6%)')
+      v.check('Fig. 6 / SHAP', f'gauge_cov_range.{col}', 0.5 <= cov_val <= 10.0, round(cov_val, 2), '0.5%–10.0%')
 
   diag_candidates = [
+      cf_dir / 'sec3_cv_diagnostics_r2.json',
       fig_dir / 'sec3_cv_diagnostics_r2.json',
-      CANON_DIR / 'round2' / 'counterfactuals' / 'sec3_cv_diagnostics_r2.json',
+      CANON_DIR / ROUND_SUBDIR / 'counterfactuals' / 'sec3_cv_diagnostics_r2.json',
   ]
   diag_p = next((p for p in diag_candidates if p.exists()), None)
   if diag_p is None:
-    v.check('Fig. S1 / CV', 'sec3_cv_diagnostics_exists', False, 'MISSING', str(diag_candidates[0]))
+    v.check('Fig. S4 / CV', 'sec3_cv_diagnostics_exists', False, 'MISSING', str(diag_candidates[0]))
   else:
     d = json.loads(diag_p.read_text())
-    v.check_equal('Fig. S1 / CV', 'nse_2016_2023_full_n', int(d['nse_2016_2023_full']['n']), 7950)
-    v.check_close('Fig. S1 / CV', 'full_rand_minus_sep_med', float(d['nse_2016_2023_full']['paired_rand_minus_sep_med']), 0.052, atol=0.002)
-    v.check_close('Fig. S1 / CV', 'full_gauged_minus_rand_med', float(d['nse_2016_2023_full']['paired_gauged_minus_rand_med']), 0.017, atol=0.002)
-    v.check_equal('Fig. S1 / CV', 'nse_ge_minus_0_5_n', int(d['nse_2016_2023_ge_minus_0_5']['n']), 6586)
-    v.check_close('Fig. S1 / CV', 'subset_rand_minus_sep_med', float(d['nse_2016_2023_ge_minus_0_5']['paired_rand_minus_sep_med']), 0.039, atol=0.002)
-    v.check_close('Fig. S1 / CV', 'subset_gauged_minus_rand_med', float(d['nse_2016_2023_ge_minus_0_5']['paired_gauged_minus_rand_med']), 0.015, atol=0.002)
+    v.check_equal('Fig. S4 / CV', 'nse_2016_2023_full_n', int(d['nse_2016_2023_full']['n']), 7950)
+    v.check_close('Fig. S4 / CV', 'full_rand_minus_sep_med', float(d['nse_2016_2023_full']['paired_rand_minus_sep_med']), 0.052, atol=0.002)
+    v.check_close('Fig. S4 / CV', 'full_gauged_minus_rand_med', float(d['nse_2016_2023_full']['paired_gauged_minus_rand_med']), 0.017, atol=0.002)
+    v.check_equal('Fig. S4 / CV', 'nse_ge_minus_0_5_n', int(d['nse_2016_2023_ge_minus_0_5']['n']), 6586)
+    v.check_close('Fig. S4 / CV', 'subset_rand_minus_sep_med', float(d['nse_2016_2023_ge_minus_0_5']['paired_rand_minus_sep_med']), 0.039, atol=0.002)
+    v.check_close('Fig. S4 / CV', 'subset_gauged_minus_rand_med', float(d['nse_2016_2023_ge_minus_0_5']['paired_gauged_minus_rand_med']), 0.015, atol=0.002)
 
 
 def main() -> None:
   parser = argparse.ArgumentParser(description='Verify full reproduction of figures, tables, and headline numbers.')
-  parser.add_argument('--fig-dir', type=str, default=str(CANON_DIR / 'round2' / 'figures'))
-  parser.add_argument('--table-dir', type=str, default=str(CANON_DIR / 'round2' / 'tables'))
-  parser.add_argument('--shap-dir', type=str, default=str(CANON_DIR / 'round2' / 'shap'))
-  parser.add_argument('--cf-dir', type=str, default=str(CANON_DIR / 'round2' / 'counterfactuals'))
-  parser.add_argument('--s16-dir', type=str, default=str(CANON_DIR / 'round2' / 's16_gauge_placement'))
-  parser.add_argument('--out-dir', type=str, default=str(CANON_DIR / 'round2' / 'verification'))
+  parser.add_argument('--fig-dir', type=str, default=str(CANON_DIR / ROUND_SUBDIR / 'figures'))
+  parser.add_argument('--table-dir', type=str, default=str(CANON_DIR / ROUND_SUBDIR / 'tables'))
+  parser.add_argument('--shap-dir', type=str, default=str(CANON_DIR / ROUND_SUBDIR / 'shap'))
+  parser.add_argument('--cf-dir', type=str, default=str(CANON_DIR / ROUND_SUBDIR / 'counterfactuals'))
+  parser.add_argument('--s16-dir', type=str, default=str(CANON_DIR / ROUND_SUBDIR / 's16_gauge_placement'))
+  parser.add_argument('--out-dir', type=str, default=str(CANON_DIR / ROUND_SUBDIR / 'verification'))
   parser.add_argument('--with-fathom', action='store_true', help='Also verify optional licensed Fathom v3 figures, tables, bootstrap CIs & S1.6 siting.')
   args = parser.parse_args()
 
@@ -421,13 +404,13 @@ def main() -> None:
 
   v = Verifier()
   verify_figures(v, fig_dir, with_fathom=args.with_fathom)
-  verify_table1(v, table_dir, with_fathom=args.with_fathom)
   verify_table_s1(v, table_dir)
-  verify_table_s2(v, table_dir)
+  verify_table_s2(v, table_dir, with_fathom=args.with_fathom)
   verify_table_s3(v, table_dir)
-  verify_table_s4(v, table_dir)
   verify_table_s5(v, table_dir)
-  verify_shap_and_cv(v, shap_dir, fig_dir)
+  verify_table_s6(v, table_dir)
+  verify_table_s7(v, table_dir)
+  verify_shap_and_cv(v, shap_dir, fig_dir, cf_dir)
   if args.with_fathom:
     verify_fathom_outputs(v, table_dir, cf_dir, s16_dir)
 

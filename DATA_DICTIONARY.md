@@ -1,6 +1,6 @@
-# Data Dictionary — Public Zenodo Archive (v3.0.0) & Upstream Hydrofabrics
+# Data Dictionary — Public Zenodo Archive (v3.0.1) & Upstream Hydrofabrics
 
-Companion archive DOI: **https://doi.org/10.5281/zenodo.21416986** (v3.0.0)
+Companion archive DOI: **https://doi.org/10.5281/zenodo.21416986** (v3.0.1)
 
 > **Proprietary Data Policy:** No Fathom Global 3.0 flood-hazard rasters and no Fathom-derived expected annual flood exposure (`eae_*`, `exposed_pop_*`) columns or tables are included in any archive below.
 
@@ -51,9 +51,9 @@ Out-of-sample evaluation metrics from the 300-model OpenHydroNet cross-validatio
 | `round2/hydro_model_metrics/` | Per-gauge lead-time-1 evaluation CSVs across all **43 hydrological metrics** (8 harmonized 2016–2023 continuous hydrograph metrics, 32 return-period recall/precision metrics over 1986–2023, and 3 2-day F1 metrics) across all 3 CV splits (`gauged`, `random`, `separated`) and 4 modeling regimes (`base`, `_ft`, `_da`, `_ft_da`). |
 | `cross_validation_splits/` | Deterministic 10-fold gauge-grouped CV split assignments (`random`, `separated`, and `gauged` splits). |
 
-### Archive 4: `geographical-bias-paper-v3.0.0.zip`
+### Archive 4: `geographical-bias-paper-v3.0.1.zip`
 
-Frozen snapshot of the GitHub code repository at release tag `v3.0.0`.
+Frozen snapshot of the GitHub code repository at release tag `v3.0.1`.
 
 ---
 

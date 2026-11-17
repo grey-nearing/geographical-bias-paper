@@ -1,0 +1,113 @@
+source_tier,source_dataset,observation_type,data_access_policy,license,n_archive_rows,n_unique_gauges,n_tier1_rows
+GIS_Internal,ADHI,flow_indices_only,open_indices_and_metadata_only,CC BY 4.0 (indices only; raw daily Q restricted),646,633,0
+GIS_Internal,ANA HidroWeb,daily_discharge,open_public_api_or_bulk,Dados Abertos ANA (Open Government Data Brazil),2888,2642,0
+GIS_Internal,ANA HidroWeb,stage_or_fluviometric,open_public_api_or_bulk,Dados Abertos ANA (Open Government Data Brazil),2365,2086,0
+GIS_Internal,BWDB FFWC,stage_or_fluviometric,restricted_or_bilateral_partner,Various (see source_dataset),127,127,0
+GIS_Internal,BoM Water Data Online,daily_discharge,open_public_api_or_bulk,CC BY 3.0 AU / CC BY 4.0 (Australian Water Regulations),6546,4506,0
+GIS_Internal,CAMELS-US,daily_discharge,open_academic_compilation,Various (see source_dataset),531,530,531
+GIS_Internal,CHMI (ČHMÚ),daily_discharge,open_public_api_or_bulk,CC BY 4.0,300,293,0
+GIS_Internal,CONAGUA BANDAS,daily_discharge,open_public_api_or_bulk,Libre Uso MX / CC BY 4.0,1596,1222,0
+GIS_Internal,CWC India,stage_or_fluviometric,restricted_or_bilateral_partner,Various (see source_dataset),1589,1528,0
+GIS_Internal,Caravan,daily_discharge,open_academic_compilation,CC BY 4.0,19491,18037,19491
+GIS_Internal,Caravan (GRDC Extension),daily_discharge,open_academic_compilation,CC BY 4.0,5356,5248,5356
+GIS_Internal,Caravan (Regional CAMELS Extension),catchment_attributes_and_boundaries,open_attributes_and_metadata_only,CC-BY-4.0 (0% observed Q; simulated/attributes only),6,6,0
+GIS_Internal,Caravan (Regional CAMELS Extension),daily_discharge,open_academic_compilation,CC BY 4.0,1855,1836,1855
+GIS_Internal,DGA Chile,stage_or_fluviometric,open_public_api_or_bulk,Open Government Data Chile,107,98,0
+GIS_Internal,DINAGUA Uruguay,daily_discharge,restricted_or_bilateral_partner,Bilateral WMO Pilot / Restricted,681,510,0
+GIS_Internal,DNAAS Mozambique,stage_or_fluviometric,restricted_or_bilateral_partner,Various (see source_dataset),58,58,0
+GIS_Internal,DWR Thailand,stage_or_fluviometric,restricted_or_bilateral_partner,Various (see source_dataset),114,114,0
+GIS_Internal,DWS South Africa,daily_discharge,registration_or_request_portal,DWS Terms (Non-Commercial Research/Personal Only),1295,1143,0
+GIS_Internal,EStreams,flow_indices_only,open_indices_and_metadata_only,CC BY 4.0 (attributes/signatures only; no streamflow series),17121,15148,0
+GIS_Internal,GRDC,daily_discharge,open_academic_compilation,CC BY 4.0 (GRDC-Caravan),5353,5253,5353
+GIS_Internal,GRDC,daily_discharge,registration_or_request_portal,GRDC Data Policy (Non-Commercial Research & Education),5427,5360,0
+GIS_Internal,ICE Costa Rica,stage_or_fluviometric,restricted_or_bilateral_partner,Various (see source_dataset),85,75,0
+GIS_Internal,IDEAM DHIME,daily_discharge,open_public_api_or_bulk,Datos Abiertos Colombia (CC BY 4.0),992,926,0
+GIS_Internal,IDEAM DHIME,stage_or_fluviometric,open_public_api_or_bulk,Datos Abiertos Colombia (CC BY 4.0),543,442,0
+GIS_Internal,KRC / WRA Kenya,stage_or_fluviometric,restricted_or_bilateral_partner,Various (see source_dataset),61,61,0
+GIS_Internal,MAWLR Namibia,stage_or_fluviometric,restricted_or_bilateral_partner,Various (see source_dataset),121,116,0
+GIS_Internal,MOI Sri Lanka,stage_or_fluviometric,restricted_or_bilateral_partner,Various (see source_dataset),11,11,0
+GIS_Internal,MRC,stage_or_fluviometric,registration_or_request_portal,MRC Data Policy (Paid/Restricted Commercial Terms),164,148,0
+GIS_Internal,NIHSA Nigeria,daily_discharge,restricted_or_bilateral_partner,Various (see source_dataset),24,23,0
+GIS_Internal,NVE HydAPI,daily_discharge,open_public_api_or_bulk,NLOD 2.0 / CC BY 3.0 NO,1578,1326,0
+GIS_Internal,NVE HydAPI,stage_or_fluviometric,open_public_api_or_bulk,NLOD 2.0 / CC BY 3.0 NO,3160,1804,0
+GIS_Internal,PID Pakistan,stage_or_fluviometric,restricted_or_bilateral_partner,Various (see source_dataset),28,28,0
+GIS_Internal,PUPR Indonesia,stage_or_fluviometric,restricted_or_bilateral_partner,Various (see source_dataset),103,95,0
+GIS_Internal,SENAMHI Peru,stage_or_fluviometric,restricted_or_bilateral_partner,Various (see source_dataset),7,7,0
+GIS_Internal,UK Environment Agency,daily_discharge,open_public_api_or_bulk,Open Government Licence v3.0 (OGL v3),755,694,0
+GIS_Internal,UK Environment Agency,stage_or_fluviometric,open_public_api_or_bulk,Open Government Licence v3.0 (OGL v3),1491,1195,0
+GIS_Internal,USGS NWIS,daily_discharge,open_public_api_or_bulk,US Public Domain,11397,10817,0
+GIS_Internal,USGS NWIS,stage_or_fluviometric,open_public_api_or_bulk,US Public Domain,1074,986,0
+GIS_Internal,VNMHA Vietnam,daily_discharge,restricted_or_bilateral_partner,Various (see source_dataset),8,8,0
+RivRetrieve,RivRetrieve,daily_discharge,open_public_api_or_bulk,CC0 1.0 Universal,194,90,0
+RivRetrieve,RivRetrieve,daily_discharge,open_public_api_or_bulk,Open National Hydrology Portal via RivRetrieve,65453,56581,0
+RivRetrieve,RivRetrieve,daily_discharge,registration_or_request_portal,Agency Portal (No Open Commercial License Established),287,273,0
+RivRetrieve,RivRetrieve,daily_discharge,registration_or_request_portal,DWS Terms (Non-Commercial Research/Personal Only),1294,1139,0
+RivRetrieve,RivRetrieve,daily_discharge,registration_or_request_portal,HII CC BY-NC (Non-Commercial),776,691,0
+RivRetrieve,RivRetrieve,daily_discharge,registration_or_request_portal,IMGW Regulamin / Prawo Wodne (Commercial Contract Required),1301,1252,0
+RivRetrieve,RivRetrieve,daily_discharge,registration_or_request_portal,UKCEH NRFA Click-Through Licence (No Raw Redistribution),1601,1506,0
+RivRetrieve,RivRetrieve,stage_or_fluviometric,open_public_api_or_bulk,CC0 1.0 Universal,581,435,0
+RivRetrieve,RivRetrieve,stage_or_fluviometric,open_public_api_or_bulk,Open National Hydrology Portal via RivRetrieve,15998,12626,0
+RivRetrieve,RivRetrieve,stage_or_fluviometric,registration_or_request_portal,Agency Portal (No Open Commercial License Established),1629,1224,0
+RivRetrieve,RivRetrieve,stage_or_fluviometric,registration_or_request_portal,DWS Terms (Non-Commercial Research/Personal Only),1634,1077,0
+RivRetrieve,RivRetrieve,stage_or_fluviometric,registration_or_request_portal,HII CC BY-NC (Non-Commercial),75,74,0
+Tier1_Global_CNS,ADHI,flow_indices_only,open_indices_and_metadata_only,CC BY 4.0 (indices only; raw daily Q restricted),1466,1436,0
+Tier1_Global_CNS,CNS_CAMELS_Extra,catchment_attributes_and_boundaries,open_attributes_and_metadata_only,CC-BY-4.0 (0% observed Q; simulated/attributes only),159,159,0
+Tier1_Global_CNS,CNS_CAMELS_Extra,catchment_attributes_and_boundaries,restricted_or_bilateral_partner,Permission required from hydro operator for Q,14,14,0
+Tier1_Global_CNS,CNS_CAMELS_Extra,daily_discharge,open_academic_compilation,CC BY 4.0,1476,1473,1476
+Tier1_Global_CNS,Caravan,catchment_attributes_and_boundaries,open_attributes_and_metadata_only,CC-BY-4.0 (0% observed Q; simulated/attributes only),6,6,0
+Tier1_Global_CNS,Caravan,daily_discharge,open_academic_compilation,CC BY 4.0,26984,23282,26984
+Tier1_Global_CNS,EStreams,flow_indices_only,open_indices_and_metadata_only,CC BY 4.0 (attributes/signatures only; no streamflow series),17130,15268,0
+Tier1_Global_CNS,GRDC,daily_discharge,open_academic_compilation,CC BY 4.0 (GRDC-Caravan),10712,5254,10712
+Tier1_Global_CNS,GRDC,daily_discharge,registration_or_request_portal,GRDC Data Policy (Non-Commercial Research & Education),9617,5763,0
+Tier1_Global_CNS,GRDC,monthly_discharge,registration_or_request_portal,GRDC Data Policy (Non-Commercial Research & Education),2159,2143,0
+Tier1_Global_CNS,GSHA,flow_indices_only,open_indices_and_metadata_only,CC BY 4.0,21568,21472,0
+Tier1_Global_CNS,GSIM,flow_indices_only,open_indices_and_metadata_only,CC BY 3.0,30959,29318,0
+Tier1_Global_CNS,HYSETS,daily_discharge,open_academic_compilation,CC BY 4.0,14425,13750,14425
+Tier1_Global_CNS,ROBIN_v1,daily_discharge,open_academic_compilation,CC BY 4.0,2386,2379,2386
+Tier1_Global_CNS,ROBIN_v1,flow_indices_only,restricted_or_bilateral_partner,Restricted daily Q (open metadata),674,671,0
+Tier2_Asia_CIS_Oceania,ArcticGRO,daily_discharge,open_public_api_or_bulk,CC-BY-4.0,18,17,0
+Tier2_Asia_CIS_Oceania,CAMELSH_KR,daily_discharge,open_academic_compilation,CC-BY-4.0,178,177,178
+Tier2_Asia_CIS_Oceania,CAMELS_IND,catchment_attributes_and_boundaries,open_attributes_and_metadata_only,CC-BY-4.0 (0% observed Q; simulated/attributes only),83,83,0
+Tier2_Asia_CIS_Oceania,CAMELS_IND,daily_discharge,open_academic_compilation,CC BY 4.0,389,388,389
+Tier2_Asia_CIS_Oceania,CAMELS_KR,daily_discharge,open_academic_compilation,CC-BY-4.0,282,281,282
+Tier2_Asia_CIS_Oceania,CAMELS_NZ,catchment_attributes_and_boundaries,restricted_or_bilateral_partner,Permission required from hydro operator for Q,14,14,0
+Tier2_Asia_CIS_Oceania,CAMELS_NZ,daily_discharge,open_academic_compilation,CC BY 4.0,355,349,355
+Tier2_Asia_CIS_Oceania,CA_discharge,daily_discharge,open_academic_compilation,CC-BY-4.0,78,77,78
+Tier2_Asia_CIS_Oceania,CA_discharge,flow_indices_only,open_indices_and_metadata_only,CC-BY-4.0 (norm Q & polygon only),161,159,0
+Tier2_Asia_CIS_Oceania,CA_discharge,monthly_discharge,open_academic_compilation,CC-BY-4.0,56,56,56
+Tier2_Asia_CIS_Oceania,CCAM,catchment_attributes_and_boundaries,open_attributes_and_metadata_only,CC-BY-4.0,4911,4910,0
+Tier2_Asia_CIS_Oceania,CDR2,flow_indices_only,open_indices_and_metadata_only,CC-BY-4.0 (satellite-reconstructed W->Q & station metadata),1196,1189,0
+Tier2_Asia_CIS_Oceania,CIS_Watersheds,daily_discharge,open_academic_compilation,CC-BY-4.0,1521,1518,1521
+Tier2_Asia_CIS_Oceania,CIS_Watersheds,daily_discharge,registration_or_request_portal,GRDC_CIS (underlying GRDC non-commercial terms),278,277,0
+Tier2_Asia_CIS_Oceania,CIS_Watersheds,stage_or_fluviometric,open_public_api_or_bulk,CC-BY-4.0,365,365,0
+Tier2_Asia_CIS_Oceania,GHI_v1,flow_indices_only,open_indices_and_metadata_only,CC-BY-4.0,173,172,0
+Tier2_Asia_CIS_Oceania,GHI_v1,monthly_discharge,open_academic_compilation,CC-BY-4.0,472,471,472
+Tier2_Asia_CIS_Oceania,GHI_v2,flow_indices_only,open_indices_and_metadata_only,CC-BY-4.0,477,473,0
+Tier2_Asia_CIS_Oceania,GHI_v2,monthly_discharge,open_academic_compilation,CC-BY-4.0,1199,1193,1199
+Tier2_Asia_CIS_Oceania,GHSA_v3,monthly_discharge,open_academic_compilation,CC-BY-4.0,25,25,25
+Tier2_Asia_CIS_Oceania,HydroMLYR,flow_indices_only,open_indices_and_metadata_only,CC-BY-4.0 (standardized weekly anomaly only),102,95,0
+Tier2_Asia_CIS_Oceania,JPDH,daily_discharge,registration_or_request_portal,CC-BY-NC-4.0 (non-commercial),1189,1146,0
+Tier2_Asia_CIS_Oceania,JPDH_MLIT_Network_Extra,catchment_attributes_and_boundaries,open_attributes_and_metadata_only,CC-BY-NC-4.0 (station metadata/stage only),154,150,0
+Tier2_Asia_CIS_Oceania,JPDH_MLIT_Network_Extra,stage_or_fluviometric,open_attributes_and_metadata_only,CC-BY-NC-4.0 (station metadata/stage only),580,541,0
+Tier2_Asia_CIS_Oceania,R_ArcticNET_v4,daily_discharge,registration_or_request_portal,Open-Academic-UNH (Non-Commercial Academic Only),157,157,0
+Tier2_Asia_CIS_Oceania,R_ArcticNET_v4,monthly_discharge,registration_or_request_portal,Open-Academic-UNH (Non-Commercial Academic Only),5107,4873,0
+Tier3_LatAm_Africa_EU,Andean-GC,daily_discharge,open_academic_compilation,CC-BY-4.0,258,253,258
+Tier3_LatAm_Africa_EU,CABra,daily_discharge,open_academic_compilation,CC-BY-4.0,735,734,735
+Tier3_LatAm_Africa_EU,CAMELS-BR,daily_discharge,open_academic_compilation,CC-BY-4.0,4138,3755,4138
+Tier3_LatAm_Africa_EU,CAMELS-CH,daily_discharge,open_academic_compilation,CC-BY-4.0,304,294,304
+Tier3_LatAm_Africa_EU,CAMELS-CL,daily_discharge,open_academic_compilation,CC-BY-4.0,516,501,516
+Tier3_LatAm_Africa_EU,CAMELS-COL,daily_discharge,open_academic_compilation,CC-BY-4.0,347,344,347
+Tier3_LatAm_Africa_EU,CAMELS-FI,daily_discharge,open_academic_compilation,CC-BY-4.0,320,318,320
+Tier3_LatAm_Africa_EU,CAMELS-LUX,daily_discharge,open_academic_compilation,CC-BY-4.0,56,55,56
+Tier3_LatAm_Africa_EU,CAMELS-PE,daily_discharge,open_academic_compilation,CC-BY-4.0,136,135,136
+Tier3_LatAm_Africa_EU,CAMELS-PL,daily_discharge,open_academic_compilation,CC-BY-4.0,869,854,869
+Tier3_LatAm_Africa_EU,CR2_Caudales_Chile,daily_discharge,open_public_api_or_bulk,CC BY 4.0,811,749,0
+Tier3_LatAm_Africa_EU,FOCA_ISPRA_Italy,flow_indices_only,open_indices_and_metadata_only,CC-BY-4.0 (annual max flood peaks & attributes only),631,621,0
+Tier3_LatAm_Africa_EU,IDEAM_Colombia,daily_discharge,open_public_api_or_bulk,Datos Abiertos Colombia (CC BY 4.0),2062,970,0
+Tier3_LatAm_Africa_EU,IDEAM_Colombia,stage_or_fluviometric,open_public_api_or_bulk,Datos Abiertos Colombia (CC BY 4.0),4202,1693,0
+Tier3_LatAm_Africa_EU,LamaH-Ice,daily_discharge,open_academic_compilation,CC-BY-4.0,111,110,111
+Tier3_LatAm_Africa_EU,North_Africa_98_Basins,flow_indices_only,open_indices_and_metadata_only,CC-BY-4.0 (flood event peaks & volumes only),98,98,0
+Tier3_LatAm_Africa_EU,PMET-obs,daily_discharge,open_academic_compilation,CC-BY-4.0,131,131,131
+Tier3_LatAm_Africa_EU,SIREN_Italy,daily_discharge,open_academic_compilation,CC-BY-4.0,4,4,4
+Tier3_LatAm_Africa_EU,SSA-HCD,monthly_discharge,open_academic_compilation,CC-BY-4.0,30,30,30
+Tier3_LatAm_Africa_EU,SSA-HCD,monthly_discharge,registration_or_request_portal,GRDC-derived monthly runoff (non-commercial underlying terms),129,128,0

@@ -4,8 +4,9 @@
 Produces symmetric 6-figure Science layout natively authored at Science full-page width
 (184 mm = 7.244 in) with every rendered font >= 6.0 pt and consistent neutral-gray Greenland
 masking across all global maps:
-  - Fig_1_global_overview.png: 2x2 global gauge catalog (121,819 stations), never-passes-a-gauge
-    map, continuous L12 fractional ungaugedness, and climate/landscape dissimilarity percentile.
+  - Fig_1_global_overview.png: 2x2 global gauge catalog (119,169 physical stations), never-passes-a-gauge
+    map, continuous L12 fractional ungaugedness (with area-weighted distribution inset), and
+    climate/landscape dissimilarity percentile (with area-weighted distribution inset).
   - Fig_2_scale_and_global_summary.png: 1x2 combining HydroSHEDS L1–L12 + 6-hydrofabric
     polygon-size scaling curve (a) with visual Table 1 multi-hydrofabric min–max range bars (b).
   - Fig_3_geography_and_alerting.png: 2x3 combining continental land/population dumbbells (a),
@@ -14,7 +15,7 @@ masking across all global maps:
     with spatially adjusted Clifford–Richardson–Hémon / Dutilleul p_spatial.
   - Fig_4_global_flood_maps.png (OPTIONAL — licensed Fathom v3): 2x2 pure global flood maps
     twinning Fig. 1: (a) Total annual flood exposure E_0, (b) Forecasted today, (c) Cumulative
-    gain from sharing 121,819 existing gauges, (d) Cumulative gain from universal gauging on the
+    gain from 119,169 existing gauges, (d) Cumulative gain from universal gauging on the
     exact same log color scale as (c).
   - Fig_5_exposure_synthesis.png (OPTIONAL — licensed Fathom v3): 2x2 quantitative synthesis
     replacing Table 2 + old Fig. 5b,c: (a) Exposure decomposition across Global / CAP-gap /
@@ -64,7 +65,7 @@ matplotlib.use('Agg')
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 from matplotlib.lines import Line2D
-from matplotlib.patches import Patch
+from matplotlib.patches import FancyBboxPatch, Patch
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -78,9 +79,9 @@ from utils import cap_utils, file_paths, spatial_stats
 
 warnings.filterwarnings('ignore')
 
-COL_T1 = '#0072B2'   # Standardized open (34,577) / Established national alerting
-COL_T2 = '#009E73'   # Confirmed public discharge (93,827)
-COL_T3 = '#D55E00'   # All discoverable (121,819) / CAP-gap country
+COL_T1 = '#0072B2'   # Open datasets (32,369) / Established national alerting
+COL_T2 = '#009E73'   # Confirmed open-license discharge (74,078)
+COL_T3 = '#D55E00'   # All discoverable physical gauges (119,169) / CAP-gap country
 
 SCIENCE_W = 184.0 / 25.4  # 7.2441 in (Science full-page width)
 SAVE_DPI = 350
@@ -167,12 +168,15 @@ def load_gauges_tiered() -> pd.DataFrame:
   if staged.exists():
     return pd.read_parquet(staged)
   g = pd.read_parquet(CANON_DIR / 'attributes' / 'global_gauges_deduplicated.parquet')
-  g['in_tier_1'] = g['all_source_datasets'].str.contains('caravan|estream', case=False, na=False)
-  g['in_tier_2'] = (
-      g['best_data_access_policy'].isin({'open_public_api_or_bulk', 'open_academic_compilation'})
-      & g['best_observation_type'].isin({'daily_discharge', 'monthly_discharge'})
-  )
-  g['in_tier_3'] = True
+  if 'in_tier_1' not in g.columns:
+    g['in_tier_1'] = g['best_data_access_policy'].eq('open_academic_compilation') & g['best_observation_type'].isin({'daily_discharge', 'monthly_discharge'})
+  if 'in_tier_2' not in g.columns:
+    g['in_tier_2'] = (
+        g['best_data_access_policy'].isin({'open_public_api_or_bulk', 'open_academic_compilation'})
+        & g['best_observation_type'].isin({'daily_discharge', 'monthly_discharge'})
+    )
+  if 'in_tier_3' not in g.columns:
+    g['in_tier_3'] = True
   return g
 
 
@@ -263,22 +267,34 @@ def _overlay_greenland_gray(ax, world_no_ata: gpd.GeoDataFrame, zorder: float = 
 # FIGURE 1: 2x2 Global Overview (Consistent Gray Greenland, All Fonts >= 6 pt)
 # ==============================================================================
 def build_fig1(world_all: gpd.GeoDataFrame, out_dir: Path) -> Path:
-  print('[Fig 1] Generating 2x2 global overview map (Science width, gray Greenland)...', flush=True)
+  print('[Fig 1] Generating 2x2 global overview map (Science width, gray Greenland, Addor insets)...', flush=True)
   _set_pub_rc(6.8)
   world = world_all[world_all['name'] != 'Antarctica'].copy()
   gauges = load_gauges_tiered()
-  t4 = pd.read_parquet(TIER_DIR / 'tier4_all_publicly_knowable_121819.parquet')
+  t4 = pd.read_parquet(TIER_DIR / 'tier4_all_discoverable.parquet')
   t4.index = norm_hybas_id(t4.index)
 
-  # Exclude Greenland (hybas_9*) before computing dissimilarity percentile & rasterizing
+  # Load L12 basin areas (km^2) for area-weighted distribution insets
+  topo_pq = CANON_DIR / 'attributes' / 'hybas_l12_topology_and_runoff.parquet'
+  if topo_pq.exists():
+    df_att = pd.read_parquet(topo_pq, columns=['HYBAS_ID', 'SUB_AREA'])
+    df_att.index = norm_hybas_id(df_att['HYBAS_ID'])
+    df_att = df_att[~df_att.index.duplicated(keep='first')].reindex(t4.index)
+    sub_area = pd.to_numeric(df_att['SUB_AREA'], errors='coerce').fillna(0.0).values
+  else:
+    df_att = pd.read_csv(
+        file_paths.HYBAS_ATTRIBUTES_PATH,
+        usecols=['Unnamed: 0', 'HYDRO_ATLAS:SUB_AREA'],
+        index_col='Unnamed: 0',
+    )
+    df_att.index = norm_hybas_id(df_att.index)
+    df_att = df_att[~df_att.index.duplicated(keep='first')].reindex(t4.index)
+    sub_area = pd.to_numeric(df_att['HYDRO_ATLAS:SUB_AREA'], errors='coerce').fillna(0.0).values
+
+  # Exclude Greenland (hybas_9*) before computing dissimilarity percentile (vs gauged basins) & rasterizing
   not_grl = ~pd.Series(t4.index).str.startswith('hybas_9').values
-  r_if = pd.Series(np.nan, index=t4.index)
-  r_oc = pd.Series(np.nan, index=t4.index)
-  r_lo = pd.Series(np.nan, index=t4.index)
-  r_if.loc[not_grl] = (-t4.loc[not_grl, 'anomaly_score_if']).rank(pct=True) * 100.0
-  r_oc.loc[not_grl] = (-t4.loc[not_grl, 'anomaly_score_ocsvm']).rank(pct=True) * 100.0
-  r_lo.loc[not_grl] = (-t4.loc[not_grl, 'anomaly_score_lof']).rank(pct=True) * 100.0
-  t4['dissim_pct'] = (r_if + r_oc + r_lo) / 3.0
+  t4['dissim_pct'] = np.nan
+  t4.loc[not_grl, 'dissim_pct'] = gauged_ref_pct(t4.loc[not_grl], pd.Index(t4.index[not_grl])).values
   t4['never_flag'] = np.where(not_grl, (t4['intergauge_reach_area_km2'] < 0).astype(np.float32), np.nan)
   t4['frac_pct'] = np.where(not_grl, (t4['U_net_tree_phys'] * 100.0).astype(np.float32), np.nan)
 
@@ -368,7 +384,7 @@ def build_fig1(world_all: gpd.GeoDataFrame, out_dir: Path) -> Path:
       left=0.010, right=0.990, top=0.945, bottom=0.135,
   )
 
-  # (a) 121,819 deduplicated physical stream gauges
+  # (a) 119,169 deduplicated physical stream gauges
   ax = fig.add_subplot(gs[0, 0])
   world.plot(ax=ax, color='#F1F5F9', edgecolor='#CBD5E1', linewidth=0.22, zorder=1, aspect=None)
   _overlay_greenland_gray(ax, world, zorder=1.5)
@@ -386,13 +402,24 @@ def build_fig1(world_all: gpd.GeoDataFrame, out_dir: Path) -> Path:
   ax.set_title(f'(a) Discoverable stream gauges ({len(gauges):,}; {n_ctry} countries)', fontsize=7.2, fontweight='bold', loc='left', pad=3.5)
   handles_a = [
       Line2D([0], [0], marker='o', color='w', markerfacecolor=COL_T1, markersize=4.5, label=f'Open datasets ({int(gauges["in_tier_1"].sum()):,})'),
-      Line2D([0], [0], marker='o', color='w', markerfacecolor=COL_T2, markersize=4.5, label=f'Public discharge ({int(gauges["in_tier_2"].sum()):,})'),
+      Line2D([0], [0], marker='o', color='w', markerfacecolor=COL_T2, markersize=4.5, label=f'Open discharge ({int(gauges["in_tier_2"].sum()):,})'),
       Line2D([0], [0], marker='o', color='w', markerfacecolor=COL_T3, markersize=4.5, label=f'All discoverable ({len(gauges):,})'),
   ]
   ax.legend(
       handles=handles_a, loc='lower left', frameon=True, facecolor='white', edgecolor='#CBD5E1',
       framealpha=0.95, fontsize=6.0, borderpad=0.30, handletextpad=0.28, labelspacing=0.20,
   )
+
+  # Dynamic U_never land range across 6 hydrofabrics if available
+  never_lbl = 'Never passes a gauge (32–36%)'
+  m2_p = HYDRO_RESULTS_DIR / 'master' / 'master_2d_metrics.parquet'
+  if m2_p.exists():
+    m2_tmp = pd.read_parquet(m2_p)
+    six_hf = ['hydrosheds_l12', 'hydrosheds_rivers', 'merit_basins', 'tdx_hydro', 'grit_v06_mainstem_tree', 'grit_v06_bifurcating_dag']
+    c2_tmp = filter_canonical_2d(m2_tmp[(m2_tmp['domain_name'] == 'common_no_grl_ata') & (m2_tmp['hydrofabric'].isin(six_hf))])
+    nv_vals = c2_tmp[(c2_tmp['metric'] == 'U_never') & (c2_tmp['weight'] == 'area') & (c2_tmp['tier'] == 'tier3_all_known')]['value'].astype(float).values * 100.0
+    if len(nv_vals) > 0:
+      never_lbl = f'Never passes a gauge ({nv_vals.min():.0f}–{nv_vals.max():.0f}%)'
 
   # (b) Never passes a gauge
   ax = fig.add_subplot(gs[0, 1])
@@ -406,7 +433,7 @@ def build_fig1(world_all: gpd.GeoDataFrame, out_dir: Path) -> Path:
   ax.set_axis_off()
   ax.set_title('(b) Land whose runoff never passes any gauge', fontsize=7.2, fontweight='bold', loc='left', pad=3.5)
   handles_b = [
-      Patch(facecolor='#C0392B', edgecolor='none', label='Never passes a gauge (32–35%)'),
+      Patch(facecolor='#C0392B', edgecolor='none', label=never_lbl),
       Patch(facecolor='#BDD7EB', edgecolor='none', label='Drains past ≥1 gauge'),
       Patch(facecolor='#E2E8F0', edgecolor='#94A3B8', linewidth=0.4, label='Greenland (excluded)'),
   ]
@@ -415,7 +442,54 @@ def build_fig1(world_all: gpd.GeoDataFrame, out_dir: Path) -> Path:
       framealpha=0.95, fontsize=6.0, borderpad=0.30, handletextpad=0.32, labelspacing=0.20,
   )
 
-  # (c) Continuous fractional ungauged watershed area
+  def _add_addor_inset(
+      ax_map,
+      vals: np.ndarray,
+      areas: np.ndarray,
+      cmap_bar,
+      vmin_c: float,
+      vmax_c: float,
+      xtick_lbls: list[str],
+      vline: float | None = None,
+  ) -> None:
+    valid = np.isfinite(vals) & np.isfinite(areas) & (areas > 0)
+    v_use = np.clip(vals[valid], 0.0, 100.0)
+    w_use = areas[valid]
+    bins = np.linspace(0.0, 100.0, 11)
+    hist_w, _ = np.histogram(v_use, bins=bins, weights=w_use)
+    pct_land = hist_w / max(float(w_use.sum()), 1e-9) * 100.0
+    mids = 0.5 * (bins[:-1] + bins[1:])
+
+    card = FancyBboxPatch(
+        (0.012, 0.025), 0.252, 0.295,
+        boxstyle='round,pad=0.006,rounding_size=0.012',
+        transform=ax_map.transAxes,
+        facecolor='white', edgecolor='#CBD5E1', linewidth=0.45, alpha=0.93, zorder=5.0,
+    )
+    ax_map.add_patch(card)
+    ax_in = ax_map.inset_axes([0.074, 0.105, 0.178, 0.165], zorder=6.0)
+    ax_in.set_facecolor('none')
+    bar_cols = [cmap_bar(np.clip((m - vmin_c) / max(vmax_c - vmin_c, 1e-6), 0.0, 1.0)) for m in mids]
+    ax_in.bar(mids, pct_land, width=8.8, color=bar_cols, edgecolor='#334155', linewidth=0.32, zorder=3)
+    if vline is not None:
+      ax_in.axvline(vline, color='#0F172A', linestyle='--', linewidth=0.65, zorder=4)
+    ymax_in = float(np.ceil(max(pct_land.max() * 1.12, 10.0) / 10.0) * 10.0)
+    ax_in.set_xlim(-2.0, 102.0)
+    ax_in.set_ylim(0.0, ymax_in)
+    ax_in.set_xticks([0, 50, 100])
+    ax_in.set_xticklabels(xtick_lbls, fontsize=6.0)
+    top_yt = int(round(pct_land.max() / 5.0) * 5)
+    top_yt = max(10, min(int(ymax_in), top_yt))
+    ax_in.set_yticks([0, top_yt])
+    ax_in.set_yticklabels(['0', f'{top_yt}%'], fontsize=6.0)
+    ax_in.tick_params(axis='both', length=1.8, pad=1.2, width=0.45)
+    ax_in.set_title('% of land', fontsize=6.0, fontweight='bold', loc='left', pad=1.5)
+    ax_in.spines['top'].set_visible(False)
+    ax_in.spines['right'].set_visible(False)
+    ax_in.spines['left'].set_linewidth(0.45)
+    ax_in.spines['bottom'].set_linewidth(0.45)
+
+  # (c) Continuous fractional ungauged watershed area + Addor distribution inset
   ax = fig.add_subplot(gs[1, 0])
   world.plot(ax=ax, color='#F1F5F9', edgecolor='none', zorder=1, aspect=None)
   im_c = ax.imshow(frac_grid, origin='upper', extent=extent, cmap=cmap_frac, vmin=0, vmax=100, interpolation='nearest', zorder=2)
@@ -426,6 +500,7 @@ def build_fig1(world_all: gpd.GeoDataFrame, out_dir: Path) -> Path:
   ax.set_aspect(1.0)
   ax.set_axis_off()
   ax.set_title('(c) Fractional ungauged watershed area (HydroSHEDS L12)', fontsize=7.2, fontweight='bold', loc='left', pad=3.5)
+  _add_addor_inset(ax, t4['frac_pct'].values, sub_area, cmap_frac, 0.0, 100.0, ['0%', '50%', '100%'])
   cax_c = fig.add_axes([0.055, 0.080, 0.40, 0.020])
   cb_c = fig.colorbar(im_c, cax=cax_c, orientation='horizontal')
   cb_c.set_ticks([0, 20, 40, 60, 80, 100])
@@ -433,7 +508,7 @@ def build_fig1(world_all: gpd.GeoDataFrame, out_dir: Path) -> Path:
   cb_c.ax.tick_params(labelsize=6.2, pad=1.5)
   cb_c.set_label('Fractional ungaugedness (0% gauged, 100% ungauged)', fontsize=6.3, fontweight='bold', labelpad=2.5)
 
-  # (d) Climate & landscape dissimilarity percentile
+  # (d) Climate & landscape dissimilarity percentile + Addor distribution inset
   ax = fig.add_subplot(gs[1, 1])
   world.plot(ax=ax, color='#F1F5F9', edgecolor='none', zorder=1, aspect=None)
   im_d = ax.imshow(dissim_grid, origin='upper', extent=extent, cmap=cmap_dissim, vmin=5, vmax=95, interpolation='nearest', zorder=2)
@@ -444,6 +519,7 @@ def build_fig1(world_all: gpd.GeoDataFrame, out_dir: Path) -> Path:
   ax.set_aspect(1.0)
   ax.set_axis_off()
   ax.set_title('(d) Climate and landscape dissimilarity to gauged basins', fontsize=7.2, fontweight='bold', loc='left', pad=3.5)
+  _add_addor_inset(ax, t4['dissim_pct'].values, sub_area, cmap_dissim, 5.0, 95.0, ['0', '50', '100'], vline=50.0)
   cax_d = fig.add_axes([0.545, 0.080, 0.40, 0.020])
   cb_d = fig.colorbar(im_d, cax=cax_d, orientation='horizontal', extend='both')
   cb_d.set_ticks([10, 30, 50, 70, 90])
@@ -468,9 +544,9 @@ def build_fig2(out_dir: Path) -> Path:
   m1 = pd.read_parquet(HYDRO_RESULTS_DIR / 'master' / 'master_1d_metrics.parquet')
 
   tiers = [
-      ('tier1_open_compilations', COL_T1, 'Standardized open (34,577)'),
-      ('tier2_public_discharge', COL_T2, 'Public discharge (93,827)'),
-      ('tier3_all_known', COL_T3, 'All discoverable (121,819)'),
+      ('tier1_open_compilations', COL_T1, 'Open datasets (32,369)'),
+      ('tier2_public_discharge', COL_T2, 'Open discharge (74,078)'),
+      ('tier3_all_known', COL_T3, 'All discoverable (119,169)'),
   ]
   hy_levels = [f'hydrosheds_l{i:02d}' for i in range(1, 13)]
   fine_fabrics = [
@@ -627,7 +703,9 @@ def build_fig2(out_dir: Path) -> Path:
   tier_cols = {'tier1_open_compilations': COL_T1, 'tier2_public_discharge': COL_T2, 'tier3_all_known': COL_T3}
 
   def _fmt_rng(lo: float, hi: float) -> str:
-    return f'{lo:.0f}%' if int(round(lo)) == int(round(hi)) else f'{lo:.0f}–{hi:.0f}%'
+    ilo = int(np.floor(lo + 0.5 + 1e-9))
+    ihi = int(np.floor(hi + 0.5 + 1e-9))
+    return f'{ilo}%' if ilo == ihi else f'{ilo}–{ihi}%'
 
   for kind, y, lbl, spec in plotted_rows:
     if kind.startswith('sec_'):
@@ -716,9 +794,9 @@ def build_fig3(world_all: gpd.GeoDataFrame, basins: pd.DataFrame, out_dir: Path)
   no_grl = basins[basins['country_name'].notna() & (basins['country_name'] != 'Greenland')].copy()
   no_grl['continent'] = no_grl['country_name'].map(c2cont)
 
-  t1 = pd.read_parquet(TIER_DIR / 'tier_caravan_estreams_34577.parquet')
-  t2 = pd.read_parquet(TIER_DIR / 'tier_public_discharge_93827.parquet')
-  t4 = pd.read_parquet(TIER_DIR / 'tier4_all_publicly_knowable_121819.parquet')
+  t1 = pd.read_parquet(TIER_DIR / 'tier1_open_compilations.parquet')
+  t2 = pd.read_parquet(TIER_DIR / 'tier2_public_discharge.parquet')
+  t4 = pd.read_parquet(TIER_DIR / 'tier4_all_discoverable.parquet')
   for df in (t1, t2, t4):
     df.index = norm_hybas_id(df.index)
 
@@ -970,9 +1048,9 @@ def build_fig3(world_all: gpd.GeoDataFrame, basins: pd.DataFrame, out_dir: Path)
 
   # Top legend (gauge tiers) + bottom legend (alerting status & trend lines)
   leg_top = [
-      Line2D([0], [0], marker='D', color='none', markerfacecolor=COL_T1, markeredgecolor='white', markersize=5.2, label='Standardized open (34,577)'),
-      Line2D([0], [0], marker='s', color='none', markerfacecolor=COL_T2, markeredgecolor='white', markersize=5.0, label='Public discharge (93,827)'),
-      Line2D([0], [0], marker='o', color='none', markerfacecolor=COL_T3, markeredgecolor='white', markersize=5.4, label='All discoverable (121,819)'),
+      Line2D([0], [0], marker='D', color='none', markerfacecolor=COL_T1, markeredgecolor='white', markersize=5.2, label='Open datasets (32,369)'),
+      Line2D([0], [0], marker='s', color='none', markerfacecolor=COL_T2, markeredgecolor='white', markersize=5.0, label='Open discharge (74,078)'),
+      Line2D([0], [0], marker='o', color='none', markerfacecolor=COL_T3, markeredgecolor='white', markersize=5.4, label='All discoverable (119,169)'),
   ]
   fig.legend(
       handles=leg_top, loc='upper center', bbox_to_anchor=(0.53, 0.990), ncol=3,
@@ -1022,13 +1100,13 @@ def build_fig4_optional(world_all: gpd.GeoDataFrame, out_dir: Path) -> Path | No
   pts = df_b.dropna(subset=['lat', 'lon']).copy()
   pts = pts[pts['country_name'] != 'Greenland'].copy()
 
-  col_121k = 'dnet__tier4_all_publicly_knowable_121819__111_all_three_combined_snap'
+  col_121k = 'dnet__tier4_all_discoverable__111_all_three_combined_snap'
   col_univ = 'dnet__tier5_universal_idealized_ceiling__111_all_three_combined_snap'
 
   tot_m = float(df_sum.loc[('tier1a_active_post2016_ccby_8811', '000_global_train_joint'), 'E_total_global']) / 1e6
   w_today_m = float(df_sum.loc[('tier1a_active_post2016_ccby_8811', '000_global_train_joint'), 'warned_global']) / 1e6
-  g_121k_m = float(df_sum.loc[('tier4_all_publicly_knowable_121819', '111_all_three_combined_snap'), 'delta_net_global']) / 1e6
-  g_121k_cap = float(df_sum.loc[('tier4_all_publicly_knowable_121819', '111_all_three_combined_snap'), 'delta_net_nosys115']) / 1e6
+  g_121k_m = float(df_sum.loc[('tier4_all_discoverable', '111_all_three_combined_snap'), 'delta_net_global']) / 1e6
+  g_121k_cap = float(df_sum.loc[('tier4_all_discoverable', '111_all_three_combined_snap'), 'delta_net_nosys115']) / 1e6
   g_u_ceil_m = float(df_sum.loc[('tier5_universal_idealized_ceiling', '111_all_three_combined_snap'), 'delta_net_global']) / 1e6
   g_u_ceil_cap = float(df_sum.loc[('tier5_universal_idealized_ceiling', '111_all_three_combined_snap'), 'delta_net_nosys115']) / 1e6
   if ('tier5_universal_no_ood_clamp', '111_all_three_combined_snap') in df_sum.index:
@@ -1069,7 +1147,7 @@ def build_fig4_optional(world_all: gpd.GeoDataFrame, out_dir: Path) -> Path | No
 
   sc_a = _plot_panel(fig.add_subplot(gs[0, 0]), 'E_total', cmap_exp, norm_exp, f'(a) Annual flood exposure ({tot_m:.2f}M persons/yr)')
   _plot_panel(fig.add_subplot(gs[0, 1]), 'warned_t1a', cmap_exp, norm_exp, f'(b) Forecasted today by open ML ({w_today_m:.2f}M persons/yr)')
-  sc_c = _plot_panel(fig.add_subplot(gs[1, 0]), col_121k, cmap_gain, norm_gain, f'(c) Gain: 121,819 existing gauges (+{g_121k_m:.2f}M persons/yr)')
+  sc_c = _plot_panel(fig.add_subplot(gs[1, 0]), col_121k, cmap_gain, norm_gain, f'(c) Gain: 119,169 existing gauges (+{g_121k_m:.2f}M persons/yr)')
   _plot_panel(fig.add_subplot(gs[1, 1]), col_univ, cmap_gain, norm_gain, f'(d) Gain: universal gauging ({u_lbl})')
 
   # Shared horizontal colorbar for row 1 (exposure & forecasted today)
@@ -1160,7 +1238,7 @@ def build_fig5_optional(world_all: gpd.GeoDataFrame, out_dir: Path) -> Path | No
       bar_y.append(yy)
       bar_lbls.append(f'{r_lbl.split(chr(10))[0]} ({mode_lbl})')
       w0 = get_v('tier1a_active_post2016_ccby_8811', '000_global_train_joint', f'{w_pref}{r_suf}')
-      d121 = max(0.0, get_v('tier4_all_publicly_knowable_121819', '111_all_three_combined_snap', f'{d_pref}{r_suf}'))
+      d121 = max(0.0, get_v('tier4_all_discoverable', '111_all_three_combined_snap', f'{d_pref}{r_suf}'))
       if has_nood:
         d_nood = max(d121, get_v('tier5_universal_no_ood_clamp', '111_all_three_combined_snap', f'{d_pref}{r_suf}'))
       else:
@@ -1201,9 +1279,9 @@ def build_fig5_optional(world_all: gpd.GeoDataFrame, out_dir: Path) -> Path | No
   # Top shared legend for panel (a) segments
   seg_handles = [
       Patch(facecolor='#2563EB', edgecolor='white', label='Today'),
-      Patch(facecolor='#0D9488', edgecolor='white', label='+Share 121.8k'),
+      Patch(facecolor='#0D9488', edgecolor='white', label='Existing 119.2k'),
       Patch(facecolor='#D97706', edgecolor='white', label='+New gauges (local)'),
-      Patch(facecolor='#FDE68A', edgecolor='#B45309', hatch='///', label='+Unsampled-climate bound'),
+      Patch(facecolor='#FDE68A', edgecolor='#B45309', hatch='///', label='+Under-sampled climates'),
       Patch(facecolor='#E2E8F0', edgecolor='#CBD5E1', label='Other limits'),
   ]
   fig.legend(
@@ -1215,9 +1293,9 @@ def build_fig5_optional(world_all: gpd.GeoDataFrame, out_dir: Path) -> Path | No
   # ---- Panel (b): Tiered CAP-gap Exposure Gain (M/yr) with 95% CIs (Recall vs CSI/R) ----
   ax_b = fig.add_subplot(gs[0, 1])
   stage_specs = [
-      ('tier_caravan_estreams_34577', '34.6k\nopen'),
-      ('tier_public_discharge_93827', '93.8k\npublic'),
-      ('tier4_all_publicly_knowable_121819', '121.8k\nexist.'),
+      ('tier1_open_compilations', '32.4k\nopen'),
+      ('tier2_public_discharge', '74.1k\nopen Q'),
+      ('tier4_all_discoverable', '119.2k\nexist.'),
   ]
   if has_nood:
     stage_specs.append(('tier5_universal_no_ood_clamp', 'Univ.\n(local)'))
@@ -1263,7 +1341,7 @@ def build_fig5_optional(world_all: gpd.GeoDataFrame, out_dir: Path) -> Path | No
   mech_rows = [
       ('000_global_train_joint', '000_train', 'Pool history\nfor training'),
       ('010_ft_only_snap', '010_ft_only', 'Tune model\nto river (FT)'),
-      ('001_da_only_snap', '001_da_only', 'Update daily\n(DA)'),
+      ('001_da_only_snap', '001_da_only', 'Assimilate live Q\n(DA)'),
       ('111_all_three_combined_snap', '111_combined', 'All three\ncombined'),
   ]
   ym = np.arange(len(mech_rows))[::-1]
@@ -1271,14 +1349,14 @@ def build_fig5_optional(world_all: gpd.GeoDataFrame, out_dir: Path) -> Path | No
   v_121, v_nood, v_ceil = [], [], []
   e_121, e_ceil = [], []
   for mk, bmk, _ in mech_rows:
-    v1 = get_v('tier4_all_publicly_knowable_121819', mk, 'delta_net_nosys115')
+    v1 = get_v('tier4_all_discoverable', mk, 'delta_net_nosys115')
     v3 = get_v('tier5_universal_idealized_ceiling', mk, 'delta_net_nosys115')
     v2 = get_v('tier5_universal_no_ood_clamp', mk, 'delta_net_nosys115') if (has_nood and ('tier5_universal_no_ood_clamp', mk) in df_sum.index) else v3
     v_121.append(v1); v_nood.append(v2); v_ceil.append(v3)
-    e_121.append(get_ci_err(f'tier4_all_publicly_knowable_121819__{bmk}', 'delta_nosys115', v1))
+    e_121.append(get_ci_err(f'tier4_all_discoverable__{bmk}', 'delta_nosys115', v1))
     e_ceil.append(get_ci_err(f'tier5_universal_idealized_ceiling__{bmk}', 'delta_nosys115', v3))
 
-  ax_c.barh(ym + hm / 2, v_121, height=hm, color='#0D9488', edgecolor='white', lw=0.45, label='Use 121,819 existing', zorder=3)
+  ax_c.barh(ym + hm / 2, v_121, height=hm, color='#0D9488', edgecolor='white', lw=0.45, label='Existing 119,169 gauges', zorder=3)
   ax_c.barh(ym - hm / 2, v_nood, height=hm, color='#D97706', edgecolor='white', lw=0.45, label='Universal (local gain)', zorder=3)
   ext_ood = [max(0.0, c - n) for n, c in zip(v_nood, v_ceil)]
   if any(x > 0.01 for x in ext_ood):
@@ -1524,7 +1602,7 @@ def main() -> None:
   world_all = load_world() if targets & {'fig1', 'fig3', 'fig4', 'fig5'} else None
   basins = None
   if 'fig3' in targets:
-    t4_idx = pd.read_parquet(TIER_DIR / 'tier4_all_publicly_knowable_121819.parquet', columns=['U_net_tree_phys']).index
+    t4_idx = pd.read_parquet(TIER_DIR / 'tier4_all_discoverable.parquet', columns=['U_net_tree_phys']).index
     basins = load_non_fathom_basin_meta(pd.Index(norm_hybas_id(t4_idx)))
 
   if 'fig1' in targets:

@@ -3,7 +3,7 @@
 
 Produces 8 supplementary figures natively authored at Science full-page width (184 mm = 7.244 in)
 with every rendered font >= 6.0 pt:
-  - Fig_S1_gauge_status_histograms.png: Operational & temporal status of 121,819 stream gauges
+  - Fig_S1_gauge_status_histograms.png: Operational & temporal status of 119,169 stream gauges
     across tiers plus exact histograms of record end year, record length, and latitude.
   - Fig_S2_conceptual_ungaugedness.png: Copies pre-rendered conceptual river-network schematic
     from results/figures/Fig_S3_conceptual_ungaugedness.png (or Fig_S2_conceptual_ungaugedness.png).
@@ -114,19 +114,14 @@ def norm_hybas_id(s: pd.Series | pd.Index) -> np.ndarray:
 
 
 # ==============================================================================
-# FIGURE S1: Operational & Temporal Status Histograms (121,819 Gauges)
+# FIGURE S1: Operational & Temporal Status Histograms (119,169 Physical Gauges)
 # ==============================================================================
 def build_fig_s1(out_dir: Path) -> Path:
   print('[Fig S1] Rendering gauge operational & temporal status histograms...', flush=True)
   _set_pub_rc(6.5)
   g = pd.read_parquet(CANON_DIR / 'attributes' / 'global_gauges_deduplicated.parquet')
-  has_caravan = g['all_source_datasets'].str.contains('caravan', case=False, na=False)
-  has_estreams = g['all_source_datasets'].str.contains('estream', case=False, na=False)
-  g['tier1'] = has_caravan | has_estreams
-  g['tier2'] = (
-      g['best_data_access_policy'].isin({'open_public_api_or_bulk', 'open_academic_compilation'})
-      & g['best_observation_type'].isin({'daily_discharge', 'monthly_discharge'})
-  )
+  g['tier1'] = g['in_tier_1'].astype(bool)
+  g['tier2'] = g['in_tier_2'].astype(bool)
 
   vr = g['verified_record_end_year']
   ar = g['active_reason']
@@ -157,9 +152,9 @@ def build_fig_s1(out_dir: Path) -> Path:
   # (a) Gauge status across data-access tiers
   ax_a = axes[0, 0]
   tiers = [
-      ('All Discoverable\n(121,819)', np.ones(len(g), dtype=bool)),
-      ('Public Discharge\n(93,827)', g['tier2'].values),
-      ('Standardized Open\n(34,577)', g['tier1'].values),
+      (f'All Discoverable\n({len(g):,})', np.ones(len(g), dtype=bool)),
+      (f'Open Discharge\n({int(g["tier2"].sum()):,})', g['tier2'].values),
+      (f'Open Datasets\n({int(g["tier1"].sum()):,})', g['tier1'].values),
   ]
   cats = [
       ('Recent data (>=2016)', COL_T1, 'Recent data (≥2016)'),
@@ -193,8 +188,8 @@ def build_fig_s1(out_dir: Path) -> Path:
   bins_end = np.arange(1939.5, 2027.5, 1.0)
   for mask, col, tier_lbl, lw, af in [
       (np.ones(len(g), dtype=bool), COL_T3, 'All discoverable', 1.35, 0.10),
-      (g['tier2'].values, COL_T2, 'Public discharge', 1.25, 0.08),
-      (g['tier1'].values, COL_T1, 'Standardized open', 1.25, 0.12),
+      (g['tier2'].values, COL_T2, 'Open discharge', 1.25, 0.08),
+      (g['tier1'].values, COL_T1, 'Open datasets', 1.25, 0.12),
   ]:
     vals_all = g.loc[mask, 'verified_record_end_year'].dropna().values
     vals_win = vals_all[(vals_all >= 1940) & (vals_all <= 2026)]
@@ -202,12 +197,16 @@ def build_fig_s1(out_dir: Path) -> Path:
     ax_b.hist(vals_win, bins=bins_end, weights=w, histtype='stepfilled', color=col, alpha=af, edgecolor='none', zorder=2)
     ax_b.hist(vals_win, bins=bins_end, weights=w, histtype='step', color=col, linewidth=lw, label=f'{tier_lbl} ({len(vals_all):,})', zorder=4)
 
+  n_le15 = int((vr.notna() & (vr <= 2015)).sum())
+  n_ge16 = int((vr.notna() & (vr >= 2016)).sum())
+  n_nodate = int(vr.isna().sum())
+  pct_nodate = 100.0 * n_nodate / len(g)
   ax_b.axvline(2015.5, color='#0F172A', linestyle='--', linewidth=0.95, zorder=5)
   ax_b.axvspan(2015.5, 2029.0, color='#E0F2FE', alpha=0.35, zorder=1)
-  ax_b.text(2013.5, 0.63, '≤2015\n(28,783)', transform=ax_b.get_xaxis_transform(), ha='right', va='top', fontsize=6.0, fontweight='bold', color='#9A3412')
-  ax_b.text(2016.5, 0.96, '≥2016\n(45,353)', transform=ax_b.get_xaxis_transform(), ha='left', va='top', fontsize=6.0, fontweight='bold', color='#075985')
+  ax_b.text(2013.5, 0.63, f'≤2015\n({n_le15:,})', transform=ax_b.get_xaxis_transform(), ha='right', va='top', fontsize=6.0, fontweight='bold', color='#9A3412')
+  ax_b.text(2016.5, 0.96, f'≥2016\n({n_ge16:,})', transform=ax_b.get_xaxis_transform(), ha='left', va='top', fontsize=6.0, fontweight='bold', color='#075985')
   ax_b.text(
-      0.03, 0.35, '47,683 gauges (39.1%)\nhave no verified end date',
+      0.03, 0.35, f'{n_nodate:,} gauges ({pct_nodate:.1f}%)\nhave no verified end date',
       transform=ax_b.transAxes, ha='left', va='center', fontsize=6.0,
       bbox=dict(boxstyle='round,pad=0.20', facecolor='#F8FAFC', edgecolor='#CBD5E1', alpha=0.95),
   )
@@ -253,9 +252,9 @@ def build_fig_s1(out_dir: Path) -> Path:
   m_inactive = g['status_4'] == 'Apparently inactive'
   m_unknown = g['status_4'] == 'Unknown / undated'
   for mask, col, lbl in [
-      (m_active_all, COL_T1, f'Recent / active ({int(m_active_all.sum()):,}; 41.5%)'),
-      (m_inactive, COL_T3, f'Inactive ({int(m_inactive.sum()):,}; 24.8%)'),
-      (m_unknown, COL_UNK, f'Unknown ({int(m_unknown.sum()):,}; 33.7%)'),
+      (m_active_all, COL_T1, f'Recent / active ({int(m_active_all.sum()):,}; {100.0 * m_active_all.mean():.1f}%)'),
+      (m_inactive, COL_T3, f'Inactive ({int(m_inactive.sum()):,}; {100.0 * m_inactive.mean():.1f}%)'),
+      (m_unknown, COL_UNK, f'Unknown ({int(m_unknown.sum()):,}; {100.0 * m_unknown.mean():.1f}%)'),
   ]:
     _step_hist(ax_d, g.loc[mask, 'latitude'].dropna().values, bins_lat, col, lbl, lw=1.35, alpha_fill=0.12)
 
@@ -602,9 +601,9 @@ def build_fig_s7_optional(out_dir: Path) -> Path | None:
 
   stage_defs = [
       ('Today', 'tier1a_active_post2016_ccby_8811', '000_global_train_joint'),
-      ('34.6k', 'tier_caravan_estreams_34577', '111_all_three_combined_snap'),
-      ('93.8k', 'tier_public_discharge_93827', '111_all_three_combined_snap'),
-      ('121.8k', 'tier4_all_publicly_knowable_121819', '111_all_three_combined_snap'),
+      ('32.4k', 'tier1_open_compilations', '111_all_three_combined_snap'),
+      ('74.1k', 'tier2_public_discharge', '111_all_three_combined_snap'),
+      ('119.2k', 'tier4_all_discoverable', '111_all_three_combined_snap'),
   ]
   if ('tier5_universal_no_ood_clamp', '111_all_three_combined_snap') in pf1.index:
     stage_defs.append(('Univ. (local)', 'tier5_universal_no_ood_clamp', '111_all_three_combined_snap'))
@@ -660,7 +659,7 @@ def build_fig_s7_optional(out_dir: Path) -> Path | None:
   ax_a.scatter([cp_x[-1]], [cp_y[-1]], s=42, color='#D97706', edgecolor='white', lw=0.6, zorder=7)
 
   ax_a.annotate('Today', xy=(cp_x[0], cp_y[0]), xytext=(cp_x[0] - 2.0, cp_y[0] - 5.2), ha='center', va='top', fontsize=6.1, fontweight='bold', color='#1D4ED8', arrowprops=dict(arrowstyle='-', color='#93C5FD', lw=0.7))
-  ax_a.annotate('121.8k', xy=(cp_x[3], cp_y[3]), xytext=(cp_x[3] - 6.5, cp_y[3] + 4.8), ha='center', va='bottom', fontsize=6.1, fontweight='bold', color='#0F766E', arrowprops=dict(arrowstyle='-', color='#5EEAD4', lw=0.7))
+  ax_a.annotate('119.2k', xy=(cp_x[3], cp_y[3]), xytext=(cp_x[3] - 6.5, cp_y[3] + 4.8), ha='center', va='bottom', fontsize=6.1, fontweight='bold', color='#0F766E', arrowprops=dict(arrowstyle='-', color='#5EEAD4', lw=0.7))
   ax_a.annotate('Universal', xy=(cp_x[-1], cp_y[-1]), xytext=(cp_x[-1] + 2.0, cp_y[-1] - 7.8), ha='center', va='top', fontsize=6.1, fontweight='bold', color='#B45309', arrowprops=dict(arrowstyle='-', color='#FDBA74', lw=0.7))
 
   pr_handles = [
@@ -691,7 +690,7 @@ def build_fig_s7_optional(out_dir: Path) -> Path | None:
   regimes = [(lbl, col) for lbl, col in regimes if col in pf1.columns]
   yr = np.arange(len(regimes))[::-1]
   t_base = ('tier1a_active_post2016_ccby_8811', '000_global_train_joint')
-  t_121 = ('tier4_all_publicly_knowable_121819', '111_all_three_combined_snap')
+  t_121 = ('tier4_all_discoverable', '111_all_three_combined_snap')
   t_nood = ('tier5_universal_no_ood_clamp', '111_all_three_combined_snap')
   t_ceil = ('tier5_universal_idealized_ceiling', '111_all_three_combined_snap')
 
@@ -716,7 +715,7 @@ def build_fig_s7_optional(out_dir: Path) -> Path | None:
   ax_b.set_xlim(0, max(58.0, max(sh_share_ceil + sh_share_nood) + 14.0))
   ax_b.set_ylim(-0.60, len(regimes) - 0.15)
   ax_b.tick_params(axis='x', labelsize=6.2)
-  ax_b.set_xlabel('CAP-gap deficit closed by 121.8k existing gauges (%)', fontsize=6.6, fontweight='bold')
+  ax_b.set_xlabel('CAP-gap deficit closed by 119.2k existing gauges (%)', fontsize=6.6, fontweight='bold')
   ax_b.set_title('(b) Directional invariance across action regimes', fontsize=7.2, fontweight='bold', loc='left', pad=5)
   ax_b.legend(loc='upper right', frameon=True, facecolor='white', edgecolor='#CBD5E1', fontsize=6.0, borderpad=0.25)
   ax_b.grid(axis='x', linestyle='--', alpha=0.35)

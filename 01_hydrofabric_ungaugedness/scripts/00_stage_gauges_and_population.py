@@ -55,13 +55,20 @@ def stage_gauges() -> dict:
         idx_pref = set("CARAVAN_" + str(x).upper() for x in grdc_8811.index)
         baseline_cids = set(a[a["native_station_id"].astype(str).str.upper().isin(idx_pref)]["canonical_gauge_id"])
 
-        has_caravan = g["all_source_datasets"].str.contains("caravan", case=False, na=False)
-        has_estreams = g["all_source_datasets"].str.contains("estream", case=False, na=False)
-        in_tier_1 = has_caravan | has_estreams
-
-        open_policies = {"open_public_api_or_bulk", "open_academic_compilation"}
-        q_obs = {"daily_discharge", "monthly_discharge"}
-        in_tier_2 = g["best_data_access_policy"].isin(open_policies) & g["best_observation_type"].isin(q_obs)
+        if "in_tier_1" in g.columns and "in_tier_2" in g.columns:
+            in_tier_1 = g["in_tier_1"].astype(bool).to_numpy()
+            in_tier_2 = g["in_tier_2"].astype(bool).to_numpy()
+        else:
+            open_policies = {"open_public_api_or_bulk", "open_academic_compilation"}
+            q_obs = {"daily_discharge", "monthly_discharge"}
+            in_tier_1 = (
+                (g["best_data_access_policy"] == "open_academic_compilation")
+                & g["best_observation_type"].isin(q_obs)
+            ).to_numpy()
+            in_tier_2 = (
+                g["best_data_access_policy"].isin(open_policies)
+                & g["best_observation_type"].isin(q_obs)
+            ).to_numpy()
         in_tier_3 = np.ones(len(g), dtype=bool)
 
         in_tier_baseline = g["canonical_gauge_id"].isin(baseline_cids).to_numpy()
@@ -89,8 +96,8 @@ def stage_gauges() -> dict:
         clean = g[keep_cols].copy()
         clean["is_active"] = is_active
         clean["in_tier_baseline"] = in_tier_baseline
-        clean["in_tier_1"] = in_tier_1.to_numpy()
-        clean["in_tier_2"] = in_tier_2.to_numpy()
+        clean["in_tier_1"] = in_tier_1
+        clean["in_tier_2"] = in_tier_2
         clean["in_tier_3"] = in_tier_3
         clean["in_tier_1_active"] = clean["in_tier_1"] & clean["is_active"]
         clean["in_tier_2_active"] = clean["in_tier_2"] & clean["is_active"]
@@ -105,9 +112,9 @@ def stage_gauges() -> dict:
             "Download the Zenodo data archive and set GEO_BIAS_DATA_DIR."
         )
 
-    assert int(clean["in_tier_3"].sum()) == 121_819
-    assert int(clean["in_tier_2"].sum()) == 93_827
-    assert int(clean["in_tier_1"].sum()) == 34_577
+    assert int(clean["in_tier_3"].sum()) == 119_169
+    assert int(clean["in_tier_2"].sum()) == 74_078
+    assert int(clean["in_tier_1"].sum()) == 32_369
     assert 8_050 <= int(clean["in_tier_baseline"].sum()) <= 8_120
 
     summary = {

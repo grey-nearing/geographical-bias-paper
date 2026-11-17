@@ -4,7 +4,7 @@
 Produces strictly non-Fathom outputs in `--out-dir` (default: `$GEO_BIAS_DATA_DIR/round2/tables`),
 numbered strictly in order of first citation in the Science manuscript (0 standalone main tables):
   - Table_S1_gauge_status.csv: Mutually exclusive operational & temporal status
-    breakdown of 34,577 / 93,827 / 121,819 stream gauges under the uniform 2016 cutoff
+    breakdown of 32,369 / 74,078 / 119,169 stream gauges under the uniform 2016 cutoff
     plus observation-type breakdowns and strict >=2022 daily-discharge DA counts.
   - Table_S2_ungaugedness_ranges.csv: Multi-hydrofabric min–max ranges across six
     fine-scale global hydrofabrics (U_never, U_net_Eq4, and 1D flow-weighted discharge;
@@ -297,10 +297,10 @@ def build_table_s4(out_dir: Path) -> Path | None:
     return (float(sub.iloc[0]['boot_p025']) / 1e6, float(sub.iloc[0]['boot_p975']) / 1e6)
 
   tier_specs = [
-      ('tier1a_active_post2016_ccby_8811', 'Baseline: Post-2016 Caravan (8,811 records / 8,072 phys stations)'),
-      ('tier_caravan_estreams_34577', 'Tier 1: Standardized Open Compilations (34,577)'),
-      ('tier_public_discharge_93827', 'Tier 2: Confirmed Public Discharge Records (93,827)'),
-      ('tier4_all_publicly_knowable_121819', 'Tier 3: All Publicly Discoverable Gauges (121,819)'),
+      ('tier1a_active_post2016_ccby_8811', 'Baseline: Post-2016 Caravan (8,811 records / 8,075 phys stations)'),
+      ('tier1_open_compilations', 'Tier 1: Openly Redistributed Streamflow Compilations (32,369)'),
+      ('tier2_public_discharge', 'Tier 2: Confirmed Open-License Discharge Records (74,078)'),
+      ('tier4_all_discoverable', 'Tier 3: All Publicly Discoverable Physical Gauges (119,169)'),
       ('tier5_universal_no_ood_clamp', 'Universal Gauging — Direct Local FT+DA (no OOD clamp)'),
       ('tier5_universal_idealized_ceiling', 'Universal Gauging — Idealized Global-Training Ceiling (OOD -> Q75)'),
   ]
@@ -316,7 +316,7 @@ def build_table_s4(out_dir: Path) -> Path | None:
   rows = []
   for tk, t_lbl in tier_specs:
     for mk, b_mk, m_lbl in mech_specs:
-      if 'strict2022' in mk and tk != 'tier4_all_publicly_knowable_121819':
+      if 'strict2022' in mk and tk != 'tier4_all_discoverable':
         continue
       sub = df[(df['tier_key'] == tk) & (df['mechanism'] == mk)]
       if sub.empty:
@@ -414,12 +414,9 @@ def build_table_s1(out_dir: Path) -> Path:
   print('[Table S1] Building operational & temporal gauge status table...', flush=True)
   g = pd.read_parquet(CANON_DIR / 'attributes' / 'global_gauges_deduplicated.parquet')
 
-  m_t1 = g['all_source_datasets'].fillna('').str.contains('caravan|estream', case=False, regex=True)
-  m_t2 = (
-      g['best_data_access_policy'].isin({'open_public_api_or_bulk', 'open_academic_compilation'})
-      & g['best_observation_type'].isin({'daily_discharge', 'monthly_discharge'})
-  )
-  m_t3 = pd.Series(True, index=g.index)
+  m_t1 = g['in_tier_1'].astype(bool)
+  m_t2 = g['in_tier_2'].astype(bool)
+  m_t3 = g['in_tier_3'].astype(bool)
 
   tiers = [
       ('tier1', g[m_t1]),
@@ -439,8 +436,8 @@ def build_table_s1(out_dir: Path) -> Path:
     c_ver_le15 = ar == '6_end_year_lt_2016'
     c_port_inact = ar == '5_portal_status_inactive'
     c_port_act_le15 = (ar == '3_portal_status_active') & vy.notna() & (vy < 2016)
-    c_live_undated = ar == '7_option1_live_portal_undated'
-    c_static_undated = ar == '8_undated_historical_or_unverified'
+    c_live_undated = ar.isin({'7_option1_live_portal_undated', '7_option1_live_operational_portal'})
+    c_static_undated = ar.isin({'8_undated_historical_or_unverified', '8_undated_historical_or_metadata'})
     c_active_group = c_ver_ge16 | c_port_act_nodate
     c_hist_group = c_ver_le15 | c_port_inact | c_port_act_le15
     c_unclass_group = c_live_undated | c_static_undated
@@ -536,7 +533,7 @@ def build_table_s3(out_dir: Path) -> Path:
   df_map = df_map.drop_duplicates('hid').set_index('hid')
   df['country_name'] = df_map['country_name_clean'].reindex(all_ids)
 
-  t4 = pd.read_parquet(TIER_DIR / 'tier4_all_publicly_knowable_121819.parquet', columns=['U_net_tree_phys'])
+  t4 = pd.read_parquet(TIER_DIR / 'tier4_all_discoverable.parquet', columns=['U_net_tree_phys'])
   t4.index = _norm_hybas(t4.index)
   df['u4'] = t4['U_net_tree_phys'].reindex(all_ids).astype(np.float64)
   df['u4_area'] = df['u4'] * df['sub_area']
@@ -566,7 +563,7 @@ def build_table_s3(out_dir: Path) -> Path:
   c2iso = dict(zip(world['map_name'], world['iso_clean']))
 
   gauges = pd.read_parquet(CANON_DIR / 'attributes' / 'global_gauges_deduplicated.parquet')
-  t1 = gauges[gauges['all_source_datasets'].fillna('').str.contains('caravan|estream', case=False, regex=True)].copy()
+  t1 = gauges[gauges['in_tier_1'].astype(bool)].copy()
   pts = gpd.GeoDataFrame(t1, geometry=gpd.points_from_xy(t1['longitude'], t1['latitude']), crs='EPSG:4326')
   joined = gpd.sjoin(pts, world[['map_name', 'geometry']], how='left', predicate='within')
   open_cnt = joined.groupby('map_name').size()
@@ -837,7 +834,7 @@ def build_table_s7(out_dir: Path) -> Path:
     df_t.index = _norm_hybas(df_t.index)
     return df_t.reindex(all_ids)
 
-  t4 = _load_tier('tier4_all_publicly_knowable_121819')
+  t4 = _load_tier('tier4_all_discoverable')
 
   def _summarize(part: str, group: str, idx_mask: np.ndarray, df_t: pd.DataFrame, snap_col: str) -> dict:
     a = area_km2[idx_mask]
@@ -879,7 +876,7 @@ def build_table_s7(out_dir: Path) -> Path:
 
   rows = []
   all_mask = np.ones(len(all_ids), dtype=bool)
-  snap_t4 = 'tier4_all_publicly_knowable_121819__snap_all'
+  snap_t4 = 'tier4_all_discoverable__snap_all'
 
   # Part A: Global & 7 regions
   rows.append(_summarize('Part A: Global & Regional', 'Global', all_mask, t4, snap_t4))
@@ -903,13 +900,13 @@ def build_table_s7(out_dir: Path) -> Path:
 
   # Part C: 4 data-accessibility tiers
   tier_rows = [
-      ('tier4_all_publicly_knowable_121819', 'All Publicly Discoverable Gauges (121,819)'),
-      ('tier_public_discharge_93827', 'Confirmed Publicly Accessible Records (93,827)'),
-      ('tier_caravan_estreams_34577', 'Standardized Open Compilations (Caravan + EStreams; 34,577)'),
+      ('tier4_all_discoverable', 'All Publicly Discoverable Physical Gauges (119,169)'),
+      ('tier2_public_discharge', 'Confirmed Open-License Discharge Records (74,078)'),
+      ('tier1_open_compilations', 'Openly Redistributed Streamflow Compilations (32,369)'),
       ('tier1a_active_post2016_ccby_8811', 'Post-2016 Caravan Training Subset (8,811 records; 8,075 stations)'),
   ]
   for tk, lbl in tier_rows:
-    df_t = t4 if tk == 'tier4_all_publicly_knowable_121819' else _load_tier(tk)
+    df_t = t4 if tk == 'tier4_all_discoverable' else _load_tier(tk)
     rows.append(_summarize('Part C: Data-Accessibility Tier', lbl, all_mask, df_t, f'{tk}__snap_all'))
 
   df_out = pd.DataFrame(rows)

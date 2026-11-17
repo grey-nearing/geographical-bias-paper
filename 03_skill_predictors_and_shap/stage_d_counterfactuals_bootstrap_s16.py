@@ -109,15 +109,9 @@ CLIM_COLS = ['pre_mm_uyr', 'pet_mm_uyr', 'tmp_dc_uyr', 'ari_ix_uav', 'snw_pc_uyr
 TIER_ORDER = [
     'tier0_zero_gauges',
     'tier1a_active_post2016_ccby_8811',
-    'tier1b_strict_ccby_19491',
-    'tier1b_full_caravan_24847',
-    'tier2a_caravan_estreams_32713',
-    'tier2_academic_compilations_38069',
-    'tier_caravan_estreams_34577',
-    'tier2_all_open_academic_34630',
-    'tier_public_discharge_93827',
-    'tier3_open_public_apis_and_bulk_106410',
-    'tier4_all_publicly_knowable_121819',
+    'tier1_open_compilations',
+    'tier2_public_discharge',
+    'tier4_all_discoverable',
     'tier5_universal_no_ood_clamp',
     'tier5_universal_idealized_ceiling',
     'tier5_dense_corridor_ceiling',
@@ -125,16 +119,10 @@ TIER_ORDER = [
 
 TIER_LABELS = {
     'tier0_zero_gauges': 'Zero-Gauge Counterfactual (0)',
-    'tier1a_active_post2016_ccby_8811': 'Baseline: Active Post-2016 Caravan (8,811 / 8,072 phys)',
-    'tier1b_strict_ccby_19491': 'Strict CC-BY-4.0 Regional Caravan (19,491 / 18,037 phys)',
-    'tier1b_full_caravan_24847': 'Full Caravan Compendium (24,847 / 22,638 phys)',
-    'tier2a_caravan_estreams_32713': 'Caravan + EStreams Archive (32,713 / 27,876 phys)',
-    'tier2_academic_compilations_38069': 'Caravan + EStreams + GRDC (38,069 / 32,174 phys)',
-    'tier_caravan_estreams_34577': 'Tier 1: Standardized Open Compilations (34,577 phys)',
-    'tier2_all_open_academic_34630': 'All Open Academic Compilations (34,630 phys)',
-    'tier_public_discharge_93827': 'Tier 2: Publicly Accessible Discharge Records (93,827 phys)',
-    'tier3_open_public_apis_and_bulk_106410': 'Open Public APIs & Bulk Portals incl. Stage (106,410 phys)',
-    'tier4_all_publicly_knowable_121819': 'Tier 3: All Publicly Discoverable Gauges (121,819 phys)',
+    'tier1a_active_post2016_ccby_8811': 'Baseline: Active Post-2016 Caravan (8,811 / 8,075 phys)',
+    'tier1_open_compilations': 'Tier 1: Openly Redistributed Streamflow Datasets (32,369 phys)',
+    'tier2_public_discharge': 'Tier 2: Confirmed Open-License Discharge Records (74,078 phys)',
+    'tier4_all_discoverable': 'Tier 3: All Publicly Discoverable Stream Gauges (119,169 phys)',
     'tier5_universal_no_ood_clamp': 'Universal Gauging — Direct Local FT+DA (no OOD clamp)',
     'tier5_universal_idealized_ceiling': 'Universal Gauging — Idealized Global-Training Ceiling (OOD -> Q75)',
     'tier5_dense_corridor_ceiling': 'Dense Corridor Ceiling (Q75 Multi-Gauge + Q75 Climate)',
@@ -169,9 +157,9 @@ BOOT_RP_METRICS = [
 
 BOOT_TIERS = [
     'tier1a_active_post2016_ccby_8811',
-    'tier_caravan_estreams_34577',
-    'tier_public_discharge_93827',
-    'tier4_all_publicly_knowable_121819',
+    'tier1_open_compilations',
+    'tier2_public_discharge',
+    'tier4_all_discoverable',
     'tier5_universal_no_ood_clamp',
     'tier5_universal_idealized_ceiling',
 ]
@@ -617,9 +605,9 @@ def run_part_counterfactuals(n_threads: int = 24, overwrite: bool = False):
       'tier5_dense_corridor_ceiling',
   }
   F2F3_TIERS = {
-      'tier_caravan_estreams_34577',
-      'tier_public_discharge_93827',
-      'tier4_all_publicly_knowable_121819',
+      'tier1_open_compilations',
+      'tier2_public_discharge',
+      'tier4_all_discoverable',
       'tier5_universal_no_ood_clamp',
       'tier5_universal_idealized_ceiling',
       'tier5_dense_corridor_ceiling',
@@ -649,7 +637,7 @@ def run_part_counterfactuals(n_threads: int = 24, overwrite: bool = False):
       if tk == 'tier5_dense_corridor_ceiling':
         evals[('base', tk, 'f3_ood_only_base1a')] = evals[('base', 'tier5_universal_idealized_ceiling', 'f3_ood_only_base1a')]
       elif tk == 'tier5_universal_no_ood_clamp':
-        evals[('base', tk, 'f3_ood_only_base1a')] = evals[('base', 'tier4_all_publicly_knowable_121819', 'f3_ood_only_base1a')]
+        evals[('base', tk, 'f3_ood_only_base1a')] = evals[('base', 'tier4_all_discoverable', 'f3_ood_only_base1a')]
       else:
         evals[('base', tk, 'f3_ood_only_base1a')] = eval_combo(
             'base', f'{tk}__f3_ood_only_base1a', cov_t1a, ood_k, eval_mask=None
@@ -737,7 +725,7 @@ def run_part_counterfactuals(n_threads: int = 24, overwrite: bool = False):
   p_ft1a = reconstruct(p_b1a, evals[('delta_ft', 'tier1a_active_post2016_ccby_8811', 'joint')])
   p_da1a = reconstruct(p_b1a, evals[('delta_da', 'tier1a_active_post2016_ccby_8811', 'joint')])
   p_ftda1a = reconstruct(p_b1a, evals[('delta_ft_da', 'tier1a_active_post2016_ccby_8811', 'joint')])
-  p_b4 = evals[('base', 'tier4_all_publicly_knowable_121819', 'joint')]
+  p_b4 = evals[('base', 'tier4_all_discoverable', 'joint')]
 
   w_b0 = calc_warned(p_b0, 'recall')
   w_b1a = calc_warned(p_b1a, 'recall')
@@ -876,9 +864,9 @@ def run_part_counterfactuals(n_threads: int = 24, overwrite: bool = False):
 
       if tk in (
           'tier1a_active_post2016_ccby_8811',
-          'tier_caravan_estreams_34577',
-          'tier_public_discharge_93827',
-          'tier4_all_publicly_knowable_121819',
+          'tier1_open_compilations',
+          'tier2_public_discharge',
+          'tier4_all_discoverable',
           'tier5_universal_no_ood_clamp',
           'tier5_universal_idealized_ceiling',
       ) and mech_name in (
@@ -954,15 +942,15 @@ def run_part_counterfactuals(n_threads: int = 24, overwrite: bool = False):
           })
 
       if (tk, mech_name) in {
-          ('tier_caravan_estreams_34577', '111_all_three_combined_snap'),
-          ('tier_public_discharge_93827', '111_all_three_combined_snap'),
-          ('tier4_all_publicly_knowable_121819', '000_global_train_joint'),
-          ('tier4_all_publicly_knowable_121819', '010_ft_only_snap'),
-          ('tier4_all_publicly_knowable_121819', '001_da_only_snap'),
-          ('tier4_all_publicly_knowable_121819', '101_train_plus_da_snap'),
-          ('tier4_all_publicly_knowable_121819', '111_all_three_combined_snap'),
-          ('tier4_all_publicly_knowable_121819', '111_all_three_combined_union'),
-          ('tier4_all_publicly_knowable_121819', '111_all_three_combined_snap_strict2022'),
+          ('tier1_open_compilations', '111_all_three_combined_snap'),
+          ('tier2_public_discharge', '111_all_three_combined_snap'),
+          ('tier4_all_discoverable', '000_global_train_joint'),
+          ('tier4_all_discoverable', '010_ft_only_snap'),
+          ('tier4_all_discoverable', '001_da_only_snap'),
+          ('tier4_all_discoverable', '101_train_plus_da_snap'),
+          ('tier4_all_discoverable', '111_all_three_combined_snap'),
+          ('tier4_all_discoverable', '111_all_three_combined_union'),
+          ('tier4_all_discoverable', '111_all_three_combined_snap_strict2022'),
           ('tier5_universal_no_ood_clamp', '000_global_train_joint'),
           ('tier5_universal_no_ood_clamp', '111_all_three_combined_snap'),
           ('tier5_universal_idealized_ceiling', '000_global_train_joint'),
@@ -985,8 +973,8 @@ def run_part_counterfactuals(n_threads: int = 24, overwrite: bool = False):
   print('\n5. Building Basin & 175-Territory Tables + A5 Spatial N_eff Correlations...', flush=True)
   df_b = df_meta[['country_name', 'has_system', 'cap_tier', 'lat', 'lon', 'sub_area', 'total_pop', 'E_total', 'E_gt0_total']].copy()
   df_b['zero_up_t1a'] = (tier_feats['tier1a_active_post2016_ccby_8811']['total_upstream_coverage'].values <= 0.0).astype(float) * 100.0
-  df_b['zero_up_t4'] = (tier_feats['tier4_all_publicly_knowable_121819']['total_upstream_coverage'].values <= 0.0).astype(float) * 100.0
-  df_b['u4_exp'] = tier_feats['tier4_all_publicly_knowable_121819']['U_net_tree_phys'].values * etot
+  df_b['zero_up_t4'] = (tier_feats['tier4_all_discoverable']['total_upstream_coverage'].values <= 0.0).astype(float) * 100.0
+  df_b['u4_exp'] = tier_feats['tier4_all_discoverable']['U_net_tree_phys'].values * etot
   df_b['warned_t1a'] = w_b1a
   df_b['unwarned_t1a'] = etot - w_b1a
   df_b['warned_t4_base'] = w_b4
@@ -1019,8 +1007,8 @@ def run_part_counterfactuals(n_threads: int = 24, overwrite: bool = False):
   df_c['zero_up_pct_t4'] = grp['zero_up_t4'].mean()['zero_up_t4'].values
   df_c['flood_exp_ung_pct_t4'] = np.where(df_c['E_total'] > 0, 100.0 * df_c['u4_exp'] / df_c['E_total'], np.nan)
 
-  col_t4_000 = 'dnet__tier4_all_publicly_knowable_121819__000_global_train_joint'
-  col_t4_111 = 'dnet__tier4_all_publicly_knowable_121819__111_all_three_combined_snap'
+  col_t4_000 = 'dnet__tier4_all_discoverable__000_global_train_joint'
+  col_t4_111 = 'dnet__tier4_all_discoverable__111_all_three_combined_snap'
   col_t5n_111 = 'dnet__tier5_universal_no_ood_clamp__111_all_three_combined_snap'
   col_t5_000 = 'dnet__tier5_universal_idealized_ceiling__000_global_train_joint'
   col_t5_111 = 'dnet__tier5_universal_idealized_ceiling__111_all_three_combined_snap'
@@ -1074,9 +1062,9 @@ def run_part_counterfactuals(n_threads: int = 24, overwrite: bool = False):
   print('\n=== HEADLINE PREVIEW (Round 3 Regularized Cross-Domain, Recall vs. CSI, No-OOD vs. Ceiling) ===')
   for tk in [
       'tier1a_active_post2016_ccby_8811',
-      'tier_caravan_estreams_34577',
-      'tier_public_discharge_93827',
-      'tier4_all_publicly_knowable_121819',
+      'tier1_open_compilations',
+      'tier2_public_discharge',
+      'tier4_all_discoverable',
       'tier5_universal_no_ood_clamp',
       'tier5_universal_idealized_ceiling',
   ]:
@@ -1087,7 +1075,7 @@ def run_part_counterfactuals(n_threads: int = 24, overwrite: bool = False):
         '111_all_three_combined_snap',
         '111_all_three_combined_snap_strict2022',
     ):
-      if 'strict2022' in mech and tk != 'tier4_all_publicly_knowable_121819':
+      if 'strict2022' in mech and tk != 'tier4_all_discoverable':
         continue
       sub = df_sum[(df_sum['tier_key'] == tk) & (df_sum['mechanism'] == mech)]
       if len(sub) > 0:
@@ -1333,7 +1321,7 @@ def _compute_boot_tail_closure(
         '001_da_only': {k: np.where(m_act, p_da1a[k], p_b1a[k]) for k in metric_keys},
         '111_combined': p_comb,
     }
-    if tk == 'tier4_all_publicly_knowable_121819' and f'{tk}__snap_active_strict2022' in df_masks_tail.columns:
+    if tk == 'tier4_all_discoverable' and f'{tk}__snap_active_strict2022' in df_masks_tail.columns:
       m_act22 = df_masks_tail[f'{tk}__snap_active_strict2022'].values.astype(bool)
       scen_map['001_da_only_strict2022'] = {k: np.where(m_act22, p_da1a[k], p_b1a[k]) for k in metric_keys}
       scen_map['111_combined_strict2022'] = {k: np.where(m_act22, p_ftdak[k], np.where(m_all, p_ftk[k], p_bk[k])) for k in metric_keys}
@@ -1357,7 +1345,7 @@ def _compute_boot_tail_closure(
           'warned_csi_nosys115': float(wc_s[m_nosys115].sum()),
       }
       if tk in (
-          'tier4_all_publicly_knowable_121819',
+          'tier4_all_discoverable',
           'tier5_universal_no_ood_clamp',
           'tier5_universal_idealized_ceiling',
       ) and sk_name in ('000_train', '111_combined'):
@@ -1482,7 +1470,7 @@ def _run_one_bootstrap_rep(args: tuple) -> dict:
     is_univ = tk in ('tier5_universal_no_ood_clamp', 'tier5_universal_idealized_ceiling')
     m_all = df_masks[f'{tk}__snap_all'].values.astype(bool)
     m_act = df_masks[f'{tk}__snap_active'].values.astype(bool)
-    has_act22 = tk == 'tier4_all_publicly_knowable_121819' and f'{tk}__snap_active_strict2022' in df_masks.columns
+    has_act22 = tk == 'tier4_all_discoverable' and f'{tk}__snap_active_strict2022' in df_masks.columns
     m_act22 = df_masks[f'{tk}__snap_active_strict2022'].values.astype(bool) if has_act22 else m_act
 
     # delta_ft: full on t1a (used for 010_ft_only across all tiers), skipped on universal (m_act=all True),
@@ -1613,7 +1601,7 @@ def _run_one_bootstrap_rep(args: tuple) -> dict:
           '001_da_only': {k: np.where(m_act, p_da1a[k], p_b1a[k]) for k in metric_keys},
           '111_combined': p_comb,
       }
-      if tk == 'tier4_all_publicly_knowable_121819' and f'{tk}__snap_active_strict2022' in df_masks.columns:
+      if tk == 'tier4_all_discoverable' and f'{tk}__snap_active_strict2022' in df_masks.columns:
         m_act22 = df_masks[f'{tk}__snap_active_strict2022'].values.astype(bool)
         scen_map['001_da_only_strict2022'] = {k: np.where(m_act22, p_da1a[k], p_b1a[k]) for k in metric_keys}
         scen_map['111_combined_strict2022'] = {k: np.where(m_act22, p_ftdak[k], np.where(m_all, p_ftk[k], p_bk[k])) for k in metric_keys}
@@ -1637,7 +1625,7 @@ def _run_one_bootstrap_rep(args: tuple) -> dict:
             'warned_csi_nosys115': float(wc_s[m_nosys115].sum()),
         }
         if add_domain_err and tk in (
-            'tier4_all_publicly_knowable_121819',
+            'tier4_all_discoverable',
             'tier5_universal_no_ood_clamp',
             'tier5_universal_idealized_ceiling',
         ) and sk_name in ('000_train', '111_combined'):
@@ -1808,7 +1796,7 @@ def run_part_bootstrap(
           print(
               f"  [Boot {len(reps):3d}/{n_boot}] rep={r['rep']:3d} ({r['elapsed_s']:.1f}s) | "
               f"BaseW={r['baseline_warned_global']/1e6:.2f}M | "
-              f"T3_111={r['scenarios']['tier4_all_publicly_knowable_121819__111_combined']['delta_global']/1e6:+.2f}M | "
+              f"T3_111={r['scenarios']['tier4_all_discoverable__111_combined']['delta_global']/1e6:+.2f}M | "
               f"U_noOOD={r['scenarios']['tier5_universal_no_ood_clamp__111_combined']['delta_global']/1e6:+.2f}M | "
               f"U_ceil={r['scenarios']['tier5_universal_idealized_ceiling__111_combined']['delta_global']/1e6:+.2f}M",
               flush=True,
@@ -1877,8 +1865,8 @@ def run_part_bootstrap(
     checks = [
         ('tier1a_active_post2016_ccby_8811', '000_global_train_joint', 'baseline_warned_global', 'level', 'warned_global'),
         ('tier1a_active_post2016_ccby_8811', '000_global_train_joint', 'baseline_warned_nosys115', 'level', 'warned_nosys115'),
-        ('tier4_all_publicly_knowable_121819', '111_all_three_combined_snap', 'tier4_all_publicly_knowable_121819__111_combined', 'delta_global', 'delta_net_global'),
-        ('tier4_all_publicly_knowable_121819', '111_all_three_combined_snap', 'tier4_all_publicly_knowable_121819__111_combined', 'delta_nosys115', 'delta_net_nosys115'),
+        ('tier4_all_discoverable', '111_all_three_combined_snap', 'tier4_all_discoverable__111_combined', 'delta_global', 'delta_net_global'),
+        ('tier4_all_discoverable', '111_all_three_combined_snap', 'tier4_all_discoverable__111_combined', 'delta_nosys115', 'delta_net_nosys115'),
         ('tier5_universal_no_ood_clamp', '111_all_three_combined_snap', 'tier5_universal_no_ood_clamp__111_combined', 'delta_global', 'delta_net_global'),
         ('tier5_universal_no_ood_clamp', '111_all_three_combined_snap', 'tier5_universal_no_ood_clamp__111_combined', 'delta_nosys115', 'delta_net_nosys115'),
         ('tier5_universal_idealized_ceiling', '111_all_three_combined_snap', 'tier5_universal_idealized_ceiling__111_combined', 'delta_global', 'delta_net_global'),

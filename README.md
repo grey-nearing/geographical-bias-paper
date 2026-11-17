@@ -8,7 +8,7 @@ Official code repository and public reproduction suite for:
 > **What Fraction of the World's Watersheds Are Ungauged?**
 > Grey Nearing, Karan Ruparell, Maria Luisa Taccari, Stephanie Rees, Martin Gauch, Justin Ginnetti, Oliver Wing, Juliet Rothenberg, Frederik Kratzert, Deborah Cohen, and Yossi Matias (2026).
 
-Companion public data archive (**v3.1.0**): **https://doi.org/10.5281/zenodo.21416986**
+Companion public data archive (**v3.2.0**): **https://doi.org/10.5281/zenodo.21416986**
 
 ---
 
@@ -17,10 +17,10 @@ Companion public data archive (**v3.1.0**): **https://doi.org/10.5281/zenodo.214
 This repository reproduces the global hydrological ungaugedness, national flood-alerting gap, machine-learning flood-forecast skill modeling, and factor attribution analyses reported in the manuscript:
 
 1. **Multi-Hydrofabric Global Ungaugedness (`01_hydrofabric_ungaugedness/`)**
-   - Benchmarks global streamflow monitoring across **121,819 deduplicated physical stream gauges** from 73 public archives (nested into *Standardized Open* = 34,577, *Public Discharge* = 93,827, and *All Discoverable* = 121,819), including observation-type breakdowns and strict $\ge 2022$ daily-discharge operational subsets.
+   - Benchmarks global streamflow monitoring across **119,169 deduplicated physical stream gauges** (`361,020` archive records across 72 physical-gauge repositories out of 73 audited public repositories; strictly physical in-situ river gauges, excluding simulated runoff, satellite river-width reconstructions, and non-river weather/offshore/groundwater/lake stations), nested into *Open Datasets* (`32,369` stations redistributing observed streamflow under full-use open licenses), *Open Discharge* (`74,078` stations with confirmed discharge under full-use open licenses across harmonized datasets and national portals), and *All Discoverable* (`119,169` physical river gauges), including observation-type breakdowns and strict $\ge 2022$ daily-discharge operational subsets.
    - Evaluates continuous and binary ungaugedness (Eq. 4, *never passes a gauge*, and 1D flow-volume weighted river discharge) symmetrically across **six fine-scale global hydrofabric configurations** — HydroSHEDS BasinATLAS Level 12, HydroSHEDS Rivers v1.0, MERIT-Basins v0.1, TDX-Hydro, GRIT v0.6 mainstem tree, and GRIT v0.6 bifurcating DAG — plus HydroSHEDS Levels 1–12 scale invariance, multi-fabric hydroclimatic out-of-distribution (OOD) dissimilarity, and spatially adjusted country correlations (Moran's $I$ and Clifford–Richardson–Hémon / Dutilleul $N_{\text{eff}}$).
-2. **OpenHydroNet Cross-Validation Suite (`02_ohn_cross_validation/`)**
-   - Reference training, fine-tuning, real-time data assimilation, and evaluation code for the 210-model OpenHydroNet (OHN) cross-validation experiments (*Random Ungauged*, *Hydrologically Separated*, and *Spatially In-Sample / Gauged*) across 8,811 post-2016 Caravan streamflow records (8,072 unique physical locations after coordinate deduplication; 8,075 distinct gauge IDs).
+2. **Global LSTM (`OpenHydroNet`) Cross-Validation Suite (`02_ohn_cross_validation/`)**
+   - Reference training, fine-tuning, real-time data assimilation, and evaluation code for the 210-model global LSTM (`OpenHydroNet`) cross-validation experiments (*Random Ungauged*, *Hydrologically Separated*, and *Spatially In-Sample / Gauged*) across 8,811 post-2016 Caravan streamflow records (8,072 unique physical locations after coordinate deduplication; 8,075 distinct gauge IDs).
    - Because training 210 deep-learning models requires multi-GPU clusters, the resulting per-gauge CV evaluation CSVs across all 43 hydrological metrics and 4 modeling regimes are archived in Zenodo (`03_ohn_cv_metrics_and_splits.tar.gz`) so downstream analysis reproduces directly on CPU.
 3. **Global Skill Predictors & Exact Group Shapley Attribution (`03_skill_predictors_and_shap/`)**
    - Rebuilds exact 1,034,083-watershed river-network gauge coverage and 88-feature HydroATLAS climatic dissimilarity (OOD) features across all institutional data-access tiers — including local universal gauging (no OOD clamp), the unsampled-climate global-training upper bound (HydroATLAS similarity scores floored at the Caravan training 75th percentile), and strict $\ge 2022$ daily-discharge DA (`stage_b1_tier_features_1034k.py`) — plus HydroBASINS L5–L12 scale invariance (`stage_b1a_scale_invariance_audit.py`).
@@ -47,9 +47,11 @@ Fluvial flood-hazard inundation maps from **Fathom Global 3.0** are proprietary 
 geographical-bias-paper/
 ├── 01_hydrofabric_ungaugedness/          # Stage 1: Multi-hydrofabric ungaugedness benchmark
 │   ├── configs/
+│   │   ├── audit_reference/              # 73-archive license & streamflow audit tables + station sets
 │   │   ├── benchmark_config.py           # Canonical paths, gauge tiers, and common-domain rules
 │   │   └── merit_coastal_hillslopes_drive_ids.json
 │   ├── scripts/
+│   │   ├── audit_and_rebuild_gauge_catalog.py # Rebuilds 119,169 physical gauge catalog & tier flags
 │   │   ├── 00_stage_gauges_and_population.py
 │   │   ├── 01_download_hydrosheds.py     # Public HydroSHEDS BasinATLAS v10 & HydroRIVERS v1.0
 │   │   ├── 02_download_tdx_geoglows.py   # Public TDX-Hydro & GEOGLOWS v2 (AWS S3)
@@ -144,7 +146,7 @@ bash run_reproduce.sh
 
 `run_reproduce.sh` executes four sequential stages:
 
-1. **Unit tests & Stage 1 (`01_hydrofabric_ungaugedness/`)**: Runs `pytest`, stages the clean 121,819-gauge catalog & WorldPop population table (plus optional locally staged Fathom exposure), downloads all four public global hydrofabric families from their official public hosts, runs all 17 hydrofabric configurations plus 4-fabric OOD dissimilarity, and synthesizes master 2D/1D/OOD tables.
+1. **Unit tests & Stage 1 (`01_hydrofabric_ungaugedness/`)**: Runs `pytest`, stages the clean 119,169-gauge physical catalog & WorldPop population table (plus optional locally staged Fathom exposure), downloads all four public global hydrofabric families from their official public hosts, runs all 17 hydrofabric configurations plus 4-fabric OOD dissimilarity, and synthesizes master 2D/1D/OOD tables.
 2. **Stage 3 (`03_skill_predictors_and_shap/`)**: Computes 1,034,083-basin coverage & OOD features (including `tier5_universal_no_ood_clamp`, `tier5_universal_idealized_ceiling`, and strict `>=2022` daily-discharge DA), verifies HydroBASINS L5–L12 scale invariance, trains all 171 regularized 4-learner stacked skill-predictor meta-models (`HistGradientBoosting` + `LightGBM` + `XGBoost` + `WeightedRidge`, `RidgeCV` meta-learner) across 43 metrics and 4 regimes with multi-level spatial CV (`MAIN_BAS_5f`, `Station_5f`, `Climate_8f`, `LOCO_5cont`), builds the 4-regime Table S5 skill summary (plus full Recall & CSI exposure counterfactuals, $B=200$ stratified `MAIN_BAS` $\times$ climate block-bootstrap 95% CIs, OOD-scaled cross-domain uncertainty, and national $N=1\text{–}20$ gauge siting when licensed Fathom exposure is staged locally), and computes Exact $2^7 = 128$ Group Shapley attribution at $N = 1,000$ global medoids.
 3. **Stage 4 (`04_figures_and_tables/`)**: Generates **Tables S1–S3, S5–S7**, **Figs. 1–3, 6**, and **Figs. S1, S3–S6** (plus **Table S4**, action-regime sensitivity table, **Figs. 4–5**, and **Figs. S7–S8** when licensed Fathom exposure is staged locally).
 4. **Automated Verification**: Runs `04_figures_and_tables/verify_reproduction.py`, writing `$GEO_BIAS_DATA_DIR/$GEO_BIAS_ROUND_SUBDIR/verification/verification_report.{json,md}`.
@@ -192,7 +194,7 @@ If you use this repository or the Zenodo dataset, please cite [CITATION.cff](CIT
   title        = {What Fraction of the World's Watersheds Are Ungauged?},
   year         = 2026,
   publisher    = {Zenodo},
-  version      = {3.1.0},
+  version      = {3.2.0},
   doi          = {10.5281/zenodo.21416986},
   url          = {https://doi.org/10.5281/zenodo.21416986}
 }
@@ -201,4 +203,4 @@ If you use this repository or the Zenodo dataset, please cite [CITATION.cff](CIT
 ## License
 
 - **Code:** Apache License 2.0 ([LICENSE](LICENSE)).
-- **Public Derived Data (Zenodo v3.1.0):** CC-BY-4.0 (subject to upstream source attributions listed in [DATA_DICTIONARY.md](DATA_DICTIONARY.md)).
+- **Public Derived Data (Zenodo v3.2.0):** CC-BY-4.0 (subject to upstream source attributions listed in [DATA_DICTIONARY.md](DATA_DICTIONARY.md)).

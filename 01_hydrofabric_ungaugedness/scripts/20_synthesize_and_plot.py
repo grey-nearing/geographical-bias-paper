@@ -63,9 +63,9 @@ TIER_ORDER = [
 ]
 TIER_SHORT = {
     "baseline": "Baseline\n(8.1k)",
-    "tier1_open_compilations": "Tier 1\n(34.6k)",
-    "tier2_public_discharge": "Tier 2\n(93.8k)",
-    "tier3_all_known": "Tier 3\n(121.8k)",
+    "tier1_open_compilations": "Tier 1\n(32.4k)",
+    "tier2_public_discharge": "Tier 2\n(74.1k)",
+    "tier3_all_known": "Tier 3\n(119.2k)",
 }
 TIER_COLORS = {
     "baseline": "#D55E00",

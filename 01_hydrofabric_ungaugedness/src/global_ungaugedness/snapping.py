@@ -1,6 +1,6 @@
 """Symmetric, drainage-area-aware gauge snapping across all global hydrofabrics.
 
-Uses an inverted spatial index (indexing the 121,819 gauge points once in a
+Uses an inverted spatial index (indexing the 119,169 gauge points once in a
 Shapely STRtree, then streaming hydrofabric reaches or polygons in chunks) so
 even 20M-segment global fabrics (GRIT v0.6, HydroRIVERS, TDX-Hydro, MERIT)
 snap in seconds with <2 GB peak RAM.
@@ -152,7 +152,7 @@ class StreamingReachSnapper:
         area_out_km2: np.ndarray,
         flip_orientation: np.ndarray | None = None,
     ) -> int:
-        """Process a chunk of river reach geometries against all 121,819 gauges.
+        """Process a chunk of river reach geometries against all 119,169 gauges.
 
         Args:
             unit_ids: int64 native reach IDs.

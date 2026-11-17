@@ -13,7 +13,8 @@ import numpy as np
 import pandas as pd
 
 CANON = os.environ.get('GEO_BIAS_DATA_DIR', './data')
-OUT_DIR = os.path.join(CANON, 'round2', 'scale_invariance')
+ROUND_SUBDIR = os.environ.get('GEO_BIAS_ROUND_SUBDIR', 'round2')
+OUT_DIR = os.path.join(CANON, ROUND_SUBDIR, 'scale_invariance')
 os.makedirs(OUT_DIR, exist_ok=True)
 
 
@@ -264,15 +265,9 @@ def main():
 
   tiers = {
       'Baseline_8811': dedup[dedup['canonical_gauge_id'].isin(t1a_cids)],
-      'Tier1_34577': dedup[
-          dedup['all_source_datasets'].str.contains('Caravan', na=False)
-          | dedup['all_source_datasets'].str.contains('EStreams', na=False)
-      ],
-      'Tier2_93827': dedup[
-          dedup['best_data_access_policy'].isin(['open_public_api_or_bulk', 'open_academic_compilation'])
-          & dedup['best_observation_type'].isin(['daily_discharge', 'monthly_discharge'])
-      ],
-      'Tier3_121819': dedup,
+      'Tier1_OpenCompilations': dedup[dedup['in_tier_1'].astype(bool)],
+      'Tier2_OpenDischarge': dedup[dedup['in_tier_2'].astype(bool)],
+      'Tier3_AllDiscoverable': dedup,
   }
 
   # 2. Multi-level Pfafstetter scale sensitivity (Levels 5, 6, 7, 8, 9, 10, 12)
@@ -348,7 +343,7 @@ def main():
   print(sub[cols_show].to_string(index=False))
 
   print('\n=== CONTINUUM MONITORING-RESOLUTION CURVE U(A_target) ACROSS L6, L8, L10, L12 ===')
-  piv = df_curve[df_curve['tier'].isin(['Baseline_8811', 'Tier3_121819'])].pivot(
+  piv = df_curve[df_curve['tier'].isin(['Baseline_8811', 'Tier3_AllDiscoverable'])].pivot(
       index=['tier', 'A_target_km2'], columns='level', values='U_area_pct'
   )
   print(piv.round(2).to_string())

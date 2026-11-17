@@ -1,0 +1,36 @@
+{
+  "archive_rows_v310": 365290,
+  "archive_rows_v320": 361020,
+  "dropped_nonphysical_rows": {
+    "IDEAM_weather_rain_radiosonde_nonriver": 2975,
+    "NVE_Virtuell_or_Uten_malinger": 26,
+    "UK_EA_groundwater_or_rainfall": 28,
+    "FOEN_CAMELS_CH_lake_level_Seepegel": 54,
+    "Rijkswaterstaat_marine_offshore_beach_or_gw": 1052,
+    "MERV_Jp_simulated_runoff": 135
+  },
+  "physical_gauges_v310": 121819,
+  "physical_gauges_v320_tier3": 119169,
+  "in_tier_baseline": 8075,
+  "in_tier_1": 32369,
+  "in_tier_2": 74078,
+  "in_tier_3": 119169,
+  "in_tier_1_active": 22153,
+  "in_tier_2_active": 55747,
+  "in_tier_3_active": 88293,
+  "tier3_breakdown_by_best_obs": {
+    "daily_discharge": 80474,
+    "stage_or_fluviometric": 18600,
+    "flow_indices_only": 12916,
+    "catchment_attributes_and_boundaries": 5057,
+    "monthly_discharge": 2122
+  },
+  "tier3_breakdown_by_best_policy": {
+    "open_public_api_or_bulk": 56824,
+    "open_academic_compilation": 32369,
+    "open_indices_and_metadata_only": 15572,
+    "registration_or_request_portal": 7233,
+    "open_attributes_and_metadata_only": 5510,
+    "restricted_or_bilateral_partner": 1661
+  }
+}

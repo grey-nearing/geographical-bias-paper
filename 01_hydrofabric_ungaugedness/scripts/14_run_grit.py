@@ -245,7 +245,7 @@ def snap_gauges_grit(all_df: pd.DataFrame, gauges_df: pd.DataFrame, mainstem_onl
         max_search_km=10.0,
     )
 
-    print(f"Snapping 121,819 gauges to GRIT v0.6 ({tag}, flip_orientation=False verified)...", flush=True)
+    print(f"Snapping 119,169 gauges to GRIT v0.6 ({tag}, flip_orientation=False verified)...", flush=True)
     for reg in REGIONS:
         gpkg = GRIT_RAW / f"GRITv06_segments_{reg}_EPSG4326.gpkg"
         gdf = pyogrio.read_dataframe(

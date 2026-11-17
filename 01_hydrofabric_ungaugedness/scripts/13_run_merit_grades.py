@@ -302,7 +302,7 @@ def snap_gauges_merit(units_df: pd.DataFrame, gauges_df: pd.DataFrame) -> pd.Dat
         max_search_km=10.0,
     )
 
-    print("Snapping 121,819 gauges to MERIT-Basins reaches (flip_orientation=True verified)...", flush=True)
+    print("Snapping 119,169 gauges to MERIT-Basins reaches (flip_orientation=True verified)...", flush=True)
     for pf in range(1, 10):
         riv_shp = sorted(p1_dir.glob(f"riv_pfaf_{pf}_*.shp"))[0]
         gdf = pyogrio.read_dataframe(str(riv_shp), columns=["COMID"])

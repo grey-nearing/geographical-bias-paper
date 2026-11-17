@@ -674,71 +674,45 @@ def main():
     df_all = pd.concat(dfs, axis=0)
     return df_all[~df_all.index.duplicated(keep='first')].reindex(all_ids).fillna(0.0)
 
-  # Define exact 11 gauge-based tiers
+  # Define audited physical stream-gauge tiers (v3.2.0)
   t1a_ids = ['CARAVAN_' + str(x).upper() for x in grdc_8811.index]
   t1a_cids = set(native_to_cid[x] for x in t1a_ids if x in native_to_cid)
-  t1b_ccby_ids = [x for x in ca_38k.index if str(x).startswith('CARAVAN_') and not str(x).startswith('CARAVAN_GRDC_')]
-  t1b_ccby_cids = set(native_to_cid[x] for x in t1b_ccby_ids if x in native_to_cid)
-  t1b_full_ids = [x for x in ca_38k.index if str(x).startswith('CARAVAN_')]
-  t1b_full_cids = set(native_to_cid[x] for x in t1b_full_ids if x in native_to_cid)
-  t2a_ids = [x for x in ca_38k.index if not str(x).startswith('GRDC_')]
-  t2a_cids = set(native_to_cid[x] for x in t2a_ids if x in native_to_cid)
 
-  has_caravan = dedup['all_source_datasets'].str.contains('Caravan', na=False)
-  has_estreams = dedup['all_source_datasets'].str.contains('EStreams', na=False)
-  dedup_34577 = dedup[has_caravan | has_estreams].copy()
-  dedup_93827 = dedup[
-      dedup['best_data_access_policy'].isin(['open_public_api_or_bulk', 'open_academic_compilation'])
-      & dedup['best_observation_type'].isin(['daily_discharge', 'monthly_discharge'])
-  ].copy()
-
-  ood_38k_path = os.path.join(BACKUP_38K_DIR, 'anomaly_scores', 'infer_hybas_caravan_anomaly_scores.csv')
-  ood_38k_cached = None
-  cov_38k_cached = None
-  if os.path.exists(ood_38k_path):
-    ood_38k_cached = pd.read_csv(ood_38k_path, index_col=0)
-    ood_38k_cached.index = [x if str(x).startswith('hybas_') else f'hybas_{x}' for x in ood_38k_cached.index]
-    dfs_cov_38k = []
-    for cont in CONTINENTS:
-      d = _resolve_38k_table(
-          f'infer_ml_features_{cont}',
-          f'coverage_fractions/hybas/infer_ml_features_{cont}',
-          index_col=0,
-      )
-      idx_col = d['hybas_id'] if 'hybas_id' in d.columns else d.index
-      d.index = [x if str(x).startswith('hybas_') else f'hybas_{x}' for x in idx_col]
-      dfs_cov_38k.append(d[COV_COLS])
-    cov_38k_cached = pd.concat(dfs_cov_38k, axis=0)
-    cov_38k_cached = cov_38k_cached[~cov_38k_cached.index.duplicated(keep='first')].reindex(all_ids).fillna(0.0)
+  if 'in_tier_1' in dedup.columns and 'in_tier_2' in dedup.columns:
+    dedup_t1 = dedup[dedup['in_tier_1'].astype(bool)].copy()
+    dedup_t2 = dedup[dedup['in_tier_2'].astype(bool)].copy()
+  else:
+    dedup_t1 = dedup[
+        (dedup['best_data_access_policy'] == 'open_academic_compilation')
+        & dedup['best_observation_type'].isin(['daily_discharge', 'monthly_discharge'])
+    ].copy()
+    dedup_t2 = dedup[
+        dedup['best_data_access_policy'].isin(['open_public_api_or_bulk', 'open_academic_compilation'])
+        & dedup['best_observation_type'].isin(['daily_discharge', 'monthly_discharge'])
+    ].copy()
+  n_t1_rows = int(arch['row_in_tier_1'].sum()) if 'row_in_tier_1' in arch.columns else len(dedup_t1)
+  n_t2_rows = int(
+      (
+          arch['data_access_policy'].isin(['open_public_api_or_bulk', 'open_academic_compilation'])
+          & arch['observation_type'].isin(['daily_discharge', 'monthly_discharge'])
+      ).sum()
+  )
 
   tier_specs = [
       ('tier0_zero_gauges', 'Zero-Gauge Counterfactual (0 Gauges)', dedup.iloc[0:0], 0, 'zero', None),
-      ('tier1a_active_post2016_ccby_8811', 'Baseline: Active Post-2016 Caravan (8,811 Caravan / 8,075 Physical)', dedup[dedup['canonical_gauge_id'].isin(t1a_cids)], len(t1a_ids), 'ca38k', set(t1a_ids)),
-      ('tier1b_strict_ccby_19491', 'Strict CC-BY-4.0 Regional Caravan (19,491 Caravan / 18,037 Physical)', dedup[dedup['canonical_gauge_id'].isin(t1b_ccby_cids)], len(t1b_ccby_ids), 'ca38k', set(t1b_ccby_ids)),
-      ('tier1b_full_caravan_24847', 'Full Caravan Compendium (24,847 Caravan / 22,638 Physical)', dedup[dedup['canonical_gauge_id'].isin(t1b_full_cids)], len(t1b_full_ids), 'ca38k', set(t1b_full_ids)),
-      ('tier2a_caravan_estreams_32713', 'Caravan + EStreams (32,713 Archive / 27,876 Physical)', dedup[dedup['canonical_gauge_id'].isin(t2a_cids)], len(t2a_ids), 'ca38k', set(t2a_ids)),
-      ('tier2_academic_compilations_38069', 'Caravan + EStreams + GRDC (38,069 Archive / 32,174 Physical)', dedup[dedup['in_canonical_38069']], 38069, 'cached_38k' if ood_38k_cached is not None else 'ca38k', None if ood_38k_cached is not None else set(ca_38k.index)),
-      ('tier_caravan_estreams_34577', 'Tier 1: Standardized Open Compilations — Caravan + EStreams (34,577 Physical)', dedup_34577, 40911, 'ca121k', None),
-      ('tier2_all_open_academic_34630', 'All Open Academic Compilations (34,630 Physical)', dedup[dedup['in_canonical_38069'] | (dedup['best_data_access_policy'] == 'open_academic_compilation')], 34630, 'ca121k', None),
-      ('tier_public_discharge_93827', 'Tier 2: Confirmed Publicly Accessible Discharge Records (93,827 Physical)', dedup_93827, 93827, 'ca121k', None),
-      ('tier3_open_public_apis_and_bulk_106410', 'Open Public APIs & Bulk Portals incl. Stage-Only (106,410 Physical)', dedup[dedup['best_data_access_policy'].isin(['open_public_api_or_bulk', 'open_academic_compilation'])], 106410, 'ca121k', None),
-      ('tier4_all_publicly_knowable_121819', 'Tier 3: All Publicly Knowable In Situ Gauges (121,819 Physical)', dedup, len(dedup), 'cached_121k', None),
+      ('tier1a_active_post2016_ccby_8811', f'Baseline: Active Post-2016 Caravan ({len(t1a_ids):,} Caravan / {len(t1a_cids):,} Physical)', dedup[dedup['canonical_gauge_id'].isin(t1a_cids)], len(t1a_ids), 'ca38k', set(t1a_ids)),
+      ('tier1_open_compilations', f'Tier 1: Openly Redistributed Streamflow Datasets ({len(dedup_t1):,} Physical)', dedup_t1, n_t1_rows, 'ca121k', None),
+      ('tier2_public_discharge', f'Tier 2: Confirmed Open-License Discharge Records ({len(dedup_t2):,} Physical)', dedup_t2, n_t2_rows, 'ca121k', None),
+      ('tier4_all_discoverable', f'Tier 3: All Publicly Discoverable Stream Gauges ({len(dedup):,} Physical)', dedup, len(arch), 'ca121k', None),
   ]
   if args.core_tiers_only:
-    core_keys = {
-        'tier0_zero_gauges',
-        'tier1a_active_post2016_ccby_8811',
-        'tier_caravan_estreams_34577',
-        'tier_public_discharge_93827',
-        'tier4_all_publicly_knowable_121819',
-    }
-    tier_specs = [t for t in tier_specs if t[0] in core_keys]
-    print(f'   --core-tiers-only active: building {len(tier_specs)} core tiers + 2 universal ceilings.', flush=True)
+    print(f'   --core-tiers-only active: building {len(tier_specs)} core tiers + 3 universal ceilings.', flush=True)
 
   sec2_rows = []
   mask_cols = {}
   ood_t1a_cached = None
   ood_t4_cached = None
+  cov_t4_cached = None
   reuse_masks_df = None
   if args.reuse_tier_dir:
     rm_p = os.path.join(args.reuse_tier_dir, 'tier_active_and_all_masks_r2.parquet')
@@ -776,14 +750,6 @@ def main():
       if mode == 'zero':
         cov_df = pd.DataFrame(0.0, index=all_ids, columns=COV_COLS, dtype=np.float32)
         ood_df = None  # filled from tier1a below!
-      elif mode == 'cached_38k':
-        cov_df = cov_38k_cached
-        ood_df = ood_38k_cached.reindex(all_ids)[OOD_COLS].copy()
-        ood_df['anomaly_score_ocsvm'] = normalize_ocsvm_series(ood_df['anomaly_score_ocsvm'].values)
-      elif mode == 'cached_121k':
-        cov_df = df_inf_121k.reindex(all_ids)[COV_COLS].fillna(0.0)
-        ood_df = df_inf_121k.reindex(all_ids)[OOD_COLS].copy()
-        ood_df['anomaly_score_ocsvm'] = normalize_ocsvm_series(ood_df['anomaly_score_ocsvm'].values)
       elif mode == 'ca38k':
         cov_df = compute_cov_for_subset(d_sub, valid_38k_override=ids_override)
         ood_df = fast_calculate_anomaly_scores(ca_38k_clean.loc[sorted(ids_override), shared_88_cols], X_test_hybas_88, n_threads=args.threads)
@@ -793,8 +759,9 @@ def main():
 
     if t_key == 'tier1a_active_post2016_ccby_8811':
       ood_t1a_cached = ood_df.copy()
-    if t_key == 'tier4_all_publicly_knowable_121819':
+    if t_key == 'tier4_all_discoverable':
       ood_t4_cached = ood_df.copy()
+      cov_t4_cached = cov_df.copy()
 
     # Wait: if zero-gauge tier was processed first before t1a, compute t1a OOD after loop
     if ood_df is not None:
@@ -890,9 +857,12 @@ def main():
   cov_t5['total_upstream_coverage'] = np.float32(1.0)
   cov_t5['max_upstream_coverage'] = np.float32(1.0)
   cov_t5['max_downstream_coverage'] = np.float32(1.0)
-  cov_t5['upstream_gauge_count'] = np.maximum(
-      df_inf_121k['upstream_gauge_count'].reindex(all_ids).fillna(0.0).values, 1.0
-  ).astype(np.float32)
+  base_ugc = (
+      cov_t4_cached['upstream_gauge_count'].reindex(all_ids).fillna(0.0).values
+      if cov_t4_cached is not None
+      else df_inf_121k['upstream_gauge_count'].reindex(all_ids).fillna(0.0).values
+  )
+  cov_t5['upstream_gauge_count'] = np.maximum(base_ugc, 1.0).astype(np.float32)
 
   cov_t5_dense = cov_t5.copy()
   for c in COV_COLS:

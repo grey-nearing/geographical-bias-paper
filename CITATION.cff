@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use this code or dataset, please cite the article and Zenodo archive."
 title: "What Fraction of the World's Watersheds Are Ungauged?"
 abstract: "Analysis code and public datasets quantifying global hydrological ungaugedness across six fine-scale hydrofabrics, evaluating global machine-learning flood forecasting skill across 1,034,083 HydroSHEDS Level 12 watersheds, and attributing skill predictors via Exact Group Shapley."
-version: "3.1.0"
+version: "3.2.0"
 doi: "10.5281/zenodo.21416986"
 date-released: "2026-11-17"
 url: "https://github.com/grey-nearing/geographical-bias-paper"

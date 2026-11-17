@@ -226,7 +226,7 @@ def snap_gauges_tdx(units_df: pd.DataFrame, gauges_df: pd.DataFrame) -> pd.DataF
     n_feat = int(info["features"])
     fields = list(info["fields"])
     id_col = next((c for c in ["LINKNO", "linkno", "river_id"] if c in fields), fields[0])
-    print(f"Snapping 121,819 gauges to TDX-Hydro ({n_feat:,} features, layer={layer_name}, id={id_col})...", flush=True)
+    print(f"Snapping 119,169 gauges to TDX-Hydro ({n_feat:,} features, layer={layer_name}, id={id_col})...", flush=True)
 
     # Build lookup arrays for area_in and area_out by LINKNO
     u_ids = units_df["unit_id"].to_numpy(dtype=np.int64)

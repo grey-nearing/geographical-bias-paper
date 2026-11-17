@@ -4,8 +4,8 @@
 Matches the exact 88 shared HydroATLAS feature set and scikit-learn detectors from
 `geographical_bias_paper_v2/1_anomaly_scores.py`, evaluated across:
   - 4 hydrofabrics: hydrosheds_l12, merit_basins, tdx_hydro, grit_v06_mainstem_tree
-  - 4 gauge tiers: baseline (8,075), tier1_open_compilations (34,577),
-                   tier2_public_discharge (93,827), tier3_all_known (121,819)
+  - 4 gauge tiers: baseline (8,075), tier1_open_compilations (32,369),
+                   tier2_public_discharge (74,078), tier3_all_known (119,169)
   - 4 accounting variables: area, runoff (where available), population, exposure_eae
   - Macro domains: common_no_grl_ata, full_native, 6 continents, 5 UNEP aridity zones
 

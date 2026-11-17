@@ -247,14 +247,14 @@ def build_hydrosheds_l12() -> tuple[pd.DataFrame, np.ndarray, np.ndarray, np.nda
 
 
 def snap_gauges_l12(units_df: pd.DataFrame, gauges_df: pd.DataFrame) -> pd.DataFrame:
-    """Symmetrically snap all 121,819 gauges to BasinATLAS_v10_lev12 polygons."""
+    """Symmetrically snap all 119,169 gauges to BasinATLAS_v10_lev12 polygons."""
     snap_pq = OUT_PROC / "hydrosheds_l12_gauge_snaps.parquet"
     if snap_pq.exists():
         print(f"[cache] Loading {snap_pq}", flush=True)
         return pd.read_parquet(snap_pq)
 
     t0 = time.time()
-    print("Snapping 121,819 gauges to BasinATLAS_v10_lev12 polygons...", flush=True)
+    print("Snapping 119,169 gauges to BasinATLAS_v10_lev12 polygons...", flush=True)
     u_ids = units_df["unit_id"].to_numpy(dtype=np.int64)
     u_sub = units_df["local_area_km2"].to_numpy(dtype=np.float64)
     u_up = units_df["up_area_out_km2"].to_numpy(dtype=np.float64)
@@ -558,7 +558,7 @@ def run_hydrorivers(gauges_df: pd.DataFrame) -> None:
         snap_df = pd.read_parquet(snap_pq)
     else:
         ts = time.time()
-        print("Snapping 121,819 gauges to HydroRIVERS v1.0 (8.48M reaches, flip=False verified)...", flush=True)
+        print("Snapping 119,169 gauges to HydroRIVERS v1.0 (8.48M reaches, flip=False verified)...", flush=True)
         u_ids = units_df["unit_id"].to_numpy(dtype=np.int64)
         u_ain = units_df["up_area_in_km2"].to_numpy(dtype=np.float64)
         u_aout = units_df["up_area_out_km2"].to_numpy(dtype=np.float64)

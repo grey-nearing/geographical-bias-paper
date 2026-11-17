@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""End-to-end automated verification of manuscript reproduction (v3.1).
+"""End-to-end automated verification of manuscript reproduction (v3.2.0).
 
 Checks all public figures (6 main / 8 SM citation-ordered suite: 10 public + 4 optional Fathom),
 all 6 public supplementary tables (Tables S1–S3, S5–S7) plus optional licensed Fathom Table S4,
@@ -121,18 +121,18 @@ def verify_table_s2(v: Verifier, table_dir: Path, with_fathom: bool = False) -> 
     return sub.iloc[0]
 
   expectations = [
-      ('U_never', 'area', (66.5, 68.4), (40.6, 43.5), (31.6, 35.1)),
-      ('U_never', 'runoff', (59.8, 65.9), (32.8, 39.4), (23.1, 31.4)),
-      ('U_never', 'population', (78.3, 79.2), (42.9, 44.6), (27.9, 30.4)),
-      ('U_net_Eq4', 'area', (91.7, 96.8), (83.7, 93.7), (79.7, 92.1)),
-      ('U_net_Eq4', 'runoff', (89.8, 95.6), (80.2, 90.7), (75.7, 87.9)),
-      ('U_net_Eq4', 'population', (88.1, 95.0), (72.3, 88.2), (61.1, 83.4)),
-      ('U_net_1d', 'Q_ds', (44.8, 53.5), (15.7, 21.6), (9.5, 11.7)),
+      ('U_never', 'area', (58.2, 60.1), (54.5, 56.5), (31.6, 35.1)),
+      ('U_never', 'runoff', (52.4, 59.2), (47.7, 54.7), (23.4, 31.5)),
+      ('U_never', 'population', (67.8, 69.0), (63.4, 64.8), (27.9, 30.4)),
+      ('U_net_Eq4', 'area', (89.9, 96.2), (86.8, 94.8), (79.8, 92.2)),
+      ('U_net_Eq4', 'runoff', (87.6, 94.5), (83.9, 92.7), (76.0, 88.3)),
+      ('U_net_Eq4', 'population', (84.5, 93.7), (80.1, 91.3), (61.1, 83.5)),
+      ('U_net_1d', 'Q_ds', (31.7, 41.5), (29.3, 39.5), (9.5, 11.8)),
   ]
   if with_fathom:
     expectations.extend([
-        ('U_never', 'exposure_eae', (92.0, 92.2), (42.7, 43.7), (23.4, 25.4)),
-        ('U_net_Eq4', 'exposure_eae', (94.6, 97.7), (65.8, 86.6), (53.0, 81.4)),
+        ('U_never', 'exposure_eae', (64.2, 64.8), (63.5, 64.1), (23.4, 25.4)),
+        ('U_net_Eq4', 'exposure_eae', (80.1, 92.3), (79.3, 91.8), (53.0, 81.5)),
     ])
   for metric, weight, t1, t2, t3 in expectations:
     try:
@@ -167,8 +167,8 @@ def verify_fathom_outputs(v: Verifier, table_dir: Path, cf_dir: Path, s16_dir: P
     v.check('Table S4 (Fathom)', 'baseline.warned_global_positive', float(b['warned_global_M_yr']) > 5.0, float(b['warned_global_M_yr']), '> 5.0 M/yr')
     v.check('Table S4 (Fathom)', 'baseline.warned_csi_positive', float(b['warned_csi_global_M_yr']) > 2.0, float(b['warned_csi_global_M_yr']), '> 2.0 M/yr')
     for tk, mk in [
-        ('tier4_all_publicly_knowable_121819', '111_all_three_combined_snap'),
-        ('tier4_all_publicly_knowable_121819', '111_all_three_combined_snap_strict2022'),
+        ('tier4_all_discoverable', '111_all_three_combined_snap'),
+        ('tier4_all_discoverable', '111_all_three_combined_snap_strict2022'),
         ('tier5_universal_no_ood_clamp', '111_all_three_combined_snap'),
         ('tier5_universal_idealized_ceiling', '111_all_three_combined_snap'),
     ]:
@@ -221,18 +221,18 @@ def verify_table_s1(v: Verifier, table_dir: Path) -> None:
     return
   df = pd.read_csv(p).set_index('category_key')
   expected = {
-      'active_total': (22292, 39461, 50596),
-      'verified_ge_2016': (22289, 34290, 45353),
-      'portal_active_no_end_year': (3, 5171, 5243),
-      'historical_or_inactive_total': (10780, 24320, 30218),
-      'verified_le_2015': (10726, 22138, 28025),
-      'portal_inactive': (31, 1469, 1478),
-      'portal_active_record_le_2015': (23, 713, 715),
-      'unclassifiable_total': (1505, 30046, 41005),
-      'live_portal_undated': (756, 28149, 39087),
-      'static_archive_undated': (749, 1897, 1918),
-      'total_distinct_gauges': (34577, 93827, 121819),
-      'section3_assimilation_total': (23071, 68323, 90398),
+      'active_total': (20373, 33379, 49238),
+      'verified_ge_2016': (19942, 30782, 45184),
+      'portal_active_no_end_year': (431, 2597, 4054),
+      'historical_or_inactive_total': (10310, 18456, 29495),
+      'verified_le_2015': (9843, 17208, 27501),
+      'portal_inactive': (36, 786, 1457),
+      'portal_active_record_le_2015': (431, 462, 537),
+      'unclassifiable_total': (1686, 22243, 40436),
+      'live_portal_undated': (1349, 21906, 38518),
+      'static_archive_undated': (337, 337, 1918),
+      'total_distinct_gauges': (32369, 74078, 119169),
+      'section3_assimilation_total': (22153, 55747, 88293),
   }
   for key, (e1, e2, e3) in expected.items():
     for col, exp in [('tier1_count', e1), ('tier2_count', e2), ('tier3_count', e3)]:
@@ -250,10 +250,10 @@ def verify_table_s3(v: Verifier, table_dir: Path) -> None:
   v.check_equal('Table S3 / Fig. 3', 'n_territories', len(df), 175)
   v.check_equal('Table S3 / Fig. 3', 'n_established_system', stats['n_established_system'], 60)
   v.check_equal('Table S3 / Fig. 3', 'n_cap_gap_excl_greenland', stats['n_cap_gap_excl_greenland'], 114)
-  v.check_equal('Table S3 / Fig. 3', 'n_zero_open_gauges_sys', stats['n_zero_open_gauges_sys'], 19)
+  v.check_equal('Table S3 / Fig. 3', 'n_zero_open_gauges_sys', stats['n_zero_open_gauges_sys'], 17)
   v.check_equal('Table S3 / Fig. 3', 'n_zero_open_gauges_cap_gap', stats['n_zero_open_gauges_cap_gap'], 86)
   v.check_close('Table S3 / Fig. 3', 'land_ung_median_cap_gap_pct', stats['land_ung_median_cap_gap_pct'], 88.6, atol=0.15)
-  v.check_close('Table S3 / Fig. 3', 'land_ung_median_sys_pct', stats['land_ung_median_sys_pct'], 59.4, atol=0.15)
+  v.check_close('Table S3 / Fig. 3', 'land_ung_median_sys_pct', stats['land_ung_median_sys_pct'], 61.3, atol=0.15)
   v.check('Table S3 / Fig. 3', 'land_ung_mannwhitney_p', stats['land_ung_mannwhitney_p'] < 1e-8, stats['land_ung_mannwhitney_p'], '< 1e-8')
   v.check_close('Table S3 / Fig. 3', 'pop_ung_median_cap_gap_pct', stats['pop_ung_median_cap_gap_pct'], 81.8, atol=0.15)
   v.check_close('Table S3 / Fig. 3', 'pop_ung_median_sys_pct', stats['pop_ung_median_sys_pct'], 39.1, atol=0.15)
@@ -315,20 +315,20 @@ def verify_table_s7(v: Verifier, table_dir: Path) -> None:
   v.check_equal('Table S7', 'global_n_basins', int(g['n_basins']), 1034083)
   v.check_close('Table S7', 'global_area_Mkm2', float(g['land_area_km2']) / 1e6, 135.01, atol=0.05)
   v.check_close('Table S7', 'global_runoff_km3_yr', float(g['runoff_km3_yr']), 45633.0, atol=50.0)
-  v.check_close('Table S7', 'global_outlet_ung_area_pct', float(g['outlet_ung_area_pct']), 91.9, atol=0.1)
-  v.check_close('Table S7', 'global_outlet_ung_basin_pct', float(g['outlet_ung_basin_pct']), 92.5, atol=0.1)
-  v.check_close('Table S7', 'global_zero_up_area_pct', float(g['zero_up_area_pct']), 80.4, atol=0.1)
+  v.check_close('Table S7', 'global_outlet_ung_area_pct', float(g['outlet_ung_area_pct']), 92.0, atol=0.1)
+  v.check_close('Table S7', 'global_outlet_ung_basin_pct', float(g['outlet_ung_basin_pct']), 92.6, atol=0.1)
+  v.check_close('Table S7', 'global_zero_up_area_pct', float(g['zero_up_area_pct']), 80.5, atol=0.1)
   v.check_close('Table S7', 'global_entire_net_ung_area_pct', float(g['entire_net_ung_area_pct']), 30.9, atol=0.1)
-  v.check_close('Table S7', 'global_U_net_area_pct', float(g['U_net_area_pct']), 77.9, atol=0.1)
-  v.check_close('Table S7', 'global_U_net_runoff_pct', float(g['U_net_runoff_pct']), 73.4, atol=0.1)
-  v.check_close('Table S7', 'global_U_net_basin_mean_pct', float(g['U_net_basin_mean_pct']), 76.4, atol=0.1)
-  v.check_close('Table S7', 'global_U_net_basin_sd_pct', float(g['U_net_basin_sd_pct']), 36.5, atol=0.1)
+  v.check_close('Table S7', 'global_U_net_area_pct', float(g['U_net_area_pct']), 78.0, atol=0.1)
+  v.check_close('Table S7', 'global_U_net_runoff_pct', float(g['U_net_runoff_pct']), 73.7, atol=0.1)
+  v.check_close('Table S7', 'global_U_net_basin_mean_pct', float(g['U_net_basin_mean_pct']), 76.5, atol=0.1)
+  v.check_close('Table S7', 'global_U_net_basin_sd_pct', float(g['U_net_basin_sd_pct']), 36.4, atol=0.1)
   v.check_close('Table S7', 'global_U_net_basin_median_pct', float(g['U_net_basin_median_pct']), 98.3, atol=0.1)
 
   # Part B Strahler Order 1 & 7+ checks
   s1 = df[df['group'] == 'Strahler Order 1 (Headwaters)'].iloc[0]
   v.check_equal('Table S7', 'strahler_1_n_basins', int(s1['n_basins']), 593174)
-  v.check_close('Table S7', 'strahler_1_U_net_area_pct', float(s1['U_net_area_pct']), 88.1, atol=0.1)
+  v.check_close('Table S7', 'strahler_1_U_net_area_pct', float(s1['U_net_area_pct']), 88.2, atol=0.1)
   s7p = df[df['group'] == 'Strahler Order 7+ (Combined)'].iloc[0]
   v.check_equal('Table S7', 'strahler_7plus_n_basins', int(s7p['n_basins']), 4305)
   v.check_close('Table S7', 'strahler_7plus_U_net_area_pct', float(s7p['U_net_area_pct']), 2.4, atol=0.1)
@@ -336,9 +336,9 @@ def verify_table_s7(v: Verifier, table_dir: Path) -> None:
   # Part C tiers
   part_c = df[df['part'] == 'Part C: Data-Accessibility Tier'].set_index('group')
   for lbl, exp_u_area in [
-      ('All Publicly Discoverable Gauges (121,819)', 77.9),
-      ('Confirmed Publicly Accessible Records (93,827)', 82.5),
-      ('Standardized Open Compilations (Caravan + EStreams; 34,577)', 91.2),
+      ('All Publicly Discoverable Physical Gauges (119,169)', 78.0),
+      ('Confirmed Open-License Discharge Records (74,078)', 85.9),
+      ('Openly Redistributed Streamflow Compilations (32,369)', 89.4),
       ('Post-2016 Caravan Training Subset (8,811 records; 8,075 stations)', 96.8),
   ]:
     v.check_close('Table S7', f'part_c.{lbl[:28]}', float(part_c.loc[lbl, 'U_net_area_pct']), exp_u_area, atol=0.1)

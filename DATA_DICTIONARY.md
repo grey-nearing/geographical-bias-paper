@@ -1,6 +1,6 @@
-# Data Dictionary — Public Zenodo Archive (v3.1.0) & Upstream Hydrofabrics
+# Data Dictionary — Public Zenodo Archive (v3.2.0) & Upstream Hydrofabrics
 
-Companion archive DOI: **https://doi.org/10.5281/zenodo.21416986** (v3.1.0)
+Companion archive DOI: **https://doi.org/10.5281/zenodo.21416986** (v3.2.0)
 
 > **Proprietary Data Policy:** No Fathom Global 3.0 flood-hazard rasters and no Fathom-derived expected annual flood exposure (`eae_*`, `exposed_pop_*`) columns or tables are included in any archive below.
 
@@ -12,15 +12,16 @@ Extracting the three public data tarballs into `$GEO_BIAS_DATA_DIR` produces the
 
 ### Archive 1: `01_global_gauge_catalog.tar.gz`
 
-Global deduplicated stream-gauge inventory compiled from 73 public national, regional, and international archives (121,819 distinct physical stations across 163 countries).
+Global deduplicated physical stream-gauge inventory compiled and audited across 73 candidate public national, regional, and international repositories, retaining 72 physical-gauge repositories (119,169 distinct physical in-situ river stations across 163 countries; zero simulated runoff series, zero satellite width reconstructions, and zero non-river meteorological/offshore/groundwater/lake stations).
 
 | Path (relative to `$GEO_BIAS_DATA_DIR`) | Rows | Key Columns / Purpose |
 | --- | ---: | --- |
-| `attributes/global_gauges_deduplicated.parquet` | 121,819 | `canonical_gauge_id`, `latitude`, `longitude`, `country`, `continent`, `drainage_area_km2`, `all_source_datasets`, `best_observation_type`, `best_data_access_policy`, `verified_record_end_year`, `is_active_opt1`, `active_reason`, `snapped_hybas_id`, `in_canonical_38069`. |
-| `attributes/global_gauges_by_source_archive.parquet` | 365,290 | Un-deduplicated archive-level provenance table linking every `native_station_id` and `source_dataset` to its `canonical_gauge_id`. |
-| `attributes/global_gauges.parquet` | 121,819 | Hydrofabric-agnostic gauge table (HydroBASINS-snapped fields removed) with nested boolean tier flags (`in_tier_baseline`, `in_tier_1`, `in_tier_2`, `in_tier_3`, `is_active`). |
-| `attributes/grdc_attributes.csv` | 8,811 | Post-2016 Caravan training station identifiers and static catchment attributes used to anchor the baseline OpenHydroNet training subset (8,075 distinct physical stations). |
-| `attributes/caravan_attributes.csv` | 121,819 | 88 HydroATLAS upstream catchment attributes mapped to every `canonical_gauge_id` for tier-specific OOD scoring in Stage 3 (`stage_b1_tier_features_1034k.py`). |
+| `attributes/global_gauges_deduplicated.parquet` | 119,169 | `canonical_gauge_id`, `latitude`, `longitude`, `country`, `continent`, `drainage_area_km2`, `all_source_datasets`, `best_observation_type`, `best_data_access_policy`, `verified_record_end_year`, `is_active_opt1`, `active_reason`, `snapped_hybas_id`, `in_canonical_38069`, `in_tier_baseline` (`8,075`), `in_tier_1` (`32,369` full-use open compilations), `in_tier_2` (`74,078` confirmed open-license discharge), `in_tier_3` (`119,169` all discoverable physical gauges). |
+| `attributes/global_gauges_by_source_archive.parquet` | 361,020 | Un-deduplicated archive-level provenance table linking every physical river `native_station_id` and `source_dataset` to its `canonical_gauge_id`, observation type, and license classification. |
+| `attributes/global_gauges.parquet` | 119,169 | Hydrofabric-agnostic gauge table (HydroBASINS-snapped fields removed) with nested boolean tier flags (`in_tier_baseline`, `in_tier_1`, `in_tier_2`, `in_tier_3`, `is_active`). |
+| `attributes/73_archive_license_and_data_audit.csv` | 73 | Per-repository audit table documenting primary-source streamflow availability, observation types, license terms, full-use openness classification, and station counts across all 73 repositories. |
+| `attributes/grdc_attributes.csv` | 8,811 | Post-2016 Caravan training station identifiers and static catchment attributes used to anchor the baseline global LSTM (`OpenHydroNet`) training subset (8,075 distinct physical stations). |
+| `attributes/caravan_attributes.csv` | 119,169 | 88 HydroATLAS upstream catchment attributes mapped to every `canonical_gauge_id` for tier-specific OOD scoring in Stage 3 (`stage_b1_tier_features_1034k.py`). |
 
 ### Archive 2: `02_hydroatlas_worldpop_and_auxiliary.tar.gz`
 
@@ -51,9 +52,9 @@ Out-of-sample evaluation metrics from the 210-model OpenHydroNet cross-validatio
 | `round2/hydro_model_metrics/` | Per-gauge lead-time-1 evaluation CSVs across all **43 hydrological metrics** (8 harmonized 2016–2023 continuous hydrograph metrics, 32 return-period recall/precision metrics over 1986–2023, and 3 2-day F1 metrics) across all 3 CV splits (`gauged`, `random`, `separated`) and 4 modeling regimes (`base`, `_ft`, `_da`, `_ft_da`). |
 | `cross_validation_splits/` | Deterministic 10-fold gauge-grouped CV split assignments (`random`, `separated`, and `gauged` splits). |
 
-### Archive 4: `geographical-bias-paper-v3.1.0.zip`
+### Archive 4: `geographical-bias-paper-v3.2.0.zip`
 
-Frozen snapshot of the GitHub code repository at release tag `v3.1.0`.
+Frozen snapshot of the GitHub code repository at release tag `v3.2.0`.
 
 ---
 

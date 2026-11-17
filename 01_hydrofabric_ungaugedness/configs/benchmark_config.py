@@ -20,17 +20,17 @@ FIGURES_DIR = RESULTS_DIR / "figures"
 
 # Four nested gauge data-accessibility tiers (physical deduplicated gauges)
 GAUGE_TIERS = [
-    ("baseline", "Baseline: Active Post-2016 CC-BY ML Training (~8,075)", "in_tier_baseline"),
-    ("tier1_open_compilations", "Tier 1: Open Academic Compilations — Caravan + EStreams (34,577)", "in_tier_1"),
-    ("tier2_public_discharge", "Tier 2: Publicly Accessible Discharge Archives (93,827)", "in_tier_2"),
-    ("tier3_all_known", "Tier 3: All Publicly Knowable Gauges Worldwide (121,819)", "in_tier_3"),
+    ("baseline", "Baseline: Active Post-2016 CC-BY ML Training (8,075)", "in_tier_baseline"),
+    ("tier1_open_compilations", "Tier 1: Openly Redistributed Streamflow Datasets (32,369)", "in_tier_1"),
+    ("tier2_public_discharge", "Tier 2: Confirmed Open-License Discharge Records (74,078)", "in_tier_2"),
+    ("tier3_all_known", "Tier 3: All Publicly Discoverable Stream Gauges (119,169)", "in_tier_3"),
 ]
 
 # Active-only sensitivity subset (optional secondary evaluation)
 ACTIVE_GAUGE_TIERS = [
-    ("tier1_active", "Tier 1 Active (Caravan + EStreams, active)", "in_tier_1_active"),
-    ("tier2_active", "Tier 2 Active (Public Discharge, active)", "in_tier_2_active"),
-    ("tier3_active", "Tier 3 Active (All Known, active)", "in_tier_3_active"),
+    ("tier1_active", "Tier 1 Active (Openly Redistributed Streamflow, active)", "in_tier_1_active"),
+    ("tier2_active", "Tier 2 Active (Open-License Discharge, active)", "in_tier_2_active"),
+    ("tier3_active", "Tier 3 Active (All Discoverable, active)", "in_tier_3_active"),
 ]
 
 # Family 3: Scale-parameterized 2D inter-gauge area resolution grid (km^2)

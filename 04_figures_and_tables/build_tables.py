@@ -4,7 +4,7 @@
 Produces strictly non-Fathom outputs in `--out-dir` (default: `$GEO_BIAS_DATA_DIR/round2/tables`),
 numbered strictly in order of first citation in the Science manuscript (0 standalone main tables):
   - Table_S1_gauge_status.csv: Mutually exclusive operational & temporal status
-    breakdown of 32,369 / 74,078 / 119,169 stream gauges under the uniform 2016 cutoff
+    breakdown of 32,369 / 82,596 / 119,169 stream gauges under the uniform 2016 cutoff
     plus observation-type breakdowns and strict >=2022 daily-discharge DA counts.
   - Table_S2_ungaugedness_ranges.csv: Multi-hydrofabric min–max ranges across six
     fine-scale global hydrofabrics (U_never, U_net_Eq4, and 1D flow-weighted discharge;
@@ -298,8 +298,8 @@ def build_table_s4(out_dir: Path) -> Path | None:
 
   tier_specs = [
       ('tier1a_active_post2016_ccby_8811', 'Baseline: Post-2016 Caravan (8,811 records / 8,075 phys stations)'),
-      ('tier1_open_compilations', 'Tier 1: Openly Redistributed Streamflow Compilations (32,369)'),
-      ('tier2_public_discharge', 'Tier 2: Confirmed Open-License Discharge Records (74,078)'),
+      ('tier1_open_compilations', 'Tier 1: Standardized, Open-License Discharge Datasets (32,369)'),
+      ('tier2_public_discharge', 'Tier 2: Gauges with Discharge Records (82,596)'),
       ('tier4_all_discoverable', 'Tier 3: All Publicly Discoverable Physical Gauges (119,169)'),
       ('tier5_universal_no_ood_clamp', 'Universal Gauging — Direct Local FT+DA (no OOD clamp)'),
       ('tier5_universal_idealized_ceiling', 'Universal Gauging — Idealized Global-Training Ceiling (OOD -> Q75)'),
@@ -901,8 +901,8 @@ def build_table_s7(out_dir: Path) -> Path:
   # Part C: 4 data-accessibility tiers
   tier_rows = [
       ('tier4_all_discoverable', 'All Publicly Discoverable Physical Gauges (119,169)'),
-      ('tier2_public_discharge', 'Confirmed Open-License Discharge Records (74,078)'),
-      ('tier1_open_compilations', 'Openly Redistributed Streamflow Compilations (32,369)'),
+      ('tier2_public_discharge', 'Gauges with Discharge Records (82,596)'),
+      ('tier1_open_compilations', 'Standardized, Open-License Discharge Datasets (32,369)'),
       ('tier1a_active_post2016_ccby_8811', 'Post-2016 Caravan Training Subset (8,811 records; 8,075 stations)'),
   ]
   for tk, lbl in tier_rows:
@@ -933,7 +933,9 @@ def main() -> None:
 
   out_dir = Path(args.out_dir)
   out_dir.mkdir(parents=True, exist_ok=True)
-  selected = {x.strip().lower() for x in args.only.split(',') if x.strip()} if args.only else {'ts1', 'ts2', 'ts3', 'ts4', 'ts5', 'ts6', 'ts7'}
+  selected = {x.strip().lower() for x in args.only.split(',') if x.strip()} if args.only else {'ts1', 'ts2', 'ts3', 'ts4', 'ts5', 'ts6', 'ts7', 'ts8'}
+
+  from build_table_s8 import build_table_s8
 
   builders = [
       ('ts1', build_table_s1),
@@ -943,6 +945,7 @@ def main() -> None:
       ('ts5', build_table_s5),
       ('ts6', build_table_s6),
       ('ts7', build_table_s7),
+      ('ts8', build_table_s8),
   ]
   for key, fn in builders:
     if key in selected:

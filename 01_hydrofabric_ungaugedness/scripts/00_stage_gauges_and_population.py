@@ -59,16 +59,12 @@ def stage_gauges() -> dict:
             in_tier_1 = g["in_tier_1"].astype(bool).to_numpy()
             in_tier_2 = g["in_tier_2"].astype(bool).to_numpy()
         else:
-            open_policies = {"open_public_api_or_bulk", "open_academic_compilation"}
             q_obs = {"daily_discharge", "monthly_discharge"}
             in_tier_1 = (
                 (g["best_data_access_policy"] == "open_academic_compilation")
                 & g["best_observation_type"].isin(q_obs)
             ).to_numpy()
-            in_tier_2 = (
-                g["best_data_access_policy"].isin(open_policies)
-                & g["best_observation_type"].isin(q_obs)
-            ).to_numpy()
+            in_tier_2 = in_tier_1 | g["best_observation_type"].isin(q_obs).to_numpy()
         in_tier_3 = np.ones(len(g), dtype=bool)
 
         in_tier_baseline = g["canonical_gauge_id"].isin(baseline_cids).to_numpy()
@@ -103,6 +99,7 @@ def stage_gauges() -> dict:
         clean["in_tier_2_active"] = clean["in_tier_2"] & clean["is_active"]
         clean["in_tier_3_active"] = clean["in_tier_3"] & clean["is_active"]
         clean.to_parquet(GAUGES_OUT, index=False)
+        clean.to_parquet(_SRC_GAUGES_PREBUILT, index=False)
     elif _SRC_GAUGES_PREBUILT.exists():
         shutil.copy2(_SRC_GAUGES_PREBUILT, GAUGES_OUT)
         clean = pd.read_parquet(GAUGES_OUT)
@@ -113,7 +110,7 @@ def stage_gauges() -> dict:
         )
 
     assert int(clean["in_tier_3"].sum()) == 119_169
-    assert int(clean["in_tier_2"].sum()) == 74_078
+    assert int(clean["in_tier_2"].sum()) == 82_596
     assert int(clean["in_tier_1"].sum()) == 32_369
     assert 8_050 <= int(clean["in_tier_baseline"].sum()) <= 8_120
 

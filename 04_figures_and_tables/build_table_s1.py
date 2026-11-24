@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Builds `Table_S8_72_gauge_repositories.csv` (all 72 physical-gauge repositories)."""
+"""Builds `Table_S1_72_gauge_repositories.csv` (all 72 physical-gauge repositories)."""
 
 from __future__ import annotations
 
@@ -13,12 +13,12 @@ CANON_DIR = Path(os.environ.get('GEO_BIAS_DATA_DIR', str(REPO_DIR / 'data')))
 
 REPO_META = {
     'GSIM': ('GSIM', 'Do et al. (2018); Gudmundsson et al. (2018) (20, 21)', 'https://doi.org/10.1594/PANGAEA.887477'),
-    'Caravan': ('Caravan (Core + Extensions)', 'Kratzert et al. (2023) (17)', 'https://doi.org/10.5281/zenodo.10006322'),
+    'Caravan': ('Caravan (Core + Extensions)', 'Kratzert et al. (2023) (18)', 'https://doi.org/10.5281/zenodo.10006322'),
     'GSHA': ('GSHA v1.1', 'Yin et al. (2024) (22)', 'https://doi.org/10.5281/zenodo.10433905'),
     'GRDC': ('Global Runoff Data Centre (GRDC)', 'Hannah et al. (2011); WMO/BfG (13)', 'https://portal.grdc.bafg.de/'),
-    'Caravan (GRDC Extension)': ('GRDC-Caravan Extension', 'Färber et al. (2025) (18)', 'https://doi.org/10.5281/zenodo.10006322'),
+    'Caravan (GRDC Extension)': ('GRDC-Caravan Extension', 'Färber et al. (2025) (17)', 'https://doi.org/10.5281/zenodo.10006322'),
     'ROBIN_v1': ('ROBIN v1', 'Turner et al. (2025) (76)', 'https://doi.org/10.5285/8344e4f3-d2ea-44f5-8afa-86d2987543a9'),
-    'Caravan (Regional CAMELS Extension)': ('Caravan Regional CAMELS Extensions', 'Kratzert et al. (2023) (17)', 'https://doi.org/10.5281/zenodo.15530021'),
+    'Caravan (Regional CAMELS Extension)': ('Caravan Regional CAMELS Extensions', 'Kratzert et al. (2023) (18)', 'https://doi.org/10.5281/zenodo.15530021'),
     'EStreams': ('EStreams (Europe)', 'do Nascimento et al. (2024) (19)', 'https://doi.org/10.5281/zenodo.13255133'),
     'HYSETS': ('HYSETS (North America)', 'Arsenault et al. (2020) (77)', 'https://doi.org/10.17605/OSF.IO/RPC3W'),
     'R_ArcticNET_v4': ('R-ArcticNET v4.0', 'Lammers et al. (2001) (78)', 'https://www.r-arcticnet.sr.unh.edu/v4.0/'),
@@ -98,7 +98,7 @@ def classify_station_temporal(g_dedup: pd.DataFrame) -> pd.Series:
   return status
 
 
-def build_table_s8(out_dir: Path) -> Path:
+def build_table_s1(out_dir: Path) -> Path:
   attr_dir = CANON_DIR / 'attributes'
   arch = pd.read_parquet(attr_dir / 'global_gauges_by_source_archive.parquet')
   dedup = pd.read_parquet(attr_dir / 'global_gauges_deduplicated.parquet')
@@ -173,7 +173,7 @@ def build_table_s8(out_dir: Path) -> Path:
 
   df = pd.DataFrame(rows).sort_values(['category', 'unique_gauges'], ascending=[True, False]).reset_index(drop=True)
   df.insert(0, 'repo_id', range(1, len(df) + 1))
-  out_path = out_dir / 'Table_S8_72_gauge_repositories.csv'
+  out_path = out_dir / 'Table_S1_72_gauge_repositories.csv'
   df.to_csv(out_path, index=False)
   print(f'  Saved {out_path} ({len(df)} repositories; {df["archive_rows"].sum():,} archive rows)', flush=True)
   return out_path

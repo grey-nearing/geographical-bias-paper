@@ -3,9 +3,9 @@
 
 Matches the exact 88 shared HydroATLAS feature set and scikit-learn detectors from
 `geographical_bias_paper_v2/1_anomaly_scores.py`, evaluated across:
-  - 4 hydrofabrics: hydrosheds_l12, merit_basins, tdx_hydro, grit_v06_mainstem_tree
+  - 4 hydrofabrics: hydrosheds_l12, merit_basins, tdx_hydro, grit_v10_mainstem_tree
   - 4 gauge tiers: baseline (8,075), tier1_open_compilations (32,369),
-                   tier2_public_discharge (74,078), tier3_all_known (119,169)
+                   tier2_public_discharge (82,596), tier3_all_known (119,169)
   - 4 accounting variables: area, runoff (where available), population, exposure_eae
   - Macro domains: common_no_grl_ata, full_native, 6 continents, 5 UNEP aridity zones
 
@@ -155,9 +155,9 @@ def load_hydrofabric_meta(fabric_id: str, gauges_df: pd.DataFrame) -> dict:
         s = pd.read_parquet(proc / "tdx_hydro" / "tdx_hydro_gauge_snaps.parquet", columns=["snapped_unit_id"])
         hyb_col = u["hybas_l12_id"].to_numpy(dtype=np.int64)
         local_q = u["local_runoff_m3s"].to_numpy(dtype=np.float64)
-    elif fabric_id == "grit_v06_mainstem_tree":
+    elif fabric_id == "grit_v10_mainstem_tree":
         all_df = pd.read_parquet(
-            proc / "grit_v06" / "grit_v06_all_units.parquet",
+            proc / "grit_v10" / "grit_v10_all_units.parquet",
             columns=[
                 "unit_id", "is_mainstem", "local_area_dag_km2", "lon", "lat",
                 "in_common_domain", "continent", "hybas_l12_id",
@@ -178,7 +178,7 @@ def load_hydrofabric_meta(fabric_id: str, gauges_df: pd.DataFrame) -> dict:
         if eae_m is not None:
             u["exposure_eae"] = eae_m
         u["aridity_zone"] = ari_m
-        s = pd.read_parquet(proc / "grit_v06" / "grit_v06_mainstem_gauge_snaps.parquet", columns=["snapped_unit_id"])
+        s = pd.read_parquet(proc / "grit_v10" / "grit_v10_mainstem_gauge_snaps.parquet", columns=["snapped_unit_id"])
         hyb_col = u["hybas_l12_id"].to_numpy(dtype=np.int64)
         local_q = None
     else:
@@ -380,7 +380,7 @@ def main() -> None:
     hybas_id_to_row = {int(h): i for i, h in enumerate(hybas_ids)}
     gauges_df = pd.read_parquet(GAUGES_DIR / "global_gauges.parquet")
 
-    fabrics = ["hydrosheds_l12", "merit_basins", "tdx_hydro", "grit_v06_mainstem_tree"]
+    fabrics = ["hydrosheds_l12", "merit_basins", "tdx_hydro", "grit_v10_mainstem_tree"]
     metas = {}
     for f in fabrics:
         tf = time.time()

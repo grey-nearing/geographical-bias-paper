@@ -13,10 +13,11 @@
   "physical_gauges_v320_tier3": 119169,
   "in_tier_baseline": 8075,
   "in_tier_1": 32369,
-  "in_tier_2": 74078,
+  "in_tier_2": 82596,
+  "in_open_license_q_subset": 74078,
   "in_tier_3": 119169,
   "in_tier_1_active": 22153,
-  "in_tier_2_active": 55747,
+  "in_tier_2_active": 59339,
   "in_tier_3_active": 88293,
   "tier3_breakdown_by_best_obs": {
     "daily_discharge": 80474,

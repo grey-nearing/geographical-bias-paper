@@ -153,8 +153,8 @@ def build_fig_s1(out_dir: Path) -> Path:
   ax_a = axes[0, 0]
   tiers = [
       (f'All Discoverable\n({len(g):,})', np.ones(len(g), dtype=bool)),
-      (f'Open Discharge\n({int(g["tier2"].sum()):,})', g['tier2'].values),
-      (f'Open Datasets\n({int(g["tier1"].sum()):,})', g['tier1'].values),
+      (f'Discharge Records\n({int(g["tier2"].sum()):,})', g['tier2'].values),
+      (f'Standardized Open Q\n({int(g["tier1"].sum()):,})', g['tier1'].values),
   ]
   cats = [
       ('Recent data (>=2016)', COL_T1, 'Recent data (≥2016)'),
@@ -188,8 +188,8 @@ def build_fig_s1(out_dir: Path) -> Path:
   bins_end = np.arange(1939.5, 2027.5, 1.0)
   for mask, col, tier_lbl, lw, af in [
       (np.ones(len(g), dtype=bool), COL_T3, 'All discoverable', 1.35, 0.10),
-      (g['tier2'].values, COL_T2, 'Open discharge', 1.25, 0.08),
-      (g['tier1'].values, COL_T1, 'Open datasets', 1.25, 0.12),
+      (g['tier2'].values, COL_T2, 'Discharge records', 1.25, 0.08),
+      (g['tier1'].values, COL_T1, 'Standardized open Q', 1.25, 0.12),
   ]:
     vals_all = g.loc[mask, 'verified_record_end_year'].dropna().values
     vals_win = vals_all[(vals_all >= 1940) & (vals_all <= 2026)]
@@ -602,7 +602,7 @@ def build_fig_s7_optional(out_dir: Path) -> Path | None:
   stage_defs = [
       ('Today', 'tier1a_active_post2016_ccby_8811', '000_global_train_joint'),
       ('32.4k', 'tier1_open_compilations', '111_all_three_combined_snap'),
-      ('74.1k', 'tier2_public_discharge', '111_all_three_combined_snap'),
+      ('82.6k', 'tier2_public_discharge', '111_all_three_combined_snap'),
       ('119.2k', 'tier4_all_discoverable', '111_all_three_combined_snap'),
   ]
   if ('tier5_universal_no_ood_clamp', '111_all_three_combined_snap') in pf1.index:
@@ -665,8 +665,8 @@ def build_fig_s7_optional(out_dir: Path) -> Path | None:
   pr_handles = [
       Line2D([0], [0], color='#0F172A', lw=1.2, ls='--', marker='D', markersize=3.8, markerfacecolor='#0F172A', label='Adapted Caravan (1y–10y)'),
       Line2D([0], [0], color='#64748B', lw=1.1, ls='--', marker='D', markersize=3.8, markerfacecolor='white', markeredgecolor='#334155', label='Ungauged Caravan (1y–10y)'),
-      Line2D([0], [0], color='#B45309', lw=1.6, ls='-', marker='o', markersize=4.2, markerfacecolor='#D97706', label='CAP-gap exposure (P50-direct)'),
-      Line2D([0], [0], color='#94A3B8', lw=1.1, ls='-', marker='o', markersize=3.8, markerfacecolor='white', markeredgecolor='#64748B', label='Global exposure (P50-direct)'),
+      Line2D([0], [0], color='#B45309', lw=1.6, ls='-', marker='o', markersize=4.2, markerfacecolor='#D97706', label='CAP-gap exposure (50-yr precision)'),
+      Line2D([0], [0], color='#94A3B8', lw=1.1, ls='-', marker='o', markersize=3.8, markerfacecolor='white', markeredgecolor='#64748B', label='Global exposure (50-yr precision)'),
   ]
   ax_a.legend(handles=pr_handles, loc='upper left', frameon=True, facecolor='white', edgecolor='#CBD5E1', framealpha=0.95, fontsize=6.0, borderpad=0.28)
   ax_a.set_xlim(15.0, 81.0)
@@ -716,7 +716,7 @@ def build_fig_s7_optional(out_dir: Path) -> Path | None:
   ax_b.set_ylim(-0.60, len(regimes) - 0.15)
   ax_b.tick_params(axis='x', labelsize=6.2)
   ax_b.set_xlabel('CAP-gap deficit closed by 119.2k existing gauges (%)', fontsize=6.6, fontweight='bold')
-  ax_b.set_title('(b) Directional invariance across action regimes', fontsize=7.2, fontweight='bold', loc='left', pad=5)
+  ax_b.set_title('(b) Share of CAP-gap deficit recovered by existing gauges', fontsize=7.0, fontweight='bold', loc='left', pad=5)
   ax_b.legend(loc='upper right', frameon=True, facecolor='white', edgecolor='#CBD5E1', fontsize=6.0, borderpad=0.25)
   ax_b.grid(axis='x', linestyle='--', alpha=0.35)
   sns.despine(ax=ax_b)

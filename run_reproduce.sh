@@ -4,14 +4,14 @@
 #
 # Automatically adapts to the inputs staged locally in $GEO_BIAS_DATA_DIR:
 #   - PUBLIC MODE (default, when proprietary Fathom v3 exposure inputs are absent):
-#       Reproduces all 10 non-Fathom figures (Figs. 1–3, 6, S1–S6), all 6 public
-#       supplementary tables (Tables S1–S3, S5–S7; Table S2 excl. Fathom rows,
-#       Table S3 excl. Fathom cols), and verifies manuscript values purely from
+#       Reproduces all 10 non-Fathom figures (Figs. 1–3, 6, S1–S6), all 7 public
+#       supplementary tables (Tables S1–S5, S7–S8; Table S3 excl. Fathom rows,
+#       Table S4 excl. Fathom cols), and verifies manuscript values purely from
 #       public code and Zenodo 10.5281/zenodo.21416986.
 #   - FULL MODE (auto-enabled when licensed Fathom v3 exposure shards or parquet
 #       are staged locally; disable with --no-fathom):
-#       Reproduces EVERY figure (Figs. 1–6, S1–S8), EVERY table (Tables S1–S7,
-#       including Table S4 + action-regime sensitivity), B=200 stratified
+#       Reproduces EVERY figure (Figs. 1–6, S1–S8), EVERY table (Tables S1–S8,
+#       including Table S6 + action-regime sensitivity), B=200 stratified
 #       MAIN_BAS x climate block-bootstrap 95% CIs, and national N=1..20 gauge siting.
 #
 # Does NOT retrain the 210 OpenHydroNet LSTMs (starts from archived OHN CV evaluation
@@ -86,9 +86,9 @@ if (( FORCE_NO_FATHOM == 0 )) && { (( HAS_DEF_SHARDS == 1 )) || [[ -f "$EXP_PQ" 
   WITH_FATHOM=1
 fi
 
-MODE_DESC="PUBLIC (non-Fathom: 10 figures, 6 tables)"
+MODE_DESC="PUBLIC (non-Fathom: 10 figures, 7 tables)"
 if (( WITH_FATHOM == 1 )); then
-  MODE_DESC="FULL (public + locally staged licensed Fathom v3: 14 figures, 7 tables)"
+  MODE_DESC="FULL (public + locally staged licensed Fathom v3: 14 figures, 8 tables)"
 fi
 
 echo "========================================================================"
@@ -220,7 +220,7 @@ if (( SKIP_STAGE3 == 0 )); then
       --boot-threads "$BOOT_THREADS"
     python3 "$S3_DIR/stage_e_global_kernelshap.py" --sample-size 1000 --k-bg 100
   else
-    echo "[Stage 3/4] Running core-tier features, scale invariance, 171 meta-models, Table S5 & Exact 2^7 Group Shapley (public non-Fathom mode)..."
+    echo "[Stage 3/4] Running core-tier features, scale invariance, 171 meta-models, Table S7 & Exact 2^7 Group Shapley (public non-Fathom mode)..."
     python3 "$S3_DIR/stage_b1_tier_features_1034k.py" --core-tiers-only --threads "$NCPU"
     python3 "$S3_DIR/stage_b1a_scale_invariance_audit.py"
     python3 "$S3_DIR/stage_c_train_meta_models.py" --phase all --workers "$META_WORKERS" --threads "$THREADS_PER_WORKER"
@@ -242,7 +242,7 @@ TAB_OUT="$R_DIR/tables"
 VER_OUT="$R_DIR/verification"
 
 if (( WITH_FATHOM == 1 )); then
-  echo "[Stage 4/4] Generating ALL figures (Figs. 1–6, S1–S8), ALL tables (Tables S1–S7), and verifying..."
+  echo "[Stage 4/4] Generating ALL figures (Figs. 1–6, S1–S8), ALL tables (Tables S1–S8), and verifying..."
   python3 "$S4_DIR/build_tables.py" --out-dir "$TAB_OUT"
   python3 "$S4_DIR/generate_supp_figures.py" --out-dir "$FIG_OUT" --only all
   python3 "$S4_DIR/generate_main_figures.py" --out-dir "$FIG_OUT" --only all
@@ -255,8 +255,8 @@ if (( WITH_FATHOM == 1 )); then
     --s16-dir "$R_DIR/s16_gauge_placement" \
     --out-dir "$VER_OUT"
 else
-  echo "[Stage 4/4] Generating public figures (Figs. 1–3, 6, S1–S6), public tables (Tables S1–S3, S5–S7), and verifying..."
-  python3 "$S4_DIR/build_tables.py" --out-dir "$TAB_OUT"
+  echo "[Stage 4/4] Generating public figures (Figs. 1–3, 6, S1–S6), public tables (Tables S1–S5, S7–S8), and verifying..."
+  python3 "$S4_DIR/build_tables.py" --public-only --out-dir "$TAB_OUT"
   python3 "$S4_DIR/generate_supp_figures.py" --out-dir "$FIG_OUT" --only figs1,figs2,figs3,figs4,figs5,figs6
   python3 "$S4_DIR/generate_main_figures.py" --out-dir "$FIG_OUT" --only fig1,fig2,fig3,fig6
   python3 "$S4_DIR/verify_reproduction.py" \

@@ -120,8 +120,8 @@ TIER_ORDER = [
 TIER_LABELS = {
     'tier0_zero_gauges': 'Zero-Gauge Counterfactual (0)',
     'tier1a_active_post2016_ccby_8811': 'Baseline: Active Post-2016 Caravan (8,811 / 8,075 phys)',
-    'tier1_open_compilations': 'Tier 1: Openly Redistributed Streamflow Datasets (32,369 phys)',
-    'tier2_public_discharge': 'Tier 2: Confirmed Open-License Discharge Records (74,078 phys)',
+    'tier1_open_compilations': 'Tier 1: Standardized, Open-License Discharge Datasets (32,369 phys)',
+    'tier2_public_discharge': 'Tier 2: Gauges with Discharge Records (82,596 phys)',
     'tier4_all_discoverable': 'Tier 3: All Publicly Discoverable Stream Gauges (119,169 phys)',
     'tier5_universal_no_ood_clamp': 'Universal Gauging — Direct Local FT+DA (no OOD clamp)',
     'tier5_universal_idealized_ceiling': 'Universal Gauging — Idealized Global-Training Ceiling (OOD -> Q75)',
@@ -1377,6 +1377,11 @@ def _init_boot_spawn_worker(ctx_pkl_path: str, n_threads: int) -> None:
   os.environ['OPENBLAS_NUM_THREADS'] = str(n_threads)
   os.environ['MKL_NUM_THREADS'] = str(n_threads)
   os.environ['NUMEXPR_NUM_THREADS'] = str(n_threads)
+  try:
+    import threadpoolctl  # pylint: disable=g-import-not-at-top
+    threadpoolctl.threadpool_limits(limits=n_threads)
+  except Exception:
+    pass
   _BOOT_SHARED.clear()
   _BOOT_SHARED.update(joblib.load(ctx_pkl_path, mmap_mode='r'))
 

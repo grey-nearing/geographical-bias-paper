@@ -1,7 +1,7 @@
 """Families 1, 2, and 3: 2D Polygon, Mass-Balance, and Inter-Gauge Resolution Metrics.
 
 Computes all 11 2D/polygon metrics across any tree hydrofabric (and DAG
-generalization for GRIT v0.6):
+generalization for GRIT v1.0):
 
 Family 1 — Hydrofabric-Dependent Polygon Metrics:
   1. U_out          : directly ungauged unit fraction (has_gauge == 0)

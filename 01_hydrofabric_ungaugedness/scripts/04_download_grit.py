@@ -1,15 +1,14 @@
-"""Download GRIT v0.6 (30m FABDEM multi-threaded river network & component catchments).
+"""Download GRIT v1.0 (30m FABDEM multi-threaded river network & component catchments).
 
-Public Zenodo API source (Wortmann et al., 2025, Water Resources Research):
-  https://zenodo.org/api/records/11219313
+Public Zenodo API source (Wortmann et al., 2025, Water Resources Research; v1.0 release):
+  https://zenodo.org/api/records/17435232 (DOI: 10.5281/zenodo.17435232)
 
-Downloads all 7 regions (AF, AS, EU, NA, SA, SI, SP) in EPSG:4326:
-  - GRITv06_segments_{REG}_EPSG4326.gpkg.zip            (~2.80 GB total)
-  - GRITv06_component_catchments_{REG}_EPSG4326.gpkg.zip (~2.92 GB total)
-  - GRITv06_domain_GLOBAL_EPSG4326.gpkg.zip             (17.9 MB)
-  - GRITv06_sinks_GLOBAL_EPSG4326.gpkg.zip              (55.1 MB)
+Downloads all 7 regional segment networks (AF, AS, EU, NA, SA, SI, SP) and global catchments in EPSG:4326:
+  - GRITv1.0_segments_{REG}_EPSG4326.gpkg.zip               (~2.83 GB total)
+  - GRITv1.0_component_catchments_GLOBAL_EPSG4326.gpkg.zip  (808.1 MB)
+  - GRITv1.0_domain_GLOBAL_EPSG4326.gpkg.zip                (18.2 MB)
 
-Note: Flow-related metrics are skipped on GRIT v0.6 by design (no operational
+Note: Flow-related metrics are skipped on GRIT v1.0 by design (no operational
 global flow model runs on GRIT).
 """
 
@@ -28,17 +27,16 @@ if str(REPO_ROOT) not in sys.path:
 
 from configs.benchmark_config import RAW_DIR
 
-OUT_DIR = RAW_DIR / "grit"
+OUT_DIR = RAW_DIR / "grit_v10"
 
-ZENODO_RECORD_API = "https://zenodo.org/api/records/11219313"
+ZENODO_RECORD_API = "https://zenodo.org/api/records/17435232"
 REGIONS = ["AF", "AS", "EU", "NA", "SA", "SI", "SP"]
 
 TARGET_FILES = (
-    [f"GRITv06_segments_{r}_EPSG4326.gpkg.zip" for r in REGIONS]
-    + [f"GRITv06_component_catchments_{r}_EPSG4326.gpkg.zip" for r in REGIONS]
+    [f"GRITv1.0_segments_{r}_EPSG4326.gpkg.zip" for r in REGIONS]
     + [
-        "GRITv06_domain_GLOBAL_EPSG4326.gpkg.zip",
-        "GRITv06_sinks_GLOBAL_EPSG4326.gpkg.zip",
+        "GRITv1.0_component_catchments_GLOBAL_EPSG4326.gpkg.zip",
+        "GRITv1.0_domain_GLOBAL_EPSG4326.gpkg.zip",
     ]
 )
 
@@ -65,7 +63,7 @@ def download_grit() -> None:
             for attempt in range(4):
                 try:
                     r = urllib.request.Request(url, headers={"User-Agent": "python-urllib/3.13"})
-                    with urllib.request.urlopen(r, timeout=180) as resp, open(tmp, "wb") as f:
+                    with urllib.request.urlopen(r, timeout=300) as resp, open(tmp, "wb") as f:
                         while True:
                             chunk = resp.read(1024 * 1024)
                             if not chunk:
@@ -81,10 +79,8 @@ def download_grit() -> None:
                     time.sleep(3 * (attempt + 1))
             else:
                 raise RuntimeError(f"Failed to download {key}")
-            # Polite delay for Zenodo API
             time.sleep(1.0)
 
-        # Extract gpkg if not yet extracted
         gpkg_name = key.replace(".zip", "")
         gpkg_path = OUT_DIR / gpkg_name
         if not gpkg_path.exists():
@@ -92,7 +88,7 @@ def download_grit() -> None:
             with zipfile.ZipFile(dst, "r") as zf:
                 zf.extractall(OUT_DIR)
 
-    print("Done GRIT v0.6 download and extraction!", flush=True)
+    print("Done GRIT v1.0 download and extraction!", flush=True)
 
 
 if __name__ == "__main__":

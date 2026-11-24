@@ -79,8 +79,8 @@ from utils import cap_utils, file_paths, spatial_stats
 
 warnings.filterwarnings('ignore')
 
-COL_T1 = '#0072B2'   # Open datasets (32,369) / Established national alerting
-COL_T2 = '#009E73'   # Confirmed open-license discharge (74,078)
+COL_T1 = '#0072B2'   # Standardized open-license discharge datasets (32,369) / Established national alerting
+COL_T2 = '#009E73'   # Gauges with discharge records (82,596)
 COL_T3 = '#D55E00'   # All discoverable physical gauges (119,169) / CAP-gap country
 
 SCIENCE_W = 184.0 / 25.4  # 7.2441 in (Science full-page width)
@@ -171,10 +171,7 @@ def load_gauges_tiered() -> pd.DataFrame:
   if 'in_tier_1' not in g.columns:
     g['in_tier_1'] = g['best_data_access_policy'].eq('open_academic_compilation') & g['best_observation_type'].isin({'daily_discharge', 'monthly_discharge'})
   if 'in_tier_2' not in g.columns:
-    g['in_tier_2'] = (
-        g['best_data_access_policy'].isin({'open_public_api_or_bulk', 'open_academic_compilation'})
-        & g['best_observation_type'].isin({'daily_discharge', 'monthly_discharge'})
-    )
+    g['in_tier_2'] = g['best_observation_type'].isin({'daily_discharge', 'monthly_discharge'})
   if 'in_tier_3' not in g.columns:
     g['in_tier_3'] = True
   return g
@@ -233,8 +230,8 @@ def load_non_fathom_basin_meta(all_ids: pd.Index) -> pd.DataFrame:
 
 def filter_canonical_2d(df: pd.DataFrame) -> pd.DataFrame:
   return df[
-      ((df['hydrofabric'] == 'grit_v06_bifurcating_dag') & (df['snapping_mode'] == 'dag_width_weighted') & (df['ratio_basis'] == 'area_dag'))
-      | ((df['hydrofabric'] != 'grit_v06_bifurcating_dag') & (df['snapping_mode'] == 'outlet') & (df['ratio_basis'] == 'area'))
+      ((df['hydrofabric'] == 'grit_v10_bifurcating_dag') & (df['snapping_mode'] == 'dag_width_weighted') & (df['ratio_basis'] == 'area_dag'))
+      | ((df['hydrofabric'] != 'grit_v10_bifurcating_dag') & (df['snapping_mode'] == 'outlet') & (df['ratio_basis'] == 'area'))
   ]
 
 
@@ -401,8 +398,8 @@ def build_fig1(world_all: gpd.GeoDataFrame, out_dir: Path) -> Path:
   n_ctry = int(gauges['country'].nunique()) if 'country' in gauges.columns else 163
   ax.set_title(f'(a) Discoverable stream gauges ({len(gauges):,}; {n_ctry} countries)', fontsize=7.2, fontweight='bold', loc='left', pad=3.5)
   handles_a = [
-      Line2D([0], [0], marker='o', color='w', markerfacecolor=COL_T1, markersize=4.5, label=f'Open datasets ({int(gauges["in_tier_1"].sum()):,})'),
-      Line2D([0], [0], marker='o', color='w', markerfacecolor=COL_T2, markersize=4.5, label=f'Open discharge ({int(gauges["in_tier_2"].sum()):,})'),
+      Line2D([0], [0], marker='o', color='w', markerfacecolor=COL_T1, markersize=4.5, label=f'Standardized open Q ({int(gauges["in_tier_1"].sum()):,})'),
+      Line2D([0], [0], marker='o', color='w', markerfacecolor=COL_T2, markersize=4.5, label=f'Discharge records ({int(gauges["in_tier_2"].sum()):,})'),
       Line2D([0], [0], marker='o', color='w', markerfacecolor=COL_T3, markersize=4.5, label=f'All discoverable ({len(gauges):,})'),
   ]
   ax.legend(
@@ -415,7 +412,7 @@ def build_fig1(world_all: gpd.GeoDataFrame, out_dir: Path) -> Path:
   m2_p = HYDRO_RESULTS_DIR / 'master' / 'master_2d_metrics.parquet'
   if m2_p.exists():
     m2_tmp = pd.read_parquet(m2_p)
-    six_hf = ['hydrosheds_l12', 'hydrosheds_rivers', 'merit_basins', 'tdx_hydro', 'grit_v06_mainstem_tree', 'grit_v06_bifurcating_dag']
+    six_hf = ['hydrosheds_l12', 'hydrosheds_rivers', 'merit_basins', 'tdx_hydro', 'grit_v10_mainstem_tree', 'grit_v10_bifurcating_dag']
     c2_tmp = filter_canonical_2d(m2_tmp[(m2_tmp['domain_name'] == 'common_no_grl_ata') & (m2_tmp['hydrofabric'].isin(six_hf))])
     nv_vals = c2_tmp[(c2_tmp['metric'] == 'U_never') & (c2_tmp['weight'] == 'area') & (c2_tmp['tier'] == 'tier3_all_known')]['value'].astype(float).values * 100.0
     if len(nv_vals) > 0:
@@ -544,23 +541,23 @@ def build_fig2(out_dir: Path) -> Path:
   m1 = pd.read_parquet(HYDRO_RESULTS_DIR / 'master' / 'master_1d_metrics.parquet')
 
   tiers = [
-      ('tier1_open_compilations', COL_T1, 'Open datasets (32,369)'),
-      ('tier2_public_discharge', COL_T2, 'Open discharge (74,078)'),
+      ('tier1_open_compilations', COL_T1, 'Standardized open Q (32,369)'),
+      ('tier2_public_discharge', COL_T2, 'Discharge records (82,596)'),
       ('tier3_all_known', COL_T3, 'All discoverable (119,169)'),
   ]
   hy_levels = [f'hydrosheds_l{i:02d}' for i in range(1, 13)]
   fine_fabrics = [
       ('hydrosheds_l12', 'HydroSHEDS L12', 'o', 4.6),
-      ('grit_v06_mainstem_tree', 'GRIT v0.6 (tree)', 'D', 4.2),
-      ('grit_v06_bifurcating_dag', 'GRIT v0.6 (DAG)', 'P', 4.6),
+      ('grit_v10_mainstem_tree', 'GRIT v1.0 (tree)', 'D', 4.2),
+      ('grit_v10_bifurcating_dag', 'GRIT v1.0 (DAG)', 'P', 4.6),
       ('merit_basins', 'MERIT-Basins', 's', 4.3),
       ('tdx_hydro', 'TDX-Hydro', '^', 4.9),
       ('hydrosheds_rivers', 'HydroSHEDS Rivers', '*', 6.4),
   ]
 
   def get_point(hf: str, tier: str) -> tuple[float, float]:
-    sm = 'dag_width_weighted' if hf == 'grit_v06_bifurcating_dag' else 'outlet'
-    rb = 'area_dag' if hf == 'grit_v06_bifurcating_dag' else 'area'
+    sm = 'dag_width_weighted' if hf == 'grit_v10_bifurcating_dag' else 'outlet'
+    rb = 'area_dag' if hf == 'grit_v10_bifurcating_dag' else 'area'
     sa = m2[(m2['hydrofabric'] == hf) & (m2['metric'] == 'U_net_Eq4') & (m2['domain_name'] == 'common_no_grl_ata') & (m2['tier'] == tier) & (m2['weight'] == 'area') & (m2['snapping_mode'] == sm) & (m2['ratio_basis'] == rb)]
     sc = m2[(m2['hydrofabric'] == hf) & (m2['metric'] == 'U_net_Eq4') & (m2['domain_name'] == 'common_no_grl_ata') & (m2['tier'] == tier) & (m2['weight'] == 'count') & (m2['snapping_mode'] == sm) & (m2['ratio_basis'] == rb)]
     mean_a = float(sa['total_weight'].iloc[0]) / float(sc['total_weight'].iloc[0])
@@ -589,7 +586,7 @@ def build_fig2(out_dir: Path) -> Path:
 
   level_offsets = {
       'hydrosheds_l01': (-4, 6), 'hydrosheds_l03': (5, 4),
-      'hydrosheds_l05': (5, 4), 'hydrosheds_l07': (5, 4), 'hydrosheds_l09': (4, 4),
+      'hydrosheds_l05': (12, 10), 'hydrosheds_l07': (5, 4), 'hydrosheds_l09': (4, 4),
   }
   for hf, (dx, dy) in level_offsets.items():
     ma, val = hy_coords_t1[hf]
@@ -660,7 +657,7 @@ def build_fig2(out_dir: Path) -> Path:
 
   # --- Panel (b): Visual Table 1 Multi-Hydrofabric Range Summary ---
   ax_b = fig.add_subplot(gs[0, 1])
-  six_hf = ['hydrosheds_l12', 'hydrosheds_rivers', 'merit_basins', 'tdx_hydro', 'grit_v06_mainstem_tree', 'grit_v06_bifurcating_dag']
+  six_hf = ['hydrosheds_l12', 'hydrosheds_rivers', 'merit_basins', 'tdx_hydro', 'grit_v10_mainstem_tree', 'grit_v10_bifurcating_dag']
   flow_4 = ['hydrosheds_l12', 'hydrosheds_rivers', 'merit_basins', 'tdx_hydro']
   flow_3 = ['hydrosheds_rivers', 'merit_basins', 'tdx_hydro']
   canon_2d = filter_canonical_2d(m2[(m2['domain_name'] == 'common_no_grl_ata') & (m2['hydrofabric'].isin(six_hf))])
@@ -801,7 +798,7 @@ def build_fig3(world_all: gpd.GeoDataFrame, basins: pd.DataFrame, out_dir: Path)
     df.index = norm_hybas_id(df.index)
 
   m2 = pd.read_parquet(HYDRO_RESULTS_DIR / 'master' / 'master_2d_metrics.parquet')
-  six = ['hydrosheds_l12', 'hydrosheds_rivers', 'merit_basins', 'tdx_hydro', 'grit_v06_mainstem_tree', 'grit_v06_bifurcating_dag']
+  six = ['hydrosheds_l12', 'hydrosheds_rivers', 'merit_basins', 'tdx_hydro', 'grit_v10_mainstem_tree', 'grit_v10_bifurcating_dag']
   sub_frac = filter_canonical_2d(m2[(m2['hydrofabric'].isin(six)) & (m2['metric'] == 'U_net_Eq4')])
 
   conts = ['Africa', 'Asia', 'Oceania', 'South America', 'Europe', 'North America']
@@ -882,7 +879,7 @@ def build_fig3(world_all: gpd.GeoDataFrame, basins: pd.DataFrame, out_dir: Path)
   ax_a.legend(
       handles=[
           Line2D([0], [0], color='#475569', lw=1.35, marker='o', markersize=4.0, markerfacecolor=COL_T3, markeredgecolor='white', label='Land (filled)'),
-          Line2D([0], [0], color='#64748B', lw=1.2, ls='--', marker='o', markersize=4.0, markerfacecolor='white', markeredgecolor=COL_T3, label='Pop. (open)'),
+          Line2D([0], [0], color='#64748B', lw=1.2, ls='--', marker='o', markersize=4.0, markerfacecolor='white', markeredgecolor=COL_T3, label='Pop. (unfilled)'),
       ],
       loc='upper left', frameon=True, facecolor='white', edgecolor='#CBD5E1', fontsize=6.0, borderpad=0.22, handlelength=1.4, labelspacing=0.18,
   )
@@ -1048,8 +1045,8 @@ def build_fig3(world_all: gpd.GeoDataFrame, basins: pd.DataFrame, out_dir: Path)
 
   # Top legend (gauge tiers) + bottom legend (alerting status & trend lines)
   leg_top = [
-      Line2D([0], [0], marker='D', color='none', markerfacecolor=COL_T1, markeredgecolor='white', markersize=5.2, label='Open datasets (32,369)'),
-      Line2D([0], [0], marker='s', color='none', markerfacecolor=COL_T2, markeredgecolor='white', markersize=5.0, label='Open discharge (74,078)'),
+      Line2D([0], [0], marker='D', color='none', markerfacecolor=COL_T1, markeredgecolor='white', markersize=5.2, label='Standardized open Q (32,369)'),
+      Line2D([0], [0], marker='s', color='none', markerfacecolor=COL_T2, markeredgecolor='white', markersize=5.0, label='Discharge records (82,596)'),
       Line2D([0], [0], marker='o', color='none', markerfacecolor=COL_T3, markeredgecolor='white', markersize=5.4, label='All discoverable (119,169)'),
   ]
   fig.legend(
@@ -1293,8 +1290,8 @@ def build_fig5_optional(world_all: gpd.GeoDataFrame, out_dir: Path) -> Path | No
   # ---- Panel (b): Tiered CAP-gap Exposure Gain (M/yr) with 95% CIs (Recall vs CSI/R) ----
   ax_b = fig.add_subplot(gs[0, 1])
   stage_specs = [
-      ('tier1_open_compilations', '32.4k\nopen'),
-      ('tier2_public_discharge', '74.1k\nopen Q'),
+      ('tier1_open_compilations', '32.4k\nopen Q'),
+      ('tier2_public_discharge', '82.6k\nall Q'),
       ('tier4_all_discoverable', '119.2k\nexist.'),
   ]
   if has_nood:
@@ -1415,20 +1412,33 @@ def build_fig5_optional(world_all: gpd.GeoDataFrame, out_dir: Path) -> Path | No
   xs_d = np.linspace(0.5, 9.6, 100)
   ax_d.plot(xs_d, 10.0 ** (coef_d[0] * xs_d + coef_d[1]), color='#1E293B', lw=1.15, ls='--', zorder=5)
 
-  for cname, dx, mult, ha, va, col in [
-      ('South Sudan', +0.18, 1.45, 'left',  'bottom', '#991B1B'),
-      ('Bangladesh',  -0.18, 1.45, 'right', 'bottom', '#475569'),
-      ('Myanmar',     +0.22, 1.05, 'left',  'center', '#991B1B'),
-      ('Nigeria',     +0.28, 0.92, 'left',  'center', '#991B1B'),
-      ('Congo DR',    -0.25, 0.42, 'right', 'top',    '#991B1B'),
-      ('India',       -0.20, 0.72, 'right', 'top',    '#475569'),
-      ('Viet Nam',    -0.18, 0.75, 'right', 'top',    '#475569'),
+  import matplotlib.patheffects as _pe
+  _halo = [_pe.withStroke(linewidth=2.0, foreground='white')]
+  for cname, tx, ty, ha, va, col, use_arrow in [
+      ('South Sudan', 9.08, 4500.0, 'left',   'bottom', '#991B1B', False),
+      ('Bangladesh',  5.98, 4200.0, 'right',  'bottom', '#475569', False),
+      ('Myanmar',     6.82, 4850.0, 'left',   'center', '#991B1B', False),
+      ('Viet Nam',    2.55, 2350.0, 'right',  'top',    '#475569', False),
+      ('India',       3.25, 6500.0, 'center', 'center', '#475569', True),
+      ('Nigeria',     7.55, 2350.0, 'left',   'center', '#991B1B', True),
+      ('Congo DR',    8.55,  380.0, 'left',   'center', '#991B1B', True),
   ]:
     row = sc_pos[sc_pos['country_name'] == cname]
     if not row.empty:
       r0 = row.iloc[0]
       short = 'DR Congo' if cname == 'Congo DR' else ('Vietnam' if cname == 'Viet Nam' else cname)
-      ax_d.text(r0['vuln'] + dx, r0['percap_1m'] * mult, short, fontsize=5.9, fontweight='bold', color=col, ha=ha, va=va, zorder=7)
+      if use_arrow:
+        ax_d.annotate(
+            short,
+            xy=(r0['vuln'], r0['percap_1m']),
+            xytext=(tx, ty),
+            fontsize=5.9, fontweight='bold', color=col, ha=ha, va=va,
+            path_effects=_halo,
+            arrowprops=dict(arrowstyle='-', color=col, lw=0.55, alpha=0.75, shrinkA=1, shrinkB=2.5),
+            zorder=7,
+        )
+      else:
+        ax_d.text(tx, ty, short, fontsize=5.9, fontweight='bold', color=col, ha=ha, va=va, path_effects=_halo, zorder=7)
 
   sp_pc = sp_stats.get('inform_vuln_vs_unforecasted_per_capita_idealized', {})
   sp_fr = sp_stats.get('inform_vuln_vs_unforecasted_frac_idealized', {})

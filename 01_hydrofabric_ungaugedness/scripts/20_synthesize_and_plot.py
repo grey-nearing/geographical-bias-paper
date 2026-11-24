@@ -42,8 +42,8 @@ PALETTE = {
     "hydrosheds_rivers": "#56B4E9",
     "merit_basins": "#009E73",
     "tdx_hydro": "#E69F00",
-    "grit_v06_mainstem_tree": "#CC79A7",
-    "grit_v06_bifurcating_dag": "#D55E00",
+    "grit_v10_mainstem_tree": "#CC79A7",
+    "grit_v10_bifurcating_dag": "#D55E00",
 }
 
 FABRIC_LABELS = {
@@ -51,8 +51,8 @@ FABRIC_LABELS = {
     "hydrosheds_rivers": "HydroRIVERS v1",
     "merit_basins": "MERIT-Basins (GRADES)",
     "tdx_hydro": "TDX-Hydro (GEOGLOWS)",
-    "grit_v06_mainstem_tree": "GRIT v0.6 (Mainstem)",
-    "grit_v06_bifurcating_dag": "GRIT v0.6 (Bifurc. DAG)",
+    "grit_v10_mainstem_tree": "GRIT v1.0 (Mainstem)",
+    "grit_v10_bifurcating_dag": "GRIT v1.0 (Bifurc. DAG)",
 }
 
 TIER_ORDER = [
@@ -64,7 +64,7 @@ TIER_ORDER = [
 TIER_SHORT = {
     "baseline": "Baseline\n(8.1k)",
     "tier1_open_compilations": "Tier 1\n(32.4k)",
-    "tier2_public_discharge": "Tier 2\n(74.1k)",
+    "tier2_public_discharge": "Tier 2\n(82.6k)",
     "tier3_all_known": "Tier 3\n(119.2k)",
 }
 TIER_COLORS = {
@@ -395,8 +395,8 @@ def plot_fig02_cross_hydrofabric(summary: pd.DataFrame) -> None:
         "hydrosheds_rivers",
         "merit_basins",
         "tdx_hydro",
-        "grit_v06_mainstem_tree",
-        "grit_v06_bifurcating_dag",
+        "grit_v10_mainstem_tree",
+        "grit_v10_bifurcating_dag",
     ]
     sub = summary[(summary["domain"] == "common_no_grl_ata") & (summary["hydrofabric"].isin(fine_fabs))].copy()
     present_fabs = [f for f in fine_fabs if f in set(sub["hydrofabric"])]
@@ -448,8 +448,8 @@ def plot_fig03_resolution_curves(df_2d: pd.DataFrame) -> None:
         "hydrosheds_rivers",
         "merit_basins",
         "tdx_hydro",
-        "grit_v06_mainstem_tree",
-        "grit_v06_bifurcating_dag",
+        "grit_v10_mainstem_tree",
+        "grit_v10_bifurcating_dag",
     ]
     sub = df_2d[
         (df_2d["hydrofabric"].isin(fine_fabs))
@@ -499,7 +499,7 @@ def plot_fig03_resolution_curves(df_2d: pd.DataFrame) -> None:
 
 
 def plot_fig04_river_1d(df_1d: pd.DataFrame) -> None:
-    river_fabs = ["hydrosheds_rivers", "merit_basins", "tdx_hydro", "grit_v06_mainstem_tree", "grit_v06_bifurcating_dag"]
+    river_fabs = ["hydrosheds_rivers", "merit_basins", "tdx_hydro", "grit_v10_mainstem_tree", "grit_v10_bifurcating_dag"]
     sub = df_1d[(df_1d["hydrofabric"].isin(river_fabs)) & (df_1d["domain_name"] == "common_no_grl_ata")].copy()
     if sub.empty:
         return
@@ -551,7 +551,7 @@ def plot_fig04_river_1d(df_1d: pd.DataFrame) -> None:
     # (c) Along-channel distance CDF (A*ds weighted)
     ax = axes[1, 0]
     dists = [10, 25, 50, 100, 250, 500, 1000]
-    for fab in ["hydrosheds_rivers", "merit_basins", "tdx_hydro", "grit_v06_mainstem_tree"]:
+    for fab in ["hydrosheds_rivers", "merit_basins", "tdx_hydro", "grit_v10_mainstem_tree"]:
         for tk, ls in [("baseline", ":"), ("tier3_all_known", "-")]:
             q = sub[(sub["hydrofabric"] == fab) & (sub["tier"] == tk) & (sub["weight"] == "A_ds") & (sub["ratio_basis"] == "distance_km")]
             ys = [float(q[q["metric"] == f"d_any_frac_le_{d}km"]["value"].iloc[0]) * 100.0 if len(q[q["metric"] == f"d_any_frac_le_{d}km"]) else np.nan for d in dists]
@@ -568,7 +568,7 @@ def plot_fig04_river_1d(df_1d: pd.DataFrame) -> None:
 
     # (d) Fraction of A*ds with NO gauge within 100 km (or infinite) across all 4 tiers
     ax = axes[1, 1]
-    tree_riv = [f for f in ["hydrosheds_rivers", "merit_basins", "tdx_hydro", "grit_v06_mainstem_tree"] if f in set(sub["hydrofabric"])]
+    tree_riv = [f for f in ["hydrosheds_rivers", "merit_basins", "tdx_hydro", "grit_v10_mainstem_tree"] if f in set(sub["hydrofabric"])]
     xt = np.arange(len(TIER_ORDER))
     w = 0.78 / max(len(tree_riv), 1)
     for i, fab in enumerate(tree_riv):
@@ -592,7 +592,7 @@ def plot_fig04_river_1d(df_1d: pd.DataFrame) -> None:
 
 
 def plot_fig05_regional_and_ood(df_2d: pd.DataFrame, df_1d: pd.DataFrame, df_ood: pd.DataFrame) -> None:
-    fine_fabs = ["hydrosheds_rivers", "merit_basins", "tdx_hydro", "grit_v06_mainstem_tree"]
+    fine_fabs = ["hydrosheds_rivers", "merit_basins", "tdx_hydro", "grit_v10_mainstem_tree"]
     present_fabs = [f for f in fine_fabs if f in set(df_2d["hydrofabric"])]
     if not present_fabs:
         return
@@ -624,7 +624,7 @@ def plot_fig05_regional_and_ood(df_2d: pd.DataFrame, df_1d: pd.DataFrame, df_ood
 
     # (b) Continents: 1D U_net_1d (A*ds)
     ax = axes[0, 1]
-    riv_fabs = [f for f in ["hydrosheds_rivers", "merit_basins", "tdx_hydro", "grit_v06_mainstem_tree"] if f in set(df_1d["hydrofabric"])]
+    riv_fabs = [f for f in ["hydrosheds_rivers", "merit_basins", "tdx_hydro", "grit_v10_mainstem_tree"] if f in set(df_1d["hydrofabric"])]
     w2 = 0.78 / max(len(riv_fabs), 1)
     for i, fab in enumerate(riv_fabs):
         q3 = df_1d[(df_1d["hydrofabric"] == fab) & (df_1d["tier"] == "tier3_all_known") & (df_1d["domain_type"] == "continent")
@@ -687,7 +687,7 @@ def plot_fig05_regional_and_ood(df_2d: pd.DataFrame, df_1d: pd.DataFrame, df_ood
 
 
 def plot_fig06_grit_bifurcation(df_2d: pd.DataFrame, df_1d: pd.DataFrame) -> None:
-    if not {"grit_v06_mainstem_tree", "grit_v06_bifurcating_dag"}.issubset(set(df_2d["hydrofabric"])):
+    if not {"grit_v10_mainstem_tree", "grit_v10_bifurcating_dag"}.issubset(set(df_2d["hydrofabric"])):
         return
 
     fig, axes = plt.subplots(1, 2, figsize=(12.2, 4.8))
@@ -706,20 +706,20 @@ def plot_fig06_grit_bifurcation(df_2d: pd.DataFrame, df_1d: pd.DataFrame) -> Non
         deltas = []
         for kind, met, wt, sc, _lbl in metrics_spec:
             if kind == "2D":
-                q_m = df_2d[(df_2d["hydrofabric"] == "grit_v06_mainstem_tree") & (df_2d["tier"] == tk)
+                q_m = df_2d[(df_2d["hydrofabric"] == "grit_v10_mainstem_tree") & (df_2d["tier"] == tk)
                             & (df_2d["domain_name"] == "common_no_grl_ata") & (df_2d["metric"] == met)
                             & (df_2d["weight"] == wt) & (df_2d["snapping_mode"] == "outlet")]
-                q_d = df_2d[(df_2d["hydrofabric"] == "grit_v06_bifurcating_dag") & (df_2d["tier"] == tk)
+                q_d = df_2d[(df_2d["hydrofabric"] == "grit_v10_bifurcating_dag") & (df_2d["tier"] == tk)
                             & (df_2d["domain_name"] == "common_no_grl_ata") & (df_2d["metric"] == met)
                             & (df_2d["weight"] == wt)]
                 if sc is not None:
                     q_m = q_m[np.isclose(q_m["scale_param"].fillna(-999.0), sc)]
                     q_d = q_d[np.isclose(q_d["scale_param"].fillna(-999.0), sc)]
             else:
-                q_m = df_1d[(df_1d["hydrofabric"] == "grit_v06_mainstem_tree") & (df_1d["tier"] == tk)
+                q_m = df_1d[(df_1d["hydrofabric"] == "grit_v10_mainstem_tree") & (df_1d["tier"] == tk)
                             & (df_1d["domain_name"] == "common_no_grl_ata") & (df_1d["metric"] == met)
                             & (df_1d["weight"] == wt)]
-                q_d = df_1d[(df_1d["hydrofabric"] == "grit_v06_bifurcating_dag") & (df_1d["tier"] == tk)
+                q_d = df_1d[(df_1d["hydrofabric"] == "grit_v10_bifurcating_dag") & (df_1d["tier"] == tk)
                             & (df_1d["domain_name"] == "common_no_grl_ata") & (df_1d["metric"] == met)
                             & (df_1d["weight"] == wt)]
             vm = float(q_m["value"].iloc[0]) if len(q_m) else np.nan
@@ -731,7 +731,7 @@ def plot_fig06_grit_bifurcation(df_2d: pd.DataFrame, df_1d: pd.DataFrame) -> Non
     ax.set_xticks(xm)
     ax.set_xticklabels([s[4] for s in metrics_spec])
     ax.set_ylabel("Bifurcating DAG minus Mainstem Tree (percentage points)")
-    ax.set_title("(a) Global Impact of Multi-Threaded River Bifurcations (GRIT v0.6)")
+    ax.set_title("(a) Global Impact of Multi-Threaded River Bifurcations (GRIT v1.0)")
     ax.legend(loc="best", fontsize=7.8)
 
     # (b) Continental delta in U_never (Tier 3)
@@ -740,10 +740,10 @@ def plot_fig06_grit_bifurcation(df_2d: pd.DataFrame, df_1d: pd.DataFrame) -> Non
     xc = np.arange(len(conts))
     deltas_c = []
     for c in conts:
-        qm = df_2d[(df_2d["hydrofabric"] == "grit_v06_mainstem_tree") & (df_2d["tier"] == "tier3_all_known")
+        qm = df_2d[(df_2d["hydrofabric"] == "grit_v10_mainstem_tree") & (df_2d["tier"] == "tier3_all_known")
                    & (df_2d["domain_name"] == c) & (df_2d["metric"] == "U_never")
                    & (df_2d["weight"] == "area") & (df_2d["snapping_mode"] == "outlet")]
-        qd = df_2d[(df_2d["hydrofabric"] == "grit_v06_bifurcating_dag") & (df_2d["tier"] == "tier3_all_known")
+        qd = df_2d[(df_2d["hydrofabric"] == "grit_v10_bifurcating_dag") & (df_2d["tier"] == "tier3_all_known")
                    & (df_2d["domain_name"] == c) & (df_2d["metric"] == "U_never") & (df_2d["weight"] == "area")]
         vm = float(qm["value"].iloc[0]) if len(qm) else np.nan
         vd = float(qd["value"].iloc[0]) if len(qd) else np.nan
@@ -755,7 +755,7 @@ def plot_fig06_grit_bifurcation(df_2d: pd.DataFrame, df_1d: pd.DataFrame) -> Non
     ax.set_ylabel("$\\Delta U_{\\mathrm{never}}$ (DAG − Mainstem, percentage points)")
     ax.set_title("(b) Regional Bifurcation Impact on $U_{\\mathrm{never}}$ (Tier 3)")
 
-    fig.suptitle("GRIT v0.6 Multi-Threaded / Deltaic Bifurcation Sensitivity", fontsize=12.0, fontweight="bold", y=1.02)
+    fig.suptitle("GRIT v1.0 Multi-Threaded / Deltaic Bifurcation Sensitivity", fontsize=12.0, fontweight="bold", y=1.02)
     fig.tight_layout()
     fig.savefig(FIGURES_DIR / "fig06_grit_bifurcation_impact.png")
     plt.close(fig)

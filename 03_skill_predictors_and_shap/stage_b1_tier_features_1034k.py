@@ -687,22 +687,16 @@ def main():
         & dedup['best_observation_type'].isin(['daily_discharge', 'monthly_discharge'])
     ].copy()
     dedup_t2 = dedup[
-        dedup['best_data_access_policy'].isin(['open_public_api_or_bulk', 'open_academic_compilation'])
-        & dedup['best_observation_type'].isin(['daily_discharge', 'monthly_discharge'])
+        dedup['best_observation_type'].isin(['daily_discharge', 'monthly_discharge'])
     ].copy()
   n_t1_rows = int(arch['row_in_tier_1'].sum()) if 'row_in_tier_1' in arch.columns else len(dedup_t1)
-  n_t2_rows = int(
-      (
-          arch['data_access_policy'].isin(['open_public_api_or_bulk', 'open_academic_compilation'])
-          & arch['observation_type'].isin(['daily_discharge', 'monthly_discharge'])
-      ).sum()
-  )
+  n_t2_rows = int(arch['observation_type'].isin(['daily_discharge', 'monthly_discharge']).sum())
 
   tier_specs = [
       ('tier0_zero_gauges', 'Zero-Gauge Counterfactual (0 Gauges)', dedup.iloc[0:0], 0, 'zero', None),
       ('tier1a_active_post2016_ccby_8811', f'Baseline: Active Post-2016 Caravan ({len(t1a_ids):,} Caravan / {len(t1a_cids):,} Physical)', dedup[dedup['canonical_gauge_id'].isin(t1a_cids)], len(t1a_ids), 'ca38k', set(t1a_ids)),
-      ('tier1_open_compilations', f'Tier 1: Openly Redistributed Streamflow Datasets ({len(dedup_t1):,} Physical)', dedup_t1, n_t1_rows, 'ca121k', None),
-      ('tier2_public_discharge', f'Tier 2: Confirmed Open-License Discharge Records ({len(dedup_t2):,} Physical)', dedup_t2, n_t2_rows, 'ca121k', None),
+      ('tier1_open_compilations', f'Tier 1: Standardized, Open-License Discharge Datasets ({len(dedup_t1):,} Physical)', dedup_t1, n_t1_rows, 'ca121k', None),
+      ('tier2_public_discharge', f'Tier 2: Gauges with Discharge Records ({len(dedup_t2):,} Physical)', dedup_t2, n_t2_rows, 'ca121k', None),
       ('tier4_all_discoverable', f'Tier 3: All Publicly Discoverable Stream Gauges ({len(dedup):,} Physical)', dedup, len(arch), 'ca121k', None),
   ]
   if args.core_tiers_only:

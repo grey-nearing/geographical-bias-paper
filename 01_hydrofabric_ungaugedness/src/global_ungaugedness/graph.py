@@ -3,7 +3,7 @@
 Supports:
 1. Standard single-downstream river trees (HydroBASINS L1-L12, HydroRIVERS,
    MERIT-Basins, TDX-Hydro, GRIT mainstem-tree projection).
-2. Multi-threaded / bifurcating river DAGs (GRIT v0.6 full segment network)
+2. Multi-threaded / bifurcating river DAGs (GRIT v1.0 full segment network)
    with width-weighted discharge/area partitioning and automatic cycle breaking.
 """
 
@@ -321,7 +321,7 @@ def propagate_tree_channel_distances(
 
 
 # ---------------------------------------------------------------------------
-# Bifurcating DAG kernels (for GRIT v0.6 multi-threaded river networks)
+# Bifurcating DAG kernels (for GRIT v1.0 multi-threaded river networks)
 # ---------------------------------------------------------------------------
 
 @njit(cache=True)

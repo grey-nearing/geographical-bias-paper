@@ -2,7 +2,7 @@
 
 Uses an inverted spatial index (indexing the 119,169 gauge points once in a
 Shapely STRtree, then streaming hydrofabric reaches or polygons in chunks) so
-even 20M-segment global fabrics (GRIT v0.6, HydroRIVERS, TDX-Hydro, MERIT)
+even 20M-segment global fabrics (GRIT v1.0, HydroRIVERS, TDX-Hydro, MERIT)
 snap in seconds with <2 GB peak RAM.
 
 Snapping rules are 100% symmetric across all 4 hydrofabrics:

@@ -675,8 +675,9 @@ def main() -> None:
     n_rec = np.zeros(K, dtype=np.int32)
     best_obs_r = np.full(K, 99, dtype=np.int32)
     best_pol_r = np.full(K, 99, dtype=np.int32)
-    # Track whether the gauge has AT LEAST ONE row that simultaneously has
-    # open full-use policy AND observed discharge (daily or monthly)!
+    # Track whether the gauge has AT LEAST ONE row with observed discharge (Tier 2 = 82,596),
+    # and separately whether at least one row has open full-use policy + observed Q (74,078).
+    has_any_q_row = np.zeros(K, dtype=bool)
     has_open_q_row = np.zeros(K, dtype=bool)
     has_tier1_row = np.zeros(K, dtype=bool)
 
@@ -704,8 +705,10 @@ def main() -> None:
         if prank < best_pol_r[pos]:
             best_pol_r[pos] = prank
 
-        if p_str in ("open_academic_compilation", "open_public_api_or_bulk") and o_str in ("daily_discharge", "monthly_discharge"):
-            has_open_q_row[pos] = True
+        if o_str in ("daily_discharge", "monthly_discharge"):
+            has_any_q_row[pos] = True
+            if p_str in ("open_academic_compilation", "open_public_api_or_bulk"):
+                has_open_q_row[pos] = True
         if row.row_in_tier_1:
             has_tier1_row[pos] = True
 
@@ -770,7 +773,7 @@ def main() -> None:
     dedup["active_reason"] = dedup_act_reason
     dedup["in_tier_baseline"] = dedup["canonical_gauge_id"].isin(baseline_cids_orig).to_numpy()
     dedup["in_tier_1"] = has_tier1_row
-    dedup["in_tier_2"] = has_tier1_row | has_open_q_row
+    dedup["in_tier_2"] = has_tier1_row | has_any_q_row
     dedup["in_tier_3"] = np.ones(K, dtype=bool)
 
     # Propagate physical active status back to arch_clean
@@ -782,13 +785,14 @@ def main() -> None:
     arch_clean[arch_out_cols].to_parquet(p_arch, index=False)
     dedup.to_parquet(p_dedup, index=False)
 
-    # Also write audit summary CSV & JSON to configs/audit_reference/
+    # Also write audit summary CSV & JSON to configs/audit_reference/ (and attributes/)
     audit_tbl = (
         arch_clean.groupby(["source_tier", "source_dataset", "observation_type", "data_access_policy", "license"], dropna=False)
         .agg(n_archive_rows=("archive_row_id", "count"), n_unique_gauges=("canonical_gauge_id", "nunique"), n_tier1_rows=("row_in_tier_1", "sum"))
         .reset_index()
     )
     audit_tbl.to_csv(REF_DIR / "73_archive_license_and_data_audit.csv", index=False)
+    audit_tbl.to_csv(ATTR_DIR / "73_archive_license_and_data_audit.csv", index=False)
 
     summary = {
         "archive_rows_v310": int(len(arch)),
@@ -799,6 +803,7 @@ def main() -> None:
         "in_tier_baseline": int(dedup["in_tier_baseline"].sum()),
         "in_tier_1": int(dedup["in_tier_1"].sum()),
         "in_tier_2": int(dedup["in_tier_2"].sum()),
+        "in_open_license_q_subset": int((has_tier1_row | has_open_q_row).sum()),
         "in_tier_3": int(dedup["in_tier_3"].sum()),
         "in_tier_1_active": int((dedup["in_tier_1"] & dedup["is_active_opt1"]).sum()),
         "in_tier_2_active": int((dedup["in_tier_2"] & dedup["is_active_opt1"]).sum()),

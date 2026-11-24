@@ -1,9 +1,9 @@
-"""End-to-end ETL, gauge snapping, and full metric computation for GRIT v0.6 (30m FABDEM).
+"""End-to-end ETL, gauge snapping, and full metric computation for GRIT v1.0 (30m FABDEM).
 
-Runs TWO complete evaluations on GRIT v0.6 (flow-weighted metrics skipped by design):
-  1. `grit_v06_mainstem_tree`: Single-thread mainstem tree projection (`is_mainstem == 1`,
+Runs TWO complete evaluations on GRIT v1.0 (flow-weighted metrics skipped by design):
+  1. `grit_v10_mainstem_tree`: Single-thread mainstem tree projection (`is_mainstem == 1`,
      1,682,135 river segments + direct coastal catchments `is_coastal == 1`).
-  2. `grit_v06_bifurcating_dag`: Full multi-threaded / bifurcating river DAG (all
+  2. `grit_v10_bifurcating_dag`: Full multi-threaded / bifurcating river DAG (all
      1,764,069 river segments with width-weighted split fractions + coastal catchments).
 
 Directly quantifies the impact of braided/deltaic bifurcations on global ungaugedness!
@@ -54,15 +54,15 @@ from global_ungaugedness.spatial_enrichment import (
     transfer_exposure_and_aridity_from_l12,
 )
 
-GRIT_RAW = RAW_DIR / "grit"
-OUT_PROC = PROCESSED_DIR / "grit_v06"
+GRIT_RAW = RAW_DIR / "grit_v10"
+OUT_PROC = PROCESSED_DIR / "grit_v10"
 REGIONS = ["AF", "AS", "EU", "NA", "SA", "SI", "SP"]
 
 
 def build_grit_tables() -> pd.DataFrame:
-    """Load all 7 regional GRIT v0.6 segment networks + coastal component catchments."""
+    """Load all 7 regional GRIT v1.0 segment networks + coastal component catchments."""
     OUT_PROC.mkdir(parents=True, exist_ok=True)
-    seg_pq = OUT_PROC / "grit_v06_all_units.parquet"
+    seg_pq = OUT_PROC / "grit_v10_all_units.parquet"
     if seg_pq.exists():
         print(f"[cache] Loading {seg_pq}", flush=True)
         all_df = pd.read_parquet(seg_pq)
@@ -110,9 +110,9 @@ def build_grit_tables() -> pd.DataFrame:
     seg_dfs = []
     coastal_dfs = []
 
-    print("Loading GRIT v0.6 segments and coastal component catchments across 7 regions...", flush=True)
+    print("Loading GRIT v1.0 segments and coastal component catchments across 7 regions...", flush=True)
     for reg in REGIONS:
-        gpkg = GRIT_RAW / f"GRITv06_segments_{reg}_EPSG4326.gpkg"
+        gpkg = GRIT_RAW / f"GRITv1.0_segments_{reg}_EPSG4326.gpkg"
         gdf = pyogrio.read_dataframe(
             str(gpkg),
             layer="lines",
@@ -150,35 +150,37 @@ def build_grit_tables() -> pd.DataFrame:
         })
         seg_dfs.append(df)
 
-        # Coastal drainage polygons (is_coastal == 1 -> land not draining into any >=50 km^2 segment)
-        cgpkg = GRIT_RAW / f"GRITv06_component_catchments_{reg}_EPSG4326.gpkg"
-        clyr = str(pyogrio.list_layers(str(cgpkg))[0][0])
-        cgdf = pyogrio.read_dataframe(str(cgpkg), layer=clyr, columns=["global_id", "area", "is_coastal"])
-        cmask = cgdf["is_coastal"].to_numpy() == 1
-        cgdf = cgdf.loc[cmask]
-        if len(cgdf) > 0:
-            cb = shapely.bounds(cgdf.geometry.to_numpy())
-            # Offset coastal IDs to guarantee zero collision with segment global_ids
-            cids = 800_000_000_000 + cgdf["global_id"].to_numpy(dtype=np.int64)
-            areas = np.maximum(cgdf["area"].fillna(0.0).to_numpy(dtype=np.float64), 0.0)
-            coastal_dfs.append(pd.DataFrame({
-                "unit_id": cids,
-                "catchment_id": cgdf["global_id"].to_numpy(dtype=np.int64),
-                "upstream_node_id": np.full(len(cgdf), -1, dtype=np.int64),
-                "downstream_node_id": np.full(len(cgdf), -1, dtype=np.int64),
-                "is_mainstem": np.ones(len(cgdf), dtype=bool),
-                "is_coastal_catchment": np.ones(len(cgdf), dtype=bool),
-                "width_m": np.ones(len(cgdf), dtype=np.float64),
-                "length_km": np.zeros(len(cgdf), dtype=np.float64),
-                "da_in_km2": np.zeros(len(cgdf), dtype=np.float64),
-                "da_out_km2": areas,
-                "da_main_in_km2": np.zeros(len(cgdf), dtype=np.float64),
-                "da_main_out_km2": areas,
-                "lon": 0.5 * (cb[:, 0] + cb[:, 2]),
-                "lat": 0.5 * (cb[:, 1] + cb[:, 3]),
-                "region": reg,
-            }))
-        print(f"  {reg}: {len(df):,} segments, {len(cgdf):,} coastal catchments", flush=True)
+        print(f"  {reg}: {len(df):,} segments", flush=True)
+
+    # Unchannelized coastal and endorheic sink component catchments (no >=50 km^2 segment)
+    cgpkg = GRIT_RAW / "GRITv1.0_component_catchments_GLOBAL_EPSG4326.gpkg"
+    clyr = str(pyogrio.list_layers(str(cgpkg))[0][0])
+    cgdf = pyogrio.read_dataframe(str(cgpkg), layer=clyr, columns=["global_id", "area", "is_coastal", "is_sink", "domain"])
+    seg_cids = set().union(*(set(d["catchment_id"].to_numpy()) for d in seg_dfs))
+    cmask = ~cgdf["global_id"].isin(seg_cids).to_numpy()
+    cgdf = cgdf.loc[cmask]
+    if len(cgdf) > 0:
+        cb = shapely.bounds(cgdf.geometry.to_numpy())
+        cids = 800_000_000_000 + cgdf["global_id"].to_numpy(dtype=np.int64)
+        areas = np.maximum(cgdf["area"].fillna(0.0).to_numpy(dtype=np.float64), 0.0)
+        coastal_dfs.append(pd.DataFrame({
+            "unit_id": cids,
+            "catchment_id": cgdf["global_id"].to_numpy(dtype=np.int64),
+            "upstream_node_id": np.full(len(cgdf), -1, dtype=np.int64),
+            "downstream_node_id": np.full(len(cgdf), -1, dtype=np.int64),
+            "is_mainstem": np.ones(len(cgdf), dtype=bool),
+            "is_coastal_catchment": np.ones(len(cgdf), dtype=bool),
+            "width_m": np.ones(len(cgdf), dtype=np.float64),
+            "length_km": np.zeros(len(cgdf), dtype=np.float64),
+            "da_in_km2": np.zeros(len(cgdf), dtype=np.float64),
+            "da_out_km2": areas,
+            "da_main_in_km2": np.zeros(len(cgdf), dtype=np.float64),
+            "da_main_out_km2": areas,
+            "lon": 0.5 * (cb[:, 0] + cb[:, 2]),
+            "lat": 0.5 * (cb[:, 1] + cb[:, 3]),
+            "region": cgdf["domain"].astype(str).to_numpy(),
+        }))
+    print(f"  GLOBAL unchannelized coastal/sink catchments: {len(cgdf):,}", flush=True)
 
     all_df = pd.concat(seg_dfs + coastal_dfs, ignore_index=True)
 
@@ -231,7 +233,7 @@ def build_grit_tables() -> pd.DataFrame:
 
 def snap_gauges_grit(all_df: pd.DataFrame, gauges_df: pd.DataFrame, mainstem_only: bool) -> pd.DataFrame:
     tag = "mainstem" if mainstem_only else "dag"
-    snap_pq = OUT_PROC / f"grit_v06_{tag}_gauge_snaps.parquet"
+    snap_pq = OUT_PROC / f"grit_v10_{tag}_gauge_snaps.parquet"
     if snap_pq.exists():
         print(f"[cache] Loading {snap_pq}", flush=True)
         return pd.read_parquet(snap_pq)
@@ -245,9 +247,9 @@ def snap_gauges_grit(all_df: pd.DataFrame, gauges_df: pd.DataFrame, mainstem_onl
         max_search_km=10.0,
     )
 
-    print(f"Snapping 119,169 gauges to GRIT v0.6 ({tag}, flip_orientation=False verified)...", flush=True)
+    print(f"Snapping 119,169 gauges to GRIT v1.0 ({tag}, flip_orientation=False verified)...", flush=True)
     for reg in REGIONS:
-        gpkg = GRIT_RAW / f"GRITv06_segments_{reg}_EPSG4326.gpkg"
+        gpkg = GRIT_RAW / f"GRITv1.0_segments_{reg}_EPSG4326.gpkg"
         gdf = pyogrio.read_dataframe(
             str(gpkg),
             layer="lines",
@@ -281,13 +283,12 @@ def snap_gauges_grit(all_df: pd.DataFrame, gauges_df: pd.DataFrame, mainstem_onl
             reported_area_km2=u_sub_g["drainage_area_km2"].to_numpy(dtype=np.float64),
             max_fallback_km=5.0,
         )
-        for reg in REGIONS:
-            cgpkg = GRIT_RAW / f"GRITv06_component_catchments_{reg}_EPSG4326.gpkg"
-            clyr = str(pyogrio.list_layers(str(cgpkg))[0][0])
-            cgdf = pyogrio.read_dataframe(str(cgpkg), layer=clyr, columns=["global_id", "area", "is_coastal"])
-            cgdf = cgdf.loc[cgdf["is_coastal"].to_numpy() == 1]
-            if len(cgdf) == 0:
-                continue
+        cgpkg = GRIT_RAW / "GRITv1.0_component_catchments_GLOBAL_EPSG4326.gpkg"
+        clyr = str(pyogrio.list_layers(str(cgpkg))[0][0])
+        cgdf = pyogrio.read_dataframe(str(cgpkg), layer=clyr, columns=["global_id", "area", "is_coastal", "is_sink"])
+        coast_ids = set(all_df.loc[all_df["is_coastal_catchment"].to_numpy(), "catchment_id"].to_numpy())
+        cgdf = cgdf.loc[cgdf["global_id"].isin(coast_ids).to_numpy()]
+        if len(cgdf) > 0:
             cids = 800_000_000_000 + cgdf["global_id"].to_numpy(dtype=np.int64)
             areas = np.maximum(cgdf["area"].fillna(0.0).to_numpy(dtype=np.float64), 0.0)
             psnap.update_chunk(cids, cgdf.geometry.to_numpy(), areas, areas)
@@ -315,7 +316,7 @@ def snap_gauges_grit(all_df: pd.DataFrame, gauges_df: pd.DataFrame, mainstem_onl
 
 
 def run_grit_mainstem_tree(all_df: pd.DataFrame, gauges_df: pd.DataFrame, ood_l12: pd.DataFrame | None) -> None:
-    """Run GRIT v0.6 single-threaded mainstem tree projection (no flow metrics)."""
+    """Run GRIT v1.0 single-threaded mainstem tree projection (no flow metrics)."""
     df = all_df.loc[all_df["is_mainstem"].to_numpy()].reset_index(drop=True)
     n = len(df)
     is_seg = ~df["is_coastal_catchment"].to_numpy()
@@ -351,7 +352,7 @@ def run_grit_mainstem_tree(all_df: pd.DataFrame, gauges_df: pd.DataFrame, ood_l1
     a_in_1d = np.minimum(df["da_main_in_km2"].to_numpy(dtype=np.float64), a_out_acc)
 
     print(
-        f"[grit_v06_mainstem_tree] n={n:,}, broken_cyc={n_broken}, "
+        f"[grit_v10_mainstem_tree] n={n:,}, broken_cyc={n_broken}, "
         f"total land={local_a.sum()/1e6:.2f}M km2, length={df['length_km'].sum()/1e6:.2f}M km",
         flush=True,
     )
@@ -367,7 +368,7 @@ def run_grit_mainstem_tree(all_df: pd.DataFrame, gauges_df: pd.DataFrame, ood_l1
     )
     eae_msg = f", EAE={eae_m.sum()/1e6:.2f}M/yr" if eae_m is not None else ""
     print(
-        f"[grit_v06_mainstem_tree] enrichment: pop={pop_m.sum()/1e9:.3f}B{eae_msg}",
+        f"[grit_v10_mainstem_tree] enrichment: pop={pop_m.sum()/1e9:.3f}B{eae_msg}",
         flush=True,
     )
 
@@ -394,7 +395,7 @@ def run_grit_mainstem_tree(all_df: pd.DataFrame, gauges_df: pd.DataFrame, ood_l1
     ood_feats = ood_l12.reindex(df["hybas_l12_id"].to_numpy()).to_numpy(dtype=np.float64) if ood_l12 is not None else None
 
     run_tree_hydrofabric_suite(
-        fabric_id="grit_v06_mainstem_tree",
+        fabric_id="grit_v10_mainstem_tree",
         units_df=units_df,
         order=order,
         next_down=next_down,
@@ -407,9 +408,9 @@ def run_grit_mainstem_tree(all_df: pd.DataFrame, gauges_df: pd.DataFrame, ood_l1
 
 
 def run_grit_bifurcating_dag(all_df: pd.DataFrame, gauges_df: pd.DataFrame) -> None:
-    """Run GRIT v0.6 full multi-threaded bifurcating DAG with width-weighted partitioning."""
+    """Run GRIT v1.0 full multi-threaded bifurcating DAG with width-weighted partitioning."""
     t0 = time.time()
-    out_dir = RESULTS_DIR / "grit_v06_bifurcating_dag"
+    out_dir = RESULTS_DIR / "grit_v10_bifurcating_dag"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     n_units = len(all_df)
@@ -436,7 +437,7 @@ def run_grit_bifurcating_dag(all_df: pd.DataFrame, gauges_df: pd.DataFrame) -> N
     edge_v[coast_mask_idx] = np.arange(n_real_nodes + n_coast, n_nodes, dtype=np.int32)
 
     node_ord, _, n_cyc = topo_sort_dag_edges(n_nodes, edge_u, edge_v)
-    print(f"[grit_v06_bifurcating_dag] nodes={n_nodes:,}, edges={n_units:,}, cycle_nodes={n_cyc}", flush=True)
+    print(f"[grit_v10_bifurcating_dag] nodes={n_nodes:,}, edges={n_units:,}, cycle_nodes={n_cyc}", flush=True)
 
     # Build CSR outgoing edges per node & width-weighted bifurcation split fractions
     out_cnt = np.bincount(edge_u, minlength=n_nodes).astype(np.int32)
@@ -528,7 +529,7 @@ def run_grit_bifurcating_dag(all_df: pd.DataFrame, gauges_df: pd.DataFrame) -> N
                     continue
                 inv_c = eff_inv_ia[c_idx]
                 rows_country.append({
-                    "hydrofabric": "grit_v06_bifurcating_dag",
+                    "hydrofabric": "grit_v10_bifurcating_dag",
                     "tier": tier_key,
                     "country_iso3": iso,
                     "weight": w_name,
@@ -547,7 +548,7 @@ def run_grit_bifurcating_dag(all_df: pd.DataFrame, gauges_df: pd.DataFrame) -> N
             weights_dict=weights_2d, domains=macro_domains, area_scale_grid=AREA_SCALE_GRID_KM2,
         )
         for r in r2:
-            r["hydrofabric"] = "grit_v06_bifurcating_dag"
+            r["hydrofabric"] = "grit_v10_bifurcating_dag"
             r["tier"] = tier_key
             r["n_gauges_snapped"] = n_snap
         rows_2d.extend(r2)
@@ -558,18 +559,18 @@ def run_grit_bifurcating_dag(all_df: pd.DataFrame, gauges_df: pd.DataFrame) -> N
             exposure_eae=eae, area_bins=RIVER_AREA_BINS_KM2,
         )
         for r in r1:
-            r["hydrofabric"] = "grit_v06_bifurcating_dag"
+            r["hydrofabric"] = "grit_v10_bifurcating_dag"
             r["tier"] = tier_key
             r["n_gauges_snapped"] = n_snap
         rows_1d.extend(r1)
 
-        print(f"[grit_v06_bifurcating_dag] Finished tier={tier_key} ({n_snap:,} snapped)", flush=True)
+        print(f"[grit_v10_bifurcating_dag] Finished tier={tier_key} ({n_snap:,} snapped)", flush=True)
 
     pd.DataFrame(rows_2d).to_parquet(out_dir / "metrics_2d_global.parquet", index=False)
     pd.DataFrame(rows_1d).to_parquet(out_dir / "metrics_1d_global.parquet", index=False)
     if rows_country:
         pd.DataFrame(rows_country).to_parquet(out_dir / "metrics_2d_country.parquet", index=False)
-    print(f"[grit_v06_bifurcating_dag] Saved to {out_dir} in {time.time() - t0:.1f}s", flush=True)
+    print(f"[grit_v10_bifurcating_dag] Saved to {out_dir} in {time.time() - t0:.1f}s", flush=True)
 
 
 def main() -> None:

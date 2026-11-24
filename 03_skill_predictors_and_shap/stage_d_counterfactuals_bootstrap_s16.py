@@ -1924,11 +1924,12 @@ def run_part_bootstrap(
 
 def run_part_s16(n_threads: int = 24):
   """Clean unified S1.6 national gauge siting across all 1,034,083 basins (9 continents),
-  95 features, evaluating BOTH Train Alone (000) and Combined Train+FT+DA (111) under
-  regularized paired-lift modeling with exact river-tree updates."""
+  95 features, starting from the full 119,169 publicly discoverable gauge catalog
+  (tier4_all_discoverable) and placing N = 1, 5, 10, 20 truly new active gauges on
+  unmonitored flooded sub-basins (~tier4_all_discoverable__snap_all)."""
   os.makedirs(S16_DIR, exist_ok=True)
   t0 = time.time()
-  print(f'\n--- Running Unified S1.6 (round={ROUND_SUBDIR}, National N=1,5,10,20 Siting across 1,034,083 basins) ---', flush=True)
+  print(f'\n--- Running Unified S1.6 (round={ROUND_SUBDIR}, National N=1,5,10,20 Siting beyond 119,169 catalog across 1,034,083 basins) ---', flush=True)
 
   with open(FEATURES_JSON) as f:
     features_95 = json.load(f)
@@ -1936,12 +1937,17 @@ def run_part_s16(n_threads: int = 24):
   all_ids = df_inf.index
   id_to_pos = {h: i for i, h in enumerate(all_ids)}
   df_meta = load_global_metadata_and_exposure(all_ids)
-  df_t1a = pd.read_parquet(os.path.join(TIER_DIR, 'tier1a_active_post2016_ccby_8811.parquet')).reindex(all_ids)
+  df_t4 = pd.read_parquet(os.path.join(TIER_DIR, 'tier4_all_discoverable.parquet')).reindex(all_ids)
   df_masks = pd.read_parquet(os.path.join(TIER_DIR, 'tier_active_and_all_masks_r2.parquet')).reindex(all_ids)
-  base_snap_all = df_masks['tier1a_active_post2016_ccby_8811__snap_all'].values.astype(bool)
+  base_snap_all = df_masks['tier4_all_discoverable__snap_all'].values.astype(bool)
+  base_snap_active = df_masks['tier4_all_discoverable__snap_active'].values.astype(bool)
+  base_snap_hist_only = base_snap_all & (~base_snap_active)
 
-  p_b1a = pd.read_parquet(os.path.join(PREDS_CACHE_DIR, 'base__tier1a_active_post2016_ccby_8811__joint.parquet')).reindex(all_ids)
+  p_b4 = pd.read_parquet(os.path.join(PREDS_CACHE_DIR, 'base__tier4_all_discoverable__joint.parquet')).reindex(all_ids)
+  p_ft4 = pd.read_parquet(os.path.join(PREDS_CACHE_DIR, 'delta_ft__tier4_all_discoverable__joint.parquet')).reindex(all_ids)
+  p_ftda4 = pd.read_parquet(os.path.join(PREDS_CACHE_DIR, 'delta_ft_da__tier4_all_discoverable__joint.parquet')).reindex(all_ids)
   rp_base_mods = {sk: joblib.load(os.path.join(MODELS_DIR, f'base__{mf}.joblib')) for sk, mf in [('r5', '5.0-year-2.0-window-recall'), ('r10', '10.0-year-2.0-window-recall'), ('r20', '20.0-year-2.0-window-recall')]}
+  rp_ft_mods = {sk: joblib.load(os.path.join(MODELS_DIR, f'delta_ft__{mf}.joblib')) for sk, mf in [('r5', '5.0-year-2.0-window-recall'), ('r10', '10.0-year-2.0-window-recall'), ('r20', '20.0-year-2.0-window-recall')]}
   rp_ftda_mods = {sk: joblib.load(os.path.join(MODELS_DIR, f'delta_ft_da__{mf}.joblib')) for sk, mf in [('r5', '5.0-year-2.0-window-recall'), ('r10', '10.0-year-2.0-window-recall'), ('r20', '20.0-year-2.0-window-recall')]}
 
   topo = pd.read_csv(file_paths.HYBAS_ROUTING_TOPOLOGY_PATH, dtype={'HYBAS_ID': str, 'NEXT_DOWN': str})
@@ -1999,9 +2005,9 @@ def run_part_s16(n_threads: int = 24):
 
   def compute_updated_cov(cand_list: list[int], aff_arr: np.ndarray, anc_map: dict, desc_map: dict) -> pd.DataFrame:
     aff_ids = all_ids[aff_arr]
-    cov_new = df_t1a.loc[aff_ids, COV_COLS].copy()
+    cov_new = df_t4.loc[aff_ids, COV_COLS].copy()
     pos_in_aff = {int(gpos): li for li, gpos in enumerate(aff_arr)}
-    tuc_old_all = df_t1a['total_upstream_coverage'].values
+    tuc_old_all = df_t4['total_upstream_coverage'].values
 
     unblocked_desc = {}
     for c in cand_list:
@@ -2069,13 +2075,29 @@ def run_part_s16(n_threads: int = 24):
   e10 = df_meta['E_10'].values
   e20p = df_meta['E_20_50_100'].values
   ctry_arr = df_meta['country_name'].values
-  w_b1a = e5 * p_b1a['r5'].values + e10 * p_b1a['r10'].values + e20p * p_b1a['r20'].values
+
+  # Baseline forecasted exposure using all 119,169 publicly discoverable gauges
+  # (global training everywhere + FT+DA on operational gauges + FT on inactive historical gauges)
+  r_b4_comb = {}
+  for sk in ('r5', 'r10', 'r20'):
+    pb = p_b4[sk].values
+    r_b4_comb[sk] = np.where(
+        base_snap_active,
+        np.clip(pb + p_ftda4[sk].values, 0.0, 1.0),
+        np.where(
+            base_snap_hist_only,
+            np.clip(pb + p_ft4[sk].values, 0.0, 1.0),
+            pb,
+        ),
+    )
+  w_b4 = e5 * r_b4_comb['r5'] + e10 * r_b4_comb['r10'] + e20p * r_b4_comb['r20']
+  print(f'   Verified 119,169-gauge combined baseline global forecasted exposure = {w_b4.sum()/1e6:.3f}M/yr (Table S6 = 7.75+1.52 = 9.27M/yr)', flush=True)
 
   X_rp_global = rp_base_mods['r5'].impl._preprocess_features(df_inf)
   for c in COV_COLS:
-    X_rp_global[c] = df_t1a[c].values
+    X_rp_global[c] = df_t4[c].values
   for c in OOD_COLS:
-    X_rp_global[c] = df_t1a[c].values
+    X_rp_global[c] = df_t4[c].values
 
   def eval_sets_batch(tasks: list[tuple[list[int], str]]) -> list[tuple[float, float, float, float]]:
     results = [None] * len(tasks)
@@ -2087,7 +2109,8 @@ def run_part_s16(n_threads: int = 24):
         return
       X_cat = pd.concat([it['X'] for it in chunk_items], axis=0, ignore_index=True)
       pb_cat = _fast_predict_rp_family(rp_base_mods, X_cat, n_threads=n_threads)
-      pd_cat = _fast_predict_rp_family(rp_ftda_mods, X_cat, n_threads=n_threads)
+      pft_cat = _fast_predict_rp_family(rp_ft_mods, X_cat, n_threads=n_threads)
+      pftda_cat = _fast_predict_rp_family(rp_ftda_mods, X_cat, n_threads=n_threads)
       offset = 0
       for it in chunk_items:
         n = len(it['aff'])
@@ -2095,15 +2118,27 @@ def run_part_s16(n_threads: int = 24):
         sl = slice(offset, offset + n)
         offset += n
         r5_b, r10_b, r20_b = pb_cat['r5'][sl], pb_cat['r10'][sl], pb_cat['r20'][sl]
-        r5_d, r10_d, r20_d = pd_cat['r5'][sl], pd_cat['r10'][sl], pd_cat['r20'][sl]
-        w_tr = e5[aff] * r5_b + e10[aff] * r10_b + e20p[aff] * r20_b
+        r5_f, r10_f, r20_f = pft_cat['r5'][sl], pft_cat['r10'][sl], pft_cat['r20'][sl]
+        r5_d, r10_d, r20_d = pftda_cat['r5'][sl], pftda_cat['r10'][sl], pftda_cat['r20'][sl]
+        is_act_old = base_snap_active[aff]
+        is_hist_old = base_snap_hist_only[aff]
         is_new = np.isin(aff, it['cands'])
-        r5_c = np.where(is_new, np.clip(r5_b + r5_d, 0.0, 1.0), r5_b)
-        r10_c = np.where(is_new, np.clip(r10_b + r10_d, 0.0, 1.0), r10_b)
-        r20_c = np.where(is_new, np.clip(r20_b + r20_d, 0.0, 1.0), r20_b)
-        w_co = e5[aff] * r5_c + e10[aff] * r10_c + e20p[aff] * r20_c
-        d_tr = w_tr - w_b1a[aff]
-        d_co = w_co - w_b1a[aff]
+
+        # New gauges used for global training only (existing 119k gauges keep existing FT / FT+DA)
+        r5_tr = np.where(is_act_old, np.clip(r5_b + r5_d, 0.0, 1.0), np.where(is_hist_old, np.clip(r5_b + r5_f, 0.0, 1.0), r5_b))
+        r10_tr = np.where(is_act_old, np.clip(r10_b + r10_d, 0.0, 1.0), np.where(is_hist_old, np.clip(r10_b + r10_f, 0.0, 1.0), r10_b))
+        r20_tr = np.where(is_act_old, np.clip(r20_b + r20_d, 0.0, 1.0), np.where(is_hist_old, np.clip(r20_b + r20_f, 0.0, 1.0), r20_b))
+        w_tr = e5[aff] * r5_tr + e10[aff] * r10_tr + e20p[aff] * r20_tr
+
+        # New active gauges used for global training + local fine-tuning + real-time DA
+        is_act_all = is_act_old | is_new
+        r5_co = np.where(is_act_all, np.clip(r5_b + r5_d, 0.0, 1.0), np.where(is_hist_old, np.clip(r5_b + r5_f, 0.0, 1.0), r5_b))
+        r10_co = np.where(is_act_all, np.clip(r10_b + r10_d, 0.0, 1.0), np.where(is_hist_old, np.clip(r10_b + r10_f, 0.0, 1.0), r10_b))
+        r20_co = np.where(is_act_all, np.clip(r20_b + r20_d, 0.0, 1.0), np.where(is_hist_old, np.clip(r20_b + r20_f, 0.0, 1.0), r20_b))
+        w_co = e5[aff] * r5_co + e10[aff] * r10_co + e20p[aff] * r20_co
+
+        d_tr = w_tr - w_b4[aff]
+        d_co = w_co - w_b4[aff]
         in_c = (ctry_arr[aff] == it['cname'])
         results[it['tidx']] = (float(d_tr[in_c].sum()), float(d_co[in_c].sum()), float(d_tr.sum()), float(d_co.sum()))
       chunk_items.clear()
@@ -2123,22 +2158,31 @@ def run_part_s16(n_threads: int = 24):
     return results
 
   country_base_exp = df_meta[df_meta['country_name'].notna()].groupby('country_name')['E_total'].sum().to_dict()
-  country_unw_exp = pd.Series(df_meta['E_total'].values - w_b1a, index=all_ids).groupby(df_meta['country_name']).sum().to_dict()
+  country_unw_exp = pd.Series(df_meta['E_total'].values - w_b4, index=all_ids).groupby(df_meta['country_name']).sum().to_dict()
+
+  # Ensure all flood-exposed countries appear in output even if 0 unmonitored flooded sub-basins remain
+  all_flooded_countries = sorted(
+      df_meta[(df_meta['country_name'].notna()) & (df_meta['E_total'] > 0)]['country_name'].unique()
+  )
+  for cname in all_flooded_countries:
+    country_top20_raw.setdefault(cname, [])
 
   single_tasks, single_meta = [], []
   for cname, raw_cands in sorted(country_top20_raw.items()):
     for c in raw_cands:
       single_tasks.append(([c], cname))
       single_meta.append((cname, c))
-  print(f'   Phase 1: Batch-evaluating {len(single_tasks)} single candidates across {len(country_top20_raw)} countries...', flush=True)
+  print(f'   Phase 1: Batch-evaluating {len(single_tasks)} single candidates across {len(all_flooded_countries)} flood-exposed countries...', flush=True)
   single_res = eval_sets_batch(single_tasks)
   scored_by_country = defaultdict(list)
   for (cname, c), (dt_c, dc_c, dt_g, dc_g) in zip(single_meta, single_res):
     scored_by_country[cname].append((c, dt_c, dc_c, dt_g, dc_g))
 
   joint_tasks, joint_meta = [], []
-  for cname in sorted(country_top20_raw.keys()):
+  for cname in all_flooded_countries:
     scored = scored_by_country[cname]
+    if not scored:
+      continue
     ranked_train = [x[0] for x in sorted(scored, key=lambda x: x[1], reverse=True)]
     ranked_comb = [x[0] for x in sorted(scored, key=lambda x: x[2], reverse=True)]
     for N in (1, 5, 10, 20):
@@ -2150,8 +2194,8 @@ def run_part_s16(n_threads: int = 24):
   joint_res = eval_sets_batch(joint_tasks)
 
   nat_rows_map = {}
-  for cname in sorted(country_top20_raw.keys()):
-    nat_rows_map[cname] = {
+  for cname in all_flooded_countries:
+    row = {
         'Country': cname,
         'Baseline Exposure (people/yr)': float(country_base_exp.get(cname, 0.0)),
         'Unwarned Exposure (people/yr)': float(country_unw_exp.get(cname, 0.0)),
@@ -2159,6 +2203,14 @@ def run_part_s16(n_threads: int = 24):
         'has_system': cap_utils.has_effective_flood_warning_system(cname),
         'CAP_Tier': cap_utils.assign_cap_tier(cname),
     }
+    for N in (1, 5, 10, 20):
+      row[f'N={N}_Train_Dom'] = 0.0
+      row[f'N={N}_Train_Dom_PctBase'] = 0.0
+      row[f'N={N}_Train_Glb'] = 0.0
+      row[f'N={N}_Combined_Dom'] = 0.0
+      row[f'N={N}_Combined_Dom_PctBase'] = 0.0
+      row[f'N={N}_Combined_Glb'] = 0.0
+    nat_rows_map[cname] = row
   for (cname, N, kind), (dt_c, dc_c, dt_g, dc_g) in zip(joint_meta, joint_res):
     row = nat_rows_map[cname]
     base_e = row['Baseline Exposure (people/yr)']

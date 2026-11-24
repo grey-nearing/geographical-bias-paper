@@ -8,7 +8,7 @@ Official code repository and public reproduction suite for:
 > **What Fraction of the World's Watersheds Are Ungauged?**
 > Grey Nearing, Karan Ruparell, Maria Luisa Taccari, Stephanie Rees, Martin Gauch, Justin Ginnetti, Oliver Wing, Paul Bates, Juliet Rothenberg, Frederik Kratzert, Deborah Cohen, and Yossi Matias (2026).
 
-Companion public data archive (**v3.3.0**): **https://doi.org/10.5281/zenodo.21416986**
+Companion public data archive (**v3.3.1**): **https://doi.org/10.5281/zenodo.21416986**
 
 ---
 
@@ -207,4 +207,4 @@ If you use this repository or the Zenodo dataset, please cite [CITATION.cff](CIT
 ## License
 
 - **Code:** Apache License 2.0 ([LICENSE](LICENSE)).
-- **Public Derived Data (Zenodo v3.3.0):** CC-BY-4.0 (subject to upstream source attributions listed in [DATA_DICTIONARY.md](DATA_DICTIONARY.md)).
+- **Public Derived Data (Zenodo v3.3.1):** CC-BY-4.0 (subject to upstream source attributions listed in [DATA_DICTIONARY.md](DATA_DICTIONARY.md)).

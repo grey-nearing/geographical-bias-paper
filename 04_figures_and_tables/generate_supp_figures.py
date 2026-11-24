@@ -838,7 +838,7 @@ def build_fig_s8_optional(out_dir: Path) -> Path | None:
       columnspacing=0.75, handlelength=1.4, handletextpad=0.30, borderpad=0.30,
       title='Top 15 CAP-gap countries (total annual flood exposure ≥ 10 cm)', title_fontsize=6.2,
   )
-  fig.suptitle('National exposure reduction from installing N = 1 to 20 active stream gauges per country', fontsize=7.6, fontweight='bold', y=0.975)
+  fig.suptitle('National exposure reduction from installing N = 1 to 20 new active gauges beyond existing networks', fontsize=7.5, fontweight='bold', y=0.975)
 
   out_s8 = out_dir / 'Fig_S8_national_gauge_siting.png'
   fig.savefig(out_s8, dpi=SAVE_DPI, bbox_inches='tight', pad_inches=0.05)
